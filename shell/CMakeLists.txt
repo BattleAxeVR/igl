@@ -33,6 +33,9 @@ if(ENABLE_OBOE)
 
   target_link_libraries(IGLShellShared PUBLIC Oboe)
   target_include_directories(IGLShellShared PUBLIC ${OBOE_SDK_ROOT}/prefab/modules/oboe/include)
+  add_definitions(-DENABLE_OBOE=1)
+else()
+  add_definitions(-DENABLE_OBOE=0)
 endif()
 
 
@@ -64,6 +67,8 @@ if(ENABLE_CLOUDXR)
   target_include_directories(IGLShellShared PUBLIC ${CLOUDXR_ROOT}/include)
   target_sources(IGLShellShared PRIVATE ${CLOUDXR_ROOT}/include/CloudXRController.cpp)
 
+  add_definitions(-DENABLE_CLOUDXR=1)
+
   #macro(ADD_SHELL_SESSION_EXTERNAL target libs)
   #  set(shell_srcs_external apps/SessionApp.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.h)
   #  add_shell_session_with_srcs(${target} "${shell_srcs_external}" "${libs}")
@@ -72,6 +77,8 @@ if(ENABLE_CLOUDXR)
   #add_shell_session_external(ExternalHelloOpenXRSession "")
   #add_shell_session_external(HelloOpenXRSession "")
 
+else()
+  add_definitions(-DENABLE_CLOUDXR=0)
 endif()
 
 igl_set_folder(IGLShellShared "IGL")

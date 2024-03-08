@@ -19,36 +19,27 @@
 #include <shell/shared/renderSession/ShellParams.h>
 
 
-//#ifdef ENABLE_CLOUDXR
+#ifndef ENABLE_CLOUDXR
+#define ENABLE_CLOUDXR 1
+#endif
+
+#ifndef ENABLE_OBOE
+#define ENABLE_OBOE 1
+#endif
+
+#if ENABLE_CLOUDXR
 #include <CloudXRClient.h>
 #include <CloudXRMatrixHelpers.h>
 #include <CloudXRClientOptions.h>
 #include <CloudXRController.h>
-//#include <CloudXRController.cpp>
-//#endif
+#endif
 
 extern "C" void dispatchLogMsg(cxrLogLevel level, cxrMessageCategory category, void *extra, const char *tag, const char *fmt, ...) {
-    // Log::Write(Log::Level::Info, fmt);
-#if 0
-    va_list aptr;
-    va_start(aptr, fmt);
-#if !LOG_TO_FILE
-    const int bufsize = 8192;
-    char buffer[bufsize];
-    vsnprintf(buffer, bufsize, fmt, aptr);
-    // throw to logcat.
-    __android_log_print(cxrLLToAndroidPriority(level), tag, "%s", buffer);
-#else
-    // throw to the log file
-    g_logFile.logva(level, tag, fmt, aptr);
-#endif
-    va_end(aptr);
-#endif
 }
 
-//#ifdef ENABLE_OBOE
+#if ENABLE_OBOE
 #include <oboe/Oboe.h>
-//#endif
+#endif
 
 namespace igl::shell {
 
