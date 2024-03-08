@@ -117,4 +117,29 @@ if(IGL_WITH_OPENXR AND ANDROID)
     target_link_libraries(openxr-gles-Jni PRIVATE IGLShellShared IGLShellOpenXR_AndroidOpenGLES ${IGL_OPENXR_RENDER_SESSION})
     target_compile_definitions(openxr-gles-Jni PRIVATE "USE_OPENGL_BACKEND" "XR_USE_PLATFORM_ANDROID" "XR_USE_GRAPHICS_API_OPENGL_ES")
   endif()
+
+  option(ENABLE_CLOUDXR "Enable CloudXR" ON)
+
+  if(ENABLE_CLOUDXR)
+    add_library(CloudXRClient SHARED IMPORTED)
+
+    set_target_properties(CloudXRClient
+            PROPERTIES
+            IMPORTED_LOCATION ${CLOUDXR_ROOT}/jni/${ANDROID_ABI}/libCloudXRClient.so
+    )
+
+    target_link_libraries(IGLShellShared PUBLIC CloudXRClient)
+    target_include_directories(IGLShellShared PRIVATE ${CLOUDXR_ROOT}/include)
+    target_sources(IGLShellShared PRIVATE ${CLOUDXR_ROOT}/include/CloudXRController.cpp)
+
+    macro(ADD_SHELL_SESSION_EXTERNAL target libs)
+      set(shell_srcs_external apps/SessionApp.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.h)
+      add_shell_session_with_srcs(${target} "${shell_srcs_external}" "${libs}")
+    endmacro()
+
+    #add_shell_session_external(ExternalHelloOpenXRSession "")
+    #add_shell_session_external(HelloOpenXRSession "")
+
+  endif()
+
 endif()
