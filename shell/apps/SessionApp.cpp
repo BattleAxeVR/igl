@@ -5,11 +5,15 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#if !defined(IGL_SHELL_SESSION)
+
+#if defined(IGL_SHELL_SESSION_EXTERNAL)
+#define IGL_SHELL_SESSION IGL_SHELL_SESSION_EXTERNAL
+#define IGL_SHELL_PATH <../../../client/src/renderSessions/IGL_SHELL_SESSION.h>
+#elif defined(IGL_SHELL_SESSION)
+#define IGL_SHELL_PATH <shell/renderSessions/IGL_SHELL_SESSION.h>
+#else
 #error "IGL_SHELL_SESSION must be defined";
 #endif
-
-#define IGL_SHELL_PATH <shell/renderSessions/IGL_SHELL_SESSION.h>
 
 #include IGL_SHELL_PATH
 #include <shell/shared/renderSession/DefaultSession.h>

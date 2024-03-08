@@ -17,9 +17,7 @@ file(GLOB SHELL_SHARED_SRC_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT
 file(GLOB SHELL_SHARED_HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
      shared/fileLoader/*.h shared/imageLoader/*.h shared/extension/*.h shared/input/*.h shared/platform/*.h shared/renderSession/*.h shared/netservice/*.h)
 
-
 add_library(IGLShellShared ${SHELL_SHARED_SRC_FILES} ${SHELL_SHARED_HEADER_FILES})
-
 
 option(ENABLE_OBOE "Enable Oboe" ON)
 
@@ -68,9 +66,7 @@ if(ENABLE_CLOUDXR)
   target_sources(IGLShellShared PRIVATE ${CLOUDXR_ROOT}/include/CloudXRController.cpp)
 
   add_definitions(-DENABLE_CLOUDXR=1)
-
-  #add_shell_session_external(ExternalHelloOpenXRSession "")
-  #add_shell_session_external(HelloOpenXRSession "")
+  add_definitions(-DIGL_SHELL_SESSION_EXTERNAL=OKCloudSession)
 
 else()
   add_definitions(-DENABLE_CLOUDXR=0)
@@ -115,7 +111,6 @@ macro(ADD_SHELL_SESSION_EXTERNAL target libs)
   add_shell_session_with_srcs(${target} "${shell_srcs}" "${libs}")
 endmacro()
 
-
 if(IGL_WITH_SAMPLES)
   add_shell_session(BasicFramebufferSession "")
   add_shell_session(ColorSession "")
@@ -129,8 +124,9 @@ if(IGL_WITH_SAMPLES)
   add_shell_session(TQSession "")
   if(IGL_WITH_OPENXR)
     if(ANDROID)
-      #add_shell_session(HelloOpenXRSession "")
-      add_shell_session_external(HelloOpenXRSession "")
+      add_shell_session(HelloOpenXRSession "")
+      #add_shell_session_external(HelloOpenXRSession "")
+      add_shell_session_external(OKCloudSession "")
     endif()
     if(NOT ANDROID AND IGL_WITH_VULKAN)
       add_shell_session_openxr_desktop(ColorSession)
