@@ -69,11 +69,6 @@ if(ENABLE_CLOUDXR)
 
   add_definitions(-DENABLE_CLOUDXR=1)
 
-  #macro(ADD_SHELL_SESSION_EXTERNAL target libs)
-  #  set(shell_srcs_external apps/SessionApp.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.h)
-  #  add_shell_session_with_srcs(${target} "${shell_srcs_external}" "${libs}")
-  #endmacro()
-
   #add_shell_session_external(ExternalHelloOpenXRSession "")
   #add_shell_session_external(HelloOpenXRSession "")
 
@@ -114,6 +109,12 @@ macro(ADD_SHELL_SESSION_OPENXR_DESKTOP target)
   set(shell_srcs apps/SessionApp.cpp renderSessions/${target}.cpp renderSessions/${target}.h openxr/desktop/main.cpp)
   add_shell_session_backend_openxr(${target} vulkan "${shell_srcs}" IGLShellOpenXR_DesktopVulkan)
 endmacro()
+
+macro(ADD_SHELL_SESSION_EXTERNAL target libs)
+  set(shell_srcs apps/SessionApp.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.cpp ${EXTERNAL_SRC_ROOT}/renderSessions/${target}.h)
+  add_shell_session_with_srcs(${target} "${shell_srcs}" "${libs}")
+endmacro()
+
 
 if(IGL_WITH_SAMPLES)
   add_shell_session(BasicFramebufferSession "")
