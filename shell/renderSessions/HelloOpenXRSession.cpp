@@ -32,10 +32,11 @@
 #include <CloudXRMatrixHelpers.h>
 #include <CloudXRClientOptions.h>
 #include <CloudXRController.h>
-#endif
 
 extern "C" void dispatchLogMsg(cxrLogLevel level, cxrMessageCategory category, void *extra, const char *tag, const char *fmt, ...) {
 }
+
+#endif
 
 #if ENABLE_OBOE
 #include <oboe/Oboe.h>
