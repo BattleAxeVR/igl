@@ -26,10 +26,15 @@ class XrAppImplGLES final : public impl::XrAppImpl {
   std::unique_ptr<igl::IDevice> initIGL(XrInstance instance, XrSystemId systemId) override;
   XrSession initXrSession(XrInstance instance, XrSystemId systemId, igl::IDevice& device) override;
   std::unique_ptr<impl::XrSwapchainProviderImpl> createSwapchainProviderImpl() const override;
+  void* getGraphicsContext() override;
 
  private:
   XrGraphicsRequirementsOpenGLESKHR graphicsRequirements_ = {
       .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR,
   };
+
+    XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES_ = {
+      .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
+    };
 };
 } // namespace igl::shell::openxr::mobile

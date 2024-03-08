@@ -46,7 +46,7 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
   const auto& glDevice = static_cast<igl::opengl::Device&>(device); // Downcast is safe here
   const auto& context = static_cast<igl::opengl::egl::Context&>(glDevice.getContext());
 
-  XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {
+    graphicsBindingAndroidGLES_ = {
       .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
       .next = nullptr,
       .display = context.getDisplay(),
@@ -56,7 +56,7 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
 
   XrSessionCreateInfo sessionCreateInfo = {
       .type = XR_TYPE_SESSION_CREATE_INFO,
-      .next = &graphicsBindingAndroidGLES,
+      .next = &graphicsBindingAndroidGLES_,
       .createFlags = 0,
       .systemId = systemId,
   };
@@ -75,5 +75,8 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
 
 std::unique_ptr<impl::XrSwapchainProviderImpl> XrAppImplGLES::createSwapchainProviderImpl() const {
   return std::make_unique<XrSwapchainProviderImplGLES>();
+}
+void* XrAppImplGLES::getGraphicsContext() {
+    return &graphicsBindingAndroidGLES_;
 }
 } // namespace igl::shell::openxr::mobile

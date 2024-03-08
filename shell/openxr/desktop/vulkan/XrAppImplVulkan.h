@@ -29,6 +29,7 @@ class XrAppImplVulkan final : public impl::XrAppImpl {
   std::unique_ptr<igl::IDevice> initIGL(XrInstance instance, XrSystemId systemId) override;
   XrSession initXrSession(XrInstance instance, XrSystemId systemId, igl::IDevice& device) override;
   std::unique_ptr<impl::XrSwapchainProviderImpl> createSwapchainProviderImpl() const override;
+  void* getGraphicsContext() override;
 
  private:
   std::vector<const char*> processExtensionsBuffer(std::vector<char>& buffer);

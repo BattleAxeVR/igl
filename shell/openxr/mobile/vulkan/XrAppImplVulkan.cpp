@@ -137,6 +137,10 @@ std::unique_ptr<impl::XrSwapchainProviderImpl> XrAppImplVulkan::createSwapchainP
   return std::make_unique<XrSwapchainProviderImplVulkan>();
 }
 
+void* XrAppImplVulkan::getGraphicsContext() {
+    return nullptr;
+}
+
 std::vector<const char*> XrAppImplVulkan::processExtensionsBuffer(std::vector<char>& buffer) {
   std::vector<const char*> extensions;
   auto skip = false;
