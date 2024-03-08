@@ -17,7 +17,24 @@ file(GLOB SHELL_SHARED_SRC_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT
 file(GLOB SHELL_SHARED_HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
      shared/fileLoader/*.h shared/imageLoader/*.h shared/extension/*.h shared/input/*.h shared/platform/*.h shared/renderSession/*.h shared/netservice/*.h)
 
+
 add_library(IGLShellShared ${SHELL_SHARED_SRC_FILES} ${SHELL_SHARED_HEADER_FILES})
+
+
+option(ENABLE_OBOE "Enable Oboe" ON)
+
+if(ENABLE_OBOE)
+  add_library(Oboe SHARED IMPORTED)
+
+  set_target_properties(Oboe
+          PROPERTIES
+          IMPORTED_LOCATION ${OBOE_SDK_ROOT}/prefab/modules/oboe/libs/android.${ANDROID_ABI}/liboboe.so
+  )
+
+  target_link_libraries(IGLShellShared PUBLIC Oboe)
+  target_include_directories(IGLShellShared PUBLIC ${OBOE_SDK_ROOT}/prefab/modules/oboe/include)
+endif()
+
 
 target_include_directories(IGLShellShared PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/include_renderSessions")
 target_include_directories(IGLShellShared PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/include_shared")
@@ -32,7 +49,6 @@ target_link_libraries(IGLShellShared PUBLIC IGLUtexture_accessor)
 target_link_libraries(IGLShellShared PUBLIC IGLUtexture_loader)
 target_link_libraries(IGLShellShared PUBLIC IGLUuniform)
 target_link_libraries(IGLShellShared PUBLIC IGLstb)
-
 
 option(ENABLE_CLOUDXR "Enable CloudXR" ON)
 
@@ -56,23 +72,6 @@ if(ENABLE_CLOUDXR)
   #add_shell_session_external(ExternalHelloOpenXRSession "")
   #add_shell_session_external(HelloOpenXRSession "")
 
-endif()
-
-option(ENABLE_OBOE "Enable Oboe" ON)
-
-if(ENABLE_OBOE)
-  #find_package(oboe REQUIRED CONFIG)
-  #target_link_libraries(IGLShellShared oboe::oboe)
-
-  #add_library(oboe SHARED IMPORTED)
-
-  #set_target_properties(oboe
-  #        PROPERTIES
-  #        IMPORTED_LOCATION ${OBOE_SDK_ROOT}/prefab/modules/oboe/libs/android.${ANDROID_ABI}/liboboe.so
-  #)
-
-  #target_link_libraries(IGLShellShared oboe)
-  target_include_directories(IGLShellShared PUBLIC ${OBOE_SDK_ROOT}/prefab/modules/oboe/include)
 endif()
 
 igl_set_folder(IGLShellShared "IGL")
