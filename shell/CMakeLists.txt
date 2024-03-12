@@ -19,7 +19,7 @@ file(GLOB SHELL_SHARED_HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURR
 
 add_library(IGLShellShared ${SHELL_SHARED_SRC_FILES} ${SHELL_SHARED_HEADER_FILES})
 
-option(ENABLE_OBOE "Enable Oboe" ON)
+option(ENABLE_OBOE "Enable Oboe" OFF)
 
 if(ENABLE_OBOE)
   add_library(Oboe SHARED IMPORTED)
@@ -51,7 +51,7 @@ target_link_libraries(IGLShellShared PUBLIC IGLUtexture_loader)
 target_link_libraries(IGLShellShared PUBLIC IGLUuniform)
 target_link_libraries(IGLShellShared PUBLIC IGLstb)
 
-option(ENABLE_CLOUDXR "Enable CloudXR" ON)
+option(ENABLE_CLOUDXR "Enable CloudXR" OFF)
 
 if(ENABLE_CLOUDXR)
   add_library(CloudXRClient SHARED IMPORTED)
