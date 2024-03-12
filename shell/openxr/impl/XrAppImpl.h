@@ -26,6 +26,5 @@ class XrAppImpl {
                                   XrSystemId systemId,
                                   igl::IDevice& device) = 0;
   virtual std::unique_ptr<impl::XrSwapchainProviderImpl> createSwapchainProviderImpl() const = 0;
-  virtual void* getGraphicsContext() = 0;
 };
 } // namespace igl::shell::openxr::impl
