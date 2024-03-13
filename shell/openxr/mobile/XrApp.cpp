@@ -714,9 +714,11 @@ bool XrApp::initialize(const struct android_app* app) {
   enumerateBlendModes();
   createSwapchainProviders(device);
   createSpaces();
+#if !ENABLE_CLOUDXR
   if (passthroughSupported_ && !createPassthrough()) {
     return false;
   }
+#endif
   if (handsTrackingSupported_ && !createHandsTracking()) {
     return false;
   }
