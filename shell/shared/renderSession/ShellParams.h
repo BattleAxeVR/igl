@@ -34,6 +34,7 @@ struct ShellParams {
   std::array<HandTracking, 2> handTracking = {};
 
   openxr::GLMPose head_pose_ = {};
+  std::array<openxr::GLMPose, 2> controller_poses_;
   int current_view_id_ = 0;
 };
 } // namespace igl::shell
