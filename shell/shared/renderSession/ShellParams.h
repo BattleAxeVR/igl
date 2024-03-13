@@ -17,6 +17,8 @@
 #include <shell/shared/renderSession/RenderMode.h>
 #include <shell/shared/renderSession/ViewParams.h>
 
+#include <shell/openxr/src/GLMPose.h>
+
 namespace igl::shell {
 struct ShellParams {
   std::vector<ViewParams> viewParams;
@@ -30,5 +32,8 @@ struct ShellParams {
   std::optional<igl::Color> clearColorValue = {};
   std::array<HandMesh, 2> handMeshes = {};
   std::array<HandTracking, 2> handTracking = {};
+
+  GLMPose head_pose_ = {};
+  int current_view_id_ = 0;
 };
 } // namespace igl::shell

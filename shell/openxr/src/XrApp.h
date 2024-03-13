@@ -140,7 +140,10 @@ class XrApp {
   std::array<glm::mat4, kNumViews> viewTransforms_;
   std::array<glm::vec3, kNumViews> cameraPositions_;
 
-  bool useSinglePassStereo_ = true;
+  XrPosef headPose_;
+  XrTime headPoseTime_;
+
+  bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
 
   // If useSinglePassStereo_ is true, only one XrSwapchainProvider will be created.

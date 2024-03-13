@@ -868,7 +868,8 @@ XrFrameState XrApp::beginFrame() {
       loc.type = XR_TYPE_SPACE_LOCATION,
   };
   XR_CHECK(xrLocateSpace(headSpace_, currentSpace_, frameState.predictedDisplayTime, &loc));
-  XrPosef headPose = loc.pose;
+  headPose_ = loc.pose;
+  headPoseTime_ = frameState.predictedDisplayTime;
 
   XrViewState viewState = {XR_TYPE_VIEW_STATE};
 
@@ -887,7 +888,7 @@ XrFrameState XrApp::beginFrame() {
 
   for (size_t i = 0; i < kNumViews; i++) {
     XrPosef eyePose = views_[i].pose;
-    XrPosef_Multiply(&viewStagePoses_[i], &headPose, &eyePose);
+    XrPosef_Multiply(&viewStagePoses_[i], &headPose_, &eyePose);
     XrPosef viewTransformXrPosef{};
     XrPosef_Invert(&viewTransformXrPosef, &viewStagePoses_[i]);
     XrMatrix4x4f xrMat4{};
@@ -919,6 +920,9 @@ void XrApp::render() {
     shellParams_->clearColorValue.reset();
   }
 
+  shellParams_->head_pose_ = convert_to_glm(headPose_);
+  shellParams_->head_pose_.timestamp_ = headPoseTime_;
+
   if (useSinglePassStereo_) {
     auto surfaceTextures = swapchainProviders_[0]->getSurfaceTextures();
     for (size_t j = 0; j < shellParams_->viewParams.size(); j++) {
@@ -931,6 +935,8 @@ void XrApp::render() {
   } else {
     for (size_t i = 0; i < kNumViews; i++) {
       shellParams_->viewParams[0].viewMatrix = viewTransforms_[i];
+      shellParams_->viewParams[0].cameraPosition = cameraPositions_[i];
+      shellParams_->current_view_id_ = i;
       copyFov(shellParams_->viewParams[0].fov, views_[i].fov);
       auto surfaceTextures = swapchainProviders_[i]->getSurfaceTextures();
       renderSession_->update(surfaceTextures);
