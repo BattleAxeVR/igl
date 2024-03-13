@@ -2,7 +2,6 @@
 #define GLM_POSE_H
 
 #include <openxr/openxr.h>
-//#include <xr_linear.h>
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -17,6 +16,10 @@ inline float sign(float val)
 {
     return (val < 0.0f) ? -1.0f : 1.0f;
 }
+
+struct XrMatrix4x4f;
+
+namespace igl::shell::openxr {
 
 const float ROOT_OF_HALF = 0.7071067690849304f;
 
@@ -56,43 +59,51 @@ const glm::fquat ceiling_rotation = CCW_90_rotation_about_x;
 const glm::fquat down_rotation = CW_90_rotation_about_x;
 const glm::fquat up_rotation = CCW_90_rotation_about_x;
 
-struct GLMPose
-{
-    GLMPose()
-    {
+struct GLMPose {
+    GLMPose() {
     }
 
-    GLMPose(const glm::vec3& translation, const glm::fquat& rotation) : translation_(translation), rotation_(rotation)
-    {
+    GLMPose(const glm::vec3 &translation, const glm::fquat &rotation) : translation_(
+            translation), rotation_(rotation) {
     }
 
     glm::vec3 translation_ = glm::vec3(0.0f, 0.0f, 0.0f);
     glm::fquat rotation_ = default_rotation;
     glm::vec3 scale_ = glm::vec3(1.0f, 1.0f, 1.0f);
     glm::vec3 euler_angles_degrees_ = glm::vec3(0.0f, 0.0f, 0.0f);
-    bool is_valid_  = true;
+    bool is_valid_ = true;
 
     uint64_t timestamp_ = 0;
 
     void clear();
 
     glm::mat4 to_matrix() const;
+
     void update_rotation_from_euler();
 
-    void transform(const GLMPose& glm_pose);
+    void transform(const GLMPose &glm_pose);
 };
 
-struct XrMatrix4x4f;
-XrMatrix4x4f convert_to_xr(const glm::mat4& input);
-glm::mat4 convert_to_glm(const XrMatrix4x4f& input);
-XrVector3f convert_to_xr(const glm::vec3& input);
-glm::vec3 convert_to_glm(const XrVector3f& input);
-XrQuaternionf convert_to_xr(const glm::fquat& input);
-glm::fquat convert_to_glm(const XrQuaternionf& input);
-glm::mat4 convert_to_rotation_matrix(const glm::fquat& rotation);
+XrMatrix4x4f convert_to_xr(const glm::mat4 &input);
 
-GLMPose convert_to_glm(const XrVector3f& position, const XrQuaternionf& rotation, const XrVector3f& scale);
-GLMPose convert_to_glm(const XrPosef& xr_pose);
-XrPosef convert_to_xr(const GLMPose& glm_pose);
+glm::mat4 convert_to_glm(const XrMatrix4x4f &input);
+
+XrVector3f convert_to_xr(const glm::vec3 &input);
+
+glm::vec3 convert_to_glm(const XrVector3f &input);
+
+XrQuaternionf convert_to_xr(const glm::fquat &input);
+
+glm::fquat convert_to_glm(const XrQuaternionf &input);
+
+glm::mat4 convert_to_rotation_matrix(const glm::fquat &rotation);
+
+GLMPose convert_to_glm(const XrVector3f &position, const XrQuaternionf &rotation,
+                       const XrVector3f &scale);
+
+GLMPose convert_to_glm(const XrPosef &xr_pose);
+
+XrPosef convert_to_xr(const GLMPose &glm_pose);
+} // namespace igl::shell::openxr
 
 #endif
