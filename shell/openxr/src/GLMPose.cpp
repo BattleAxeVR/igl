@@ -1,5 +1,4 @@
 #include "GLMPose.h"
-#include <xr_linear.h>
 #include <cstring>
 
 #ifndef deg2rad
@@ -10,18 +9,6 @@
 #endif
 
 namespace igl::shell::openxr {
-
-XrMatrix4x4f convert_to_xr(const glm::mat4 &input) {
-    XrMatrix4x4f output;
-    std::memcpy(&output, &input, sizeof(output));
-    return output;
-}
-
-glm::mat4 convert_to_glm(const XrMatrix4x4f &input) {
-    glm::mat4 output;
-    std::memcpy(&output, &input, sizeof(output));
-    return output;
-}
 
 XrVector3f convert_to_xr(const glm::vec3 &input) {
     XrVector3f output;

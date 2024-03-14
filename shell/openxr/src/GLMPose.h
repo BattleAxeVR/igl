@@ -17,8 +17,6 @@ inline float sign(float val)
     return (val < 0.0f) ? -1.0f : 1.0f;
 }
 
-struct XrMatrix4x4f;
-
 namespace igl::shell::openxr {
 
 const float ROOT_OF_HALF = 0.7071067690849304f;
@@ -83,10 +81,6 @@ struct GLMPose {
 
     void transform(const GLMPose &glm_pose);
 };
-
-XrMatrix4x4f convert_to_xr(const glm::mat4 &input);
-
-glm::mat4 convert_to_glm(const XrMatrix4x4f &input);
 
 XrVector3f convert_to_xr(const glm::vec3 &input);
 
