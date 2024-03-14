@@ -1106,6 +1106,7 @@ void XrApp::render() {
 
   shellParams_->head_pose_ = convert_to_glm(headPose_);
   shellParams_->head_pose_.timestamp_ = headPoseTime_;
+  shellParams_->xr_app_ptr_ = this;
 
   if (useSinglePassStereo_) {
     auto surfaceTextures = swapchainProviders_[0]->getSurfaceTextures();
@@ -1194,6 +1195,13 @@ void XrApp::endFrame(XrFrameState frameState) {
       quadLayers[i].subImage = projectionViews[i].subImage;
     }
   }
+
+#if 1//ENABLE_CLOUDXR
+  if (cloudxr_connected_ && (override_display_time_ > 0))
+  {
+      frameState.predictedDisplayTime = override_display_time_;
+  }
+#endif
 
   if (useQuadLayerComposition_) {
     std::array<const XrCompositionLayerBaseHeader*, kNumViews + 1> layers{};

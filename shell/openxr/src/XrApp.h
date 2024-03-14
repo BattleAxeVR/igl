@@ -42,8 +42,16 @@
 #include <shell/shared/platform/Platform.h>
 #include <shell/shared/renderSession/RenderSession.h>
 
+const int LEFT = 0;
+const int RIGHT = 1;
+const int NUM_SIDES = 2;
+
 struct android_app;
 class AAssetManager;
+
+namespace igl::shell{
+    class OKCloudSession;
+}
 
 // forward declarations
 namespace igl::shell::openxr {
@@ -54,10 +62,6 @@ class XrAppImpl;
 } // namespace igl::shell::openxr
 
 namespace igl::shell::openxr {
-
-const int LEFT = 0;
-const int RIGHT = 1;
-const int NUM_SIDES = 2;
 
 struct XrInputState
 {
@@ -78,9 +82,14 @@ struct XrInputState
 
     XrAction thumbstickXAction{ XR_NULL_HANDLE };
     XrAction thumbstickYAction{ XR_NULL_HANDLE };
+
+    std::mutex polling_mutex_;
 };
 
 class XrApp {
+
+  friend class igl::shell::OKCloudSession;
+
  public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
   ~XrApp();
@@ -170,6 +179,11 @@ class XrApp {
   XrPosef headPose_;
   XrTime headPoseTime_;
   XrInputState xr_inputs_;
+
+#if 1//ENABLE_CLOUDXR
+    bool cloudxr_connected_ = false;
+    XrTime override_display_time_ = 0;
+#endif
 
   bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
