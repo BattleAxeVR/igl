@@ -169,7 +169,7 @@ class XrApp {
 
   XrPosef headPose_;
   XrTime headPoseTime_;
-  XrInputState m_input;
+  XrInputState xr_inputs_;
 
   bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
