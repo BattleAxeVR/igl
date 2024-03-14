@@ -1117,6 +1117,8 @@ void XrApp::render() {
 
   shellParams_->xr_app_ptr_ = this;
 
+  renderSession_->pre_update();
+
   if (useSinglePassStereo_) {
     auto surfaceTextures = swapchainProviders_[0]->getSurfaceTextures();
     for (size_t j = 0; j < shellParams_->viewParams.size(); j++) {
@@ -1137,6 +1139,8 @@ void XrApp::render() {
       swapchainProviders_[i]->releaseSwapchainImages();
     }
   }
+
+    renderSession_->post_update();
 }
 
 void XrApp::endFrame(XrFrameState frameState) {

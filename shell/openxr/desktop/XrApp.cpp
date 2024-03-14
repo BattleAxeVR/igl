@@ -700,8 +700,9 @@ void copyFov(igl::shell::Fov& dst, const XrFovf& src) {
 
 void XrApp::render() {
 
-  shellParams_->head_pose_ = convert_to_glm(headPose_);
-  shellParams_->head_pose_.timestamp_ = headPoseTime_;
+  shellParams_->xr_app_ptr_ = this;
+
+  renderSession_->pre_update();
 
   if (useSinglePassStereo_) {
     auto surfaceTextures = swapchainProviders_[0]->getSurfaceTextures();
@@ -723,6 +724,8 @@ void XrApp::render() {
       swapchainProviders_[i]->releaseSwapchainImages();
     }
   }
+
+  renderSession_->post_update();
 }
 
 void XrApp::endFrame(XrFrameState frameState) {
