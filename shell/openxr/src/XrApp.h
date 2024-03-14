@@ -59,13 +59,14 @@ const int LEFT = 0;
 const int RIGHT = 1;
 const int NUM_SIDES = 2;
 
-struct InputState
+struct XrInputState
 {
     XrActionSet actionSet{XR_NULL_HANDLE};
     XrAction grabAction{XR_NULL_HANDLE};
     XrAction poseAction{XR_NULL_HANDLE};
     XrAction vibrateAction{XR_NULL_HANDLE};
     XrAction quitAction{XR_NULL_HANDLE};
+
     std::array<XrPath, NUM_SIDES> handSubactionPath;
     std::array<XrSpace, NUM_SIDES> handSpace;
     std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
@@ -168,7 +169,7 @@ class XrApp {
 
   XrPosef headPose_;
   XrTime headPoseTime_;
-  InputState m_input;
+  XrInputState m_input;
 
   bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
