@@ -17,8 +17,6 @@
 #include <shell/shared/renderSession/RenderMode.h>
 #include <shell/shared/renderSession/ViewParams.h>
 
-#include <shell/openxr/src/GLMPose.h>
-
 namespace igl::shell {
 
 namespace openxr {
@@ -38,8 +36,6 @@ struct ShellParams {
   std::array<HandMesh, 2> handMeshes = {};
   std::array<HandTracking, 2> handTracking = {};
 
-  openxr::GLMPose head_pose_ = {};
-  std::array<openxr::GLMPose, 2> controller_poses_;
   int current_view_id_ = 0;
   openxr::XrApp* xr_app_ptr_ = nullptr; // horrible hack but CloudXR needs to poll the Xr State from another thread at >> higher Hz than rendering.
 };

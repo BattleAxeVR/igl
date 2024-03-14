@@ -1104,8 +1104,6 @@ void XrApp::render() {
     shellParams_->clearColorValue.reset();
   }
 
-  shellParams_->head_pose_ = convert_to_glm_pose(headPose_);
-  shellParams_->head_pose_.timestamp_ = headPoseTime_;
   shellParams_->xr_app_ptr_ = this;
 
   if (useSinglePassStereo_) {
