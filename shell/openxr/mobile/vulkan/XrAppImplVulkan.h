@@ -17,6 +17,11 @@
 #ifndef XR_USE_GRAPHICS_API_VULKAN
 #define XR_USE_GRAPHICS_API_VULKAN
 #endif
+
+#ifndef XR_USE_TIMESPEC
+#define XR_USE_TIMESPEC
+#endif
+
 #include <openxr/openxr_platform.h>
 
 #include <shell/openxr/impl/XrAppImpl.h>

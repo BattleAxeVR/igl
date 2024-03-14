@@ -32,7 +32,33 @@
 #define XR_USE_GRAPHICS_API_OPENGL_ES
 #endif
 #endif // USE_OPENGL_BACKEND
+
+#ifndef XR_USE_TIMESPEC
+#define XR_USE_TIMESPEC
+#endif
+
 #include <openxr/openxr_platform.h>
+
+PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR = nullptr;
+
+#ifndef XR_LOAD
+#define XR_LOAD(instance, fn) xrGetInstanceProcAddr(instance, #fn, reinterpret_cast<PFN_xrVoidFunction*>(&fn))
+#endif
+
+XrTime get_predicted_display_time(XrInstance instance)
+{
+    XrTime time;
+    struct timespec timespec;
+    clock_gettime(CLOCK_MONOTONIC, &timespec);
+
+    if (!xrConvertTimespecTimeToTimeKHR)
+    {
+        XR_LOAD(instance, xrConvertTimespecTimeToTimeKHR);
+    }
+    //xrConvertTimespecTimeToTimeKHR(instance, &timespec, &time);
+    //(get_inst_proc_addr(instance, "xrConvertTimespecTimeToTimeKHR", (PFN_xrVoidFunction*)&table->ConvertTimespecTimeToTimeKHR));
+    return time;
+}
 
 #include <glm/gtc/type_ptr.hpp>
 #include <xr_linear.h>
@@ -50,6 +76,7 @@
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
 
 namespace igl::shell::openxr {
+
 constexpr auto kAppName = "IGL Shell OpenXR";
 constexpr auto kEngineName = "IGL";
 constexpr auto kSupportedViewConfigType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
@@ -1198,6 +1225,7 @@ void XrApp::endFrame(XrFrameState frameState) {
   if (cloudxr_connected_ && (override_display_time_ > 0))
   {
       frameState.predictedDisplayTime = override_display_time_;
+      frameState.predictedDisplayTime = get_predicted_display_time(instance_);
   }
 #endif
 

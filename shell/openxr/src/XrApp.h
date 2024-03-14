@@ -25,12 +25,19 @@
 
 #if IGL_PLATFORM_ANDROID
 #include <jni.h>
+
+#ifndef XR_USE_TIMESPEC
+#define XR_USE_TIMESPEC
+#endif
+
 #if IGL_BACKEND_OPENGL
 #include <EGL/egl.h>
 #endif // IGL_BACKEND_OPENGL
 #endif // IGL_PLATFORM_ANDROID
 
 #include <openxr/openxr_platform.h>
+
+XrTime get_predicted_display_time(XrInstance instance);
 
 #endif // IGL_CMAKE_BUILD
 
