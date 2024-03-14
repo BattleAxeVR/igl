@@ -55,6 +55,28 @@ class XrAppImpl;
 
 namespace igl::shell::openxr {
 
+const int NUM_HANDS = 2;
+
+struct InputState
+{
+    XrActionSet actionSet{XR_NULL_HANDLE};
+    XrAction grabAction{XR_NULL_HANDLE};
+    XrAction poseAction{XR_NULL_HANDLE};
+    XrAction vibrateAction{XR_NULL_HANDLE};
+    XrAction quitAction{XR_NULL_HANDLE};
+    std::array<XrPath, NUM_HANDS> handSubactionPath;
+    std::array<XrSpace, NUM_HANDS> handSpace;
+    std::array<float, NUM_HANDS> handScale = {{1.0f, 1.0f}};
+    std::array<XrBool32, NUM_HANDS> handActive;
+
+    XrAction aimPoseAction{XR_NULL_HANDLE};
+    std::array<XrPath, NUM_HANDS> aimSubactionPath;
+    std::array<XrSpace, NUM_HANDS> aimSpace;
+
+    XrAction thumbstickXAction{ XR_NULL_HANDLE };
+    XrAction thumbstickYAction{ XR_NULL_HANDLE };
+};
+
 class XrApp {
  public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
@@ -144,6 +166,7 @@ class XrApp {
 
   XrPosef headPose_;
   XrTime headPoseTime_;
+  InputState m_input;
 
   bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
