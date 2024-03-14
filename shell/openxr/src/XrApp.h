@@ -55,7 +55,9 @@ class XrAppImpl;
 
 namespace igl::shell::openxr {
 
-const int NUM_HANDS = 2;
+const int LEFT = 0;
+const int RIGHT = 1;
+const int NUM_SIDES = 2;
 
 struct InputState
 {
@@ -64,14 +66,14 @@ struct InputState
     XrAction poseAction{XR_NULL_HANDLE};
     XrAction vibrateAction{XR_NULL_HANDLE};
     XrAction quitAction{XR_NULL_HANDLE};
-    std::array<XrPath, NUM_HANDS> handSubactionPath;
-    std::array<XrSpace, NUM_HANDS> handSpace;
-    std::array<float, NUM_HANDS> handScale = {{1.0f, 1.0f}};
-    std::array<XrBool32, NUM_HANDS> handActive;
+    std::array<XrPath, NUM_SIDES> handSubactionPath;
+    std::array<XrSpace, NUM_SIDES> handSpace;
+    std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
+    std::array<XrBool32, NUM_SIDES> handActive;
 
     XrAction aimPoseAction{XR_NULL_HANDLE};
-    std::array<XrPath, NUM_HANDS> aimSubactionPath;
-    std::array<XrSpace, NUM_HANDS> aimSpace;
+    std::array<XrPath, NUM_SIDES> aimSubactionPath;
+    std::array<XrSpace, NUM_SIDES> aimSpace;
 
     XrAction thumbstickXAction{ XR_NULL_HANDLE };
     XrAction thumbstickYAction{ XR_NULL_HANDLE };
