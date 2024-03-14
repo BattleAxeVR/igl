@@ -39,26 +39,9 @@
 
 #include <openxr/openxr_platform.h>
 
-PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR = nullptr;
-
 #ifndef XR_LOAD
 #define XR_LOAD(instance, fn) xrGetInstanceProcAddr(instance, #fn, reinterpret_cast<PFN_xrVoidFunction*>(&fn))
 #endif
-
-XrTime get_predicted_display_time(XrInstance instance)
-{
-    XrTime time;
-    struct timespec timespec;
-    clock_gettime(CLOCK_MONOTONIC, &timespec);
-
-    if (!xrConvertTimespecTimeToTimeKHR)
-    {
-        XR_LOAD(instance, xrConvertTimespecTimeToTimeKHR);
-    }
-    //xrConvertTimespecTimeToTimeKHR(instance, &timespec, &time);
-    //(get_inst_proc_addr(instance, "xrConvertTimespecTimeToTimeKHR", (PFN_xrVoidFunction*)&table->ConvertTimespecTimeToTimeKHR));
-    return time;
-}
 
 #include <glm/gtc/type_ptr.hpp>
 #include <xr_linear.h>
@@ -123,6 +106,7 @@ XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl) :
 #if !defined(XR_USE_PLATFORM_MACOS) && !defined(IGL_CMAKE_BUILD)
         XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
 #endif
+    XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
   }),
   impl_(std::move(impl)),
   shellParams_(std::make_unique<ShellParams>()) {
@@ -1222,10 +1206,10 @@ void XrApp::endFrame(XrFrameState frameState) {
   }
 
 #if 1//ENABLE_CLOUDXR
-  if (cloudxr_connected_ && (override_display_time_ > 0))
+  //if (cloudxr_connected_ && (override_display_time_ > 0))
   {
-      frameState.predictedDisplayTime = override_display_time_;
-      frameState.predictedDisplayTime = get_predicted_display_time(instance_);
+      //frameState.predictedDisplayTime = override_display_time_;
+      frameState.predictedDisplayTime = get_predicted_display_time();
   }
 #endif
 
@@ -1288,4 +1272,25 @@ void XrApp::update() {
   render();
   endFrame(frameState);
 }
+
+
+XrTime XrApp::get_predicted_display_time()
+{
+    XrTime time;
+    struct timespec timespec;
+    clock_gettime(CLOCK_MONOTONIC, &timespec);
+
+    if (!xrConvertTimespecTimeToTimeKHR)
+    {
+        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR);
+    }
+
+    if (xrConvertTimespecTimeToTimeKHR)
+    {
+        xrConvertTimespecTimeToTimeKHR(instance_, &timespec, &time);
+    }
+
+    return time;
+}
+
 } // namespace igl::shell::openxr

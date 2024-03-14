@@ -37,8 +37,6 @@
 
 #include <openxr/openxr_platform.h>
 
-XrTime get_predicted_display_time(XrInstance instance);
-
 #endif // IGL_CMAKE_BUILD
 
 #include <openxr/openxr.h>
@@ -96,8 +94,10 @@ struct XrInputState
 class XrApp {
 
   friend class igl::shell::OKCloudSession;
+  XrTime get_predicted_display_time();
+  PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR = nullptr;
 
- public:
+public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
   ~XrApp();
 
