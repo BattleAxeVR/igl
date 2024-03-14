@@ -1206,10 +1206,10 @@ void XrApp::endFrame(XrFrameState frameState) {
   }
 
 #if 1//ENABLE_CLOUDXR
-  //if (cloudxr_connected_ && (override_display_time_ > 0))
+  if (cloudxr_connected_ && (override_display_time_ > 0))
   {
-      //frameState.predictedDisplayTime = override_display_time_;
-      frameState.predictedDisplayTime = get_predicted_display_time();
+      frameState.predictedDisplayTime = override_display_time_;
+      //frameState.predictedDisplayTime = get_predicted_display_time();
   }
 #endif
 
