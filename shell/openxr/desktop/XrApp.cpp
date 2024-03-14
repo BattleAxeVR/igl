@@ -330,6 +330,7 @@ bool XrApp::initialize(const struct android_app* app) {
   enumerateReferenceSpaces();
   createSwapchainProviders(device);
   createSpaces();
+  createActions();
 
   initialized_ = true;
 
@@ -359,6 +360,10 @@ void XrApp::createSpaces() {
       XR_REFERENCE_SPACE_TYPE_VIEW,
       {{0.0f, 0.0f, 0.0f, 1.0f}},
   };
+
+void XrApp::createActions() {
+
+}
 
 #if USE_LOCAL_AR_SPACE
   spaceCreateInfo.referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;

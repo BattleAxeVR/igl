@@ -714,6 +714,8 @@ bool XrApp::initialize(const struct android_app* app) {
   enumerateBlendModes();
   createSwapchainProviders(device);
   createSpaces();
+  createActions();
+
 #if !ENABLE_CLOUDXR
   if (passthroughSupported_ && !createPassthrough()) {
     return false;
@@ -761,6 +763,10 @@ void XrApp::createSpaces() {
                                                             : XR_REFERENCE_SPACE_TYPE_LOCAL;
 #endif
   XR_CHECK(xrCreateReferenceSpace(session_, &spaceCreateInfo, &currentSpace_));
+}
+
+void XrApp::createActions() {
+
 }
 
 void XrApp::handleXrEvents() {

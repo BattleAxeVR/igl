@@ -106,6 +106,8 @@ class XrApp {
   void createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr);
 
   void createSpaces();
+  void createActions();
+
   XrFrameState beginFrame();
   void render();
   void endFrame(XrFrameState frameState);
