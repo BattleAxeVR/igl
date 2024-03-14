@@ -773,12 +773,12 @@ void XrApp::createActions() {
         strcpy_s(actionSetInfo.actionSetName, "gameplay");
         strcpy_s(actionSetInfo.localizedActionSetName, "Gameplay");
         actionSetInfo.priority = 0;
-        CHECK_XRCMD(xrCreateActionSet(m_instance, &actionSetInfo, &m_input.actionSet));
+        CHECK_XRCMD(xrCreateActionSet(instance_, &actionSetInfo, &m_input.actionSet));
     }
 
     // Get the XrPath for the left and right hands - we will use them as subaction paths.
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left", &m_input.handSubactionPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right", &m_input.handSubactionPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left", &m_input.handSubactionPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right", &m_input.handSubactionPath[Side::RIGHT]));
 
     // Create actions.
     {
@@ -848,35 +848,35 @@ void XrApp::createActions() {
     std::array<XrPath, NUM_SIDES> menuClickPath;
     std::array<XrPath, NUM_SIDES> bClickPath;
     std::array<XrPath, NUM_SIDES> triggerValuePath;
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/select/click", &selectPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/select/click", &selectPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/squeeze/value", &squeezeValuePath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/squeeze/value", &squeezeValuePath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/squeeze/force", &squeezeForcePath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/squeeze/force", &squeezeForcePath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/grip/pose", &posePath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/grip/pose", &posePath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/aim/pose", &aimPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/aim/pose", &aimPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/thumbstick/x", &stickXPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/thumbstick/x", &stickXPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/thumbstick/y", &stickYPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/thumbstick/y", &stickYPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/output/haptic", &hapticPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/output/haptic", &hapticPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/menu/click", &menuClickPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/menu/click", &menuClickPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/b/click", &bClickPath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/b/click", &bClickPath[Side::RIGHT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/left/input/trigger/value", &triggerValuePath[Side::LEFT]));
-    CHECK_XRCMD(xrStringToPath(m_instance, "/user/hand/right/input/trigger/value", &triggerValuePath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/select/click", &selectPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/select/click", &selectPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/squeeze/value", &squeezeValuePath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/squeeze/value", &squeezeValuePath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/squeeze/force", &squeezeForcePath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/squeeze/force", &squeezeForcePath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/squeeze/click", &squeezeClickPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/squeeze/click", &squeezeClickPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/grip/pose", &posePath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/grip/pose", &posePath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/aim/pose", &aimPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/aim/pose", &aimPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/thumbstick/x", &stickXPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/thumbstick/x", &stickXPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/thumbstick/y", &stickYPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/thumbstick/y", &stickYPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/output/haptic", &hapticPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/output/haptic", &hapticPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/menu/click", &menuClickPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/menu/click", &menuClickPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/b/click", &bClickPath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/b/click", &bClickPath[Side::RIGHT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/left/input/trigger/value", &triggerValuePath[Side::LEFT]));
+    CHECK_XRCMD(xrStringToPath(instance_, "/user/hand/right/input/trigger/value", &triggerValuePath[Side::RIGHT]));
 
     // Suggest bindings for KHR Simple.
     {
         XrPath khrSimpleInteractionProfilePath;
-        CHECK_XRCMD(xrStringToPath(m_instance, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath));
+        CHECK_XRCMD(xrStringToPath(instance_, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath));
 
         std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
                                                                {m_input.grabAction, selectPath[Side::LEFT]},
@@ -894,13 +894,13 @@ void XrApp::createActions() {
         suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        CHECK_XRCMD(xrSuggestInteractionProfileBindings(m_instance, &suggestedBindings));
+        CHECK_XRCMD(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
     // Suggest bindings for the Oculus Touch.
     {
         XrPath oculusTouchInteractionProfilePath;
-        CHECK_XRCMD(xrStringToPath(m_instance, "/interaction_profiles/oculus/touch_controller", &oculusTouchInteractionProfilePath));
+        CHECK_XRCMD(xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller", &oculusTouchInteractionProfilePath));
 
         std::vector<XrActionSuggestedBinding> bindings{{{m_input.grabAction, squeezeValuePath[Side::LEFT]},
                                                         {m_input.grabAction, squeezeValuePath[Side::RIGHT]},
@@ -920,7 +920,7 @@ void XrApp::createActions() {
         suggestedBindings.interactionProfile = oculusTouchInteractionProfilePath;
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        CHECK_XRCMD(xrSuggestInteractionProfileBindings(m_instance, &suggestedBindings));
+        CHECK_XRCMD(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
