@@ -99,14 +99,14 @@ GLMPose convert_to_glm(const XrVector3f &position, const XrQuaternionf &rotation
     return glm_pose;
 }
 
-GLMPose convert_to_glm(const XrPosef &xr_pose) {
+GLMPose convert_to_glm_pose(const XrPosef &xr_pose) {
     GLMPose glm_pose;
     glm_pose.translation_ = convert_to_glm(xr_pose.position);
     glm_pose.rotation_ = convert_to_glm(xr_pose.orientation);
     return glm_pose;
 }
 
-XrPosef convert_to_xr(const GLMPose &glm_pose) {
+XrPosef convert_to_xr_pose(const GLMPose &glm_pose) {
     // No scale
     XrPosef xr_pose;
     xr_pose.position = convert_to_xr(glm_pose.translation_);

@@ -98,12 +98,12 @@ glm::fquat convert_to_glm(const XrQuaternionf &input);
 
 glm::mat4 convert_to_rotation_matrix(const glm::fquat &rotation);
 
-GLMPose convert_to_glm(const XrVector3f &position, const XrQuaternionf &rotation,
+GLMPose convert_to_glm_pose(const XrVector3f &position, const XrQuaternionf &rotation,
                        const XrVector3f &scale);
 
-GLMPose convert_to_glm(const XrPosef &xr_pose);
+GLMPose convert_to_glm_pose(const XrPosef &xr_pose);
 
-XrPosef convert_to_xr(const GLMPose &glm_pose);
+XrPosef convert_to_xr_pose(const GLMPose &glm_pose);
 } // namespace igl::shell::openxr
 
 #endif
