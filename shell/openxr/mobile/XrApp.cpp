@@ -212,7 +212,7 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_PASSTHROUGH_EXTENSION_NAME);
   }
 
-  handsTrackingSupported_ = checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+  handsTrackingSupported_ = false;//checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
   IGL_LOG_INFO("Hands tracking is %s", handsTrackingSupported_ ? "supported" : "not supported");
 
   handsTrackingMeshSupported_ = checkExtensionSupported(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
@@ -431,6 +431,10 @@ bool XrApp::createHandsTracking() {
 }
 
 void XrApp::updateHandMeshes() {
+    if (!handsTrackingMeshSupported_){
+        return;
+    }
+    
   auto& handMeshes = shellParams_->handMeshes;
 
   XrResult result;
