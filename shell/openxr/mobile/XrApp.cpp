@@ -1334,6 +1334,7 @@ XrTime XrApp::get_predicted_display_time()
     }
 
     return time;
+}
 
 float XrApp::getCurrentRefreshRate(){
     if (!session_ || !refreshRateExtensionSupported_ || (currentRefreshRate_ > 0.0f)) {
