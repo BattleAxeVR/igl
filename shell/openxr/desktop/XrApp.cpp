@@ -837,4 +837,130 @@ void XrApp::update() {
   render();
   endFrame(frameState);
 }
+
+XrTime XrApp::get_predicted_display_time()
+{
+    XrTime time;
+    struct timespec timespec;
+    clock_gettime(CLOCK_MONOTONIC, &timespec);
+
+    if (!xrConvertTimespecTimeToTimeKHR)
+    {
+        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR);
+    }
+
+    if (xrConvertTimespecTimeToTimeKHR)
+    {
+        xrConvertTimespecTimeToTimeKHR(instance_, &timespec, &time);
+    }
+
+    return time;
+}
+
+float XrApp::getCurrentRefreshRate(){
+    if (!session_ || !refreshRateExtensionSupported_ || (currentRefreshRate_ > 0.0f)) {
+        return currentRefreshRate_;
+    }
+
+    XrResult result = xrGetDisplayRefreshRateFB_(session_, &currentRefreshRate_);
+
+    if (result == XR_SUCCESS) {
+        IGL_LOG_INFO("getCurrentRefreshRate success, current Hz = %.2f.", currentRefreshRate_);
+    }
+
+    return currentRefreshRate_;
+}
+
+float XrApp::getMaxRefreshRate() {
+    if (!session_ || !refreshRateExtensionSupported_) {
+        return 0.0f;
+    }
+
+    const std::vector<float>& supportedRefreshRates = getSupportedRefreshRates();
+
+    if (supportedRefreshRates.empty()){
+        return 0.0f;
+    }
+
+    const float maxRefreshRate = supportedRefreshRates.back();
+    IGL_LOG_INFO("getMaxRefreshRate Hz = %.2f.",maxRefreshRate);
+    return maxRefreshRate;
+}
+
+bool XrApp::setRefreshRate(const float refreshRate){
+
+    if (!session_ || !refreshRateExtensionSupported_
+        || (refreshRate == currentRefreshRate_)
+        || !isRefreshRateSupported(refreshRate)) {
+        return false;
+    }
+
+    XrResult result = xrRequestDisplayRefreshRateFB_(session_, refreshRate);
+
+    if (result == XR_SUCCESS) {
+        IGL_LOG_INFO("setRefreshRate SUCCESS, changed from %.2f Hz to %.2f Hz", currentRefreshRate_, refreshRate);
+        currentRefreshRate_ = refreshRate;
+
+        return true;
+    }
+
+    return false;
+}
+
+void XrApp::setMaxRefreshRate(){
+    if (!session_ || !refreshRateExtensionSupported_) {
+        return;
+    }
+
+    const float maxRefreshRate = getMaxRefreshRate();
+
+    if (maxRefreshRate > 0.0f){
+        setRefreshRate(maxRefreshRate);
+    }
+}
+
+bool XrApp::isRefreshRateSupported(const float refreshRate){
+    if (!session_ || !refreshRateExtensionSupported_) {
+        return false;
+    }
+
+    const std::vector<float>& supportedRefreshRates = getSupportedRefreshRates();
+    const bool found_it = (std::find(supportedRefreshRates.begin(), supportedRefreshRates.end(), refreshRate) != supportedRefreshRates.end());
+    return found_it;
+}
+
+const std::vector<float>& XrApp::getSupportedRefreshRates()  {
+    if (!session_ || !refreshRateExtensionSupported_) {
+        return supportedRefreshRates_;
+    }
+
+    if (supportedRefreshRates_.empty()){
+        querySupportedRefreshRates();
+    }
+
+    return supportedRefreshRates_;
+}
+
+void XrApp::querySupportedRefreshRates() {
+    if (!session_ || !refreshRateExtensionSupported_ || !supportedRefreshRates_.empty()) {
+        return;
+    }
+
+    uint32_t numRefreshRates = 0;
+    XrResult result = xrEnumerateDisplayRefreshRatesFB_(session_, 0, &numRefreshRates, nullptr);
+
+    if ((result == XR_SUCCESS) && (numRefreshRates > 0)) {
+        supportedRefreshRates_.resize(numRefreshRates);
+        result = xrEnumerateDisplayRefreshRatesFB_(session_, numRefreshRates, &numRefreshRates, supportedRefreshRates_.data());
+
+        if (result == XR_SUCCESS) {
+            std::sort(supportedRefreshRates_.begin(), supportedRefreshRates_.end());
+        }
+
+        for (float refreshRate : supportedRefreshRates_) {
+            IGL_LOG_INFO("querySupportedRefreshRates Hz = %.2f.", refreshRate);
+        }
+    }
+}
+
 } // namespace igl::shell::openxr
