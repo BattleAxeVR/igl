@@ -437,7 +437,7 @@ bool XrApp::createHandsTracking() {
 }
 
 void XrApp::updateHandMeshes() {
-  if (!handsTrackingMeshSupported_) {
+  if (!handsTrackingMeshSupported_ || !xrGetHandMeshFB_) {
     return;
   }
   auto& handMeshes = shellParams_->handMeshes;
@@ -792,7 +792,9 @@ bool XrApp::initialize(const struct android_app* app) {
   if (compositionLayerSettingsSupported_ && enableSharpeningAtStartup_) {
     setSharpeningEnabled(true);
   }
-  updateHandMeshes();
+  if (handsTrackingMeshSupported_) {
+    updateHandMeshes();
+  }
 
   IGL_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
