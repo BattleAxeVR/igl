@@ -237,7 +237,7 @@ public:
 
   bool refreshRateExtensionSupported_ = false;
   bool useMaxRefreshRate_ = false;
-  float desiredSpecificRefreshRate_ = 90.0f;
+  float desiredSpecificRefreshRate_ = 72.0f;
   std::vector<float> supportedRefreshRates_;
   float currentRefreshRate_ = 0.0f;
   void querySupportedRefreshRates();
