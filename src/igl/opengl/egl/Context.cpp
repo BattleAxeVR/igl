@@ -96,14 +96,16 @@ EGLint attribs[] = {
     16,
     EGL_SURFACE_TYPE,
     EGL_PBUFFER_BIT,
+    EGL_SAMPLES,
+    1,
     // want opengl-es 2.x conformant CONTEXT
     EGL_RENDERABLE_TYPE,
-    EGL_OPENGL_ES2_BIT,
+    EGL_OPENGL_ES3_BIT,
     EGL_NONE // Terminator
 };
 EGLint contextAttribs[] = {
     EGL_CONTEXT_CLIENT_VERSION,
-    2,
+    3,
     EGL_NONE // Terminator
 };
 
