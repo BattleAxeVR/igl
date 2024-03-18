@@ -700,7 +700,9 @@ void XrApp::render() {
 
   shellParams_->xr_app_ptr_ = this;
 
-  renderSession_->pre_update();
+  if (!renderSession_->pre_update()){
+      return;
+  }
 
   if (useSinglePassStereo_) {
     auto surfaceTextures = swapchainProviders_[0]->getSurfaceTextures();
