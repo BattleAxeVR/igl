@@ -111,6 +111,7 @@ public:
   void handleXrEvents();
 
   void update();
+  void pollActions();
 
   void setNativeWindow(void* win) {
     nativeWindow_ = win;

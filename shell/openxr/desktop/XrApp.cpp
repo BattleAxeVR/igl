@@ -374,14 +374,11 @@ void XrApp::createSpaces() {
 
 void XrApp::createActions() {
 
-    // Create an action set.
-    {
-        XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
-        strcpy(actionSetInfo.actionSetName, "gameplay");
-        strcpy(actionSetInfo.localizedActionSetName, "Gameplay");
-        actionSetInfo.priority = 0;
-        xrCreateActionSet(instance_, &actionSetInfo, &xr_inputs_.actionSet);
-    }
+    XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
+    strcpy(actionSetInfo.actionSetName, "gameplay");
+    strcpy(actionSetInfo.localizedActionSetName, "Gameplay");
+    actionSetInfo.priority = 0;
+    XR_CHECK(xrCreateActionSet(instance_, &actionSetInfo, &xr_inputs_.actionSet));
 
     // Get the XrPath for the left and right hands - we will use them as subaction paths.
     xrStringToPath(instance_, "/user/hand/left", &xr_inputs_.handSubactionPath[LEFT]);
@@ -396,7 +393,7 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Grab Object");
         actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
         actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.grabAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.grabAction));
 
         // Create an input action getting the left and right hand poses.
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
@@ -404,24 +401,24 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Hand Pose");
         actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
         actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.poseAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.poseAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
         strcpy(actionInfo.actionName, "aim_pose");
         strcpy(actionInfo.localizedActionName, "Aim Pose");
         actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
         actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.aimPoseAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.aimPoseAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_x");
         strcpy(actionInfo.localizedActionName, "Thumbstick X");
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickXAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickXAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_y");
         strcpy(actionInfo.localizedActionName, "Thumbstick Y");
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickYAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickYAction));
 
         // Create output actions for vibrating the left and right controller.
         actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
@@ -429,7 +426,7 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Vibrate Hand");
         actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
         actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.vibrateAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.vibrateAction));
 
         // Create input actions for quitting the session using the left and right controller.
         // Since it doesn't matter which hand did this, we do not specify subaction paths for it.
@@ -439,7 +436,7 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Quit Session");
         actionInfo.countSubactionPaths = 0;
         actionInfo.subactionPaths = nullptr;
-        xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.quitAction);
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.quitAction));
     }
 
     std::array<XrPath, NUM_SIDES> selectPath;
@@ -501,7 +498,7 @@ void XrApp::createActions() {
         suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        xrSuggestInteractionProfileBindings(instance_, &suggestedBindings);
+        XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
     // Suggest bindings for the Oculus Touch.
@@ -527,30 +524,31 @@ void XrApp::createActions() {
         suggestedBindings.interactionProfile = oculusTouchInteractionProfilePath;
         suggestedBindings.suggestedBindings = bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)bindings.size();
-        xrSuggestInteractionProfileBindings(instance_, &suggestedBindings);
+        XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
     actionSpaceInfo.action = xr_inputs_.poseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
-    xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[LEFT]);
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[LEFT]));
+
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[RIGHT];
-    xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[RIGHT]);
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[RIGHT]));
 
     actionSpaceInfo.action = xr_inputs_.aimPoseAction;
-
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
     xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.aimSpace[LEFT]);
 
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[RIGHT];
-    xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.aimSpace[RIGHT]);
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.aimSpace[RIGHT]));
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
     attachInfo.countActionSets = 1;
     attachInfo.actionSets = &xr_inputs_.actionSet;
-    xrAttachSessionActionSets(session_, &attachInfo);
+    XR_CHECK(xrAttachSessionActionSets(session_, &attachInfo));
 }
+
 
 void XrApp::handleXrEvents() {
   XrEventDataBuffer eventDataBuffer = {};
@@ -834,7 +832,64 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
+  pollActions();
   render();
   endFrame(frameState);
 }
+
+void XrApp::pollActions() {
+    if (!initialized_ || !resumed_ || !sessionActive_) {
+        return;
+    }
+    xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
+
+    const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
+    XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+    syncInfo.countActiveActionSets = 1;
+    syncInfo.activeActionSets = &activeActionSet;
+    XR_CHECK(xrSyncActions(session_, &syncInfo));
+
+    for (int controller_id = LEFT; controller_id < NUM_SIDES; controller_id++)
+    {
+        XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
+        getInfo.action = xr_inputs_.grabAction;
+        getInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
+
+        XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
+        XR_CHECK(xrGetActionStateFloat(session_, &getInfo, &grabValue));
+
+        if (grabValue.isActive == XR_TRUE)
+        {
+            xr_inputs_.handScale[controller_id] = 1.0f - 0.5f * grabValue.currentState;
+
+            if (grabValue.currentState > 0.9f)
+            {
+                XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
+                vibration.amplitude = 0.5;
+                vibration.duration = XR_MIN_HAPTIC_DURATION;
+                vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
+
+                XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
+                hapticActionInfo.action = xr_inputs_.vibrateAction;
+                hapticActionInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
+                XR_CHECK(xrApplyHapticFeedback(session_, &hapticActionInfo, (XrHapticBaseHeader*)&vibration));
+            }
+        }
+
+        getInfo.action = xr_inputs_.poseAction;
+        XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
+        XR_CHECK(xrGetActionStatePose(session_, &getInfo, &poseState));
+        xr_inputs_.handActive[controller_id] = poseState.isActive;
+    }
+
+    XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO, nullptr, xr_inputs_.quitAction, XR_NULL_PATH};
+    XrActionStateBoolean quitValue{XR_TYPE_ACTION_STATE_BOOLEAN};
+    XR_CHECK(xrGetActionStateBoolean(session_, &getInfo, &quitValue));
+
+    if ((quitValue.isActive == XR_TRUE) && (quitValue.changedSinceLastSync == XR_TRUE) && (quitValue.currentState == XR_TRUE))
+    {
+        XR_CHECK(xrRequestExitSession(session_));
+    }
+}
+
 } // namespace igl::shell::openxr
