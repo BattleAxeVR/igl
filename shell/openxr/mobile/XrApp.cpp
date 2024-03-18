@@ -1333,15 +1333,23 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
-  pollActions();
+  pollActions(true);
   render();
   endFrame(frameState);
 }
 
-void XrApp::pollActions() {
+void XrApp::pollActions(const bool mainThread) {
     if (!initialized_ || !resumed_ || !sessionActive_) {
         return;
     }
+
+    if (mainThread && !enableMainThreadPolling_) {
+        return;
+    }
+    else if (!mainThread && !enableAsyncPolling_) {
+        return;
+    }
+
     xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
 
     const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};

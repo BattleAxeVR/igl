@@ -111,7 +111,9 @@ public:
   void handleXrEvents();
 
   void update();
-  void pollActions();
+  void pollActions(const bool mainThread);
+  bool enableMainThreadPolling_ = true;
+  bool enableAsyncPolling_ = false;
 
   void setNativeWindow(void* win) {
     nativeWindow_ = win;
