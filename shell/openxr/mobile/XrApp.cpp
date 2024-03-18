@@ -1273,16 +1273,11 @@ void XrApp::endFrame(XrFrameState frameState) {
   }
 
 #if 1//ENABLE_CLOUDXR
-  if (cloudxr_connected_)// && (override_display_time_ > 0))
+  if (cloudxr_connected_)
   {
-      //frameState.predictedDisplayTime = override_display_time_;
-      //frameState.predictedDisplayTime = get_predicted_display_time();
-
-      XrCompositionLayerProjectionView& left_view = projectionViews[LEFT];
-      left_view.pose = override_hmd_poses_[LEFT];
-
-      XrCompositionLayerProjectionView& right_view = projectionViews[RIGHT];
-      right_view.pose = override_hmd_poses_[RIGHT];
+      for(int view_id = LEFT; view_id < NUM_SIDES; view_id++){
+          projectionViews[view_id].pose = override_eye_poses_[view_id];
+      }
   }
 #endif
 
