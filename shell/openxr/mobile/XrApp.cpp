@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <shell/openxr/XrApp.h>
+#include <shell/openxr/src/XrApp.h>
 
 #include <algorithm>
 #include <array>
@@ -13,9 +13,12 @@
 #include <chrono>
 #include <string>
 
+#ifndef EXTERNAL_XR_BUILD
 #include <android/asset_manager.h>
 #include <android/log.h>
 #include <android_native_app_glue.h>
+#include <xr_linear.h>
+#endif
 
 #include <openxr/openxr.h>
 
@@ -44,7 +47,6 @@
 #endif
 
 #include <glm/gtc/type_ptr.hpp>
-#include <xr_linear.h>
 
 #include <shell/shared/fileLoader/android/FileLoaderAndroid.h>
 #include <shell/shared/imageLoader/android/ImageLoaderAndroid.h>
@@ -53,8 +55,8 @@
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
 
-#include <shell/openxr/XrLog.h>
-#include <shell/openxr/XrSwapchainProvider.h>
+#include <shell/openxr/src/XrLog.h>
+#include <shell/openxr/src/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
 
@@ -704,6 +706,7 @@ void XrApp::createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device
   }
 }
 
+#ifndef EXTERNAL_XR_BUILD
 bool XrApp::initialize(const struct android_app* app) {
   if (initialized_) {
     return false;
@@ -802,6 +805,7 @@ bool XrApp::initialize(const struct android_app* app) {
 
   return initialized_;
 }
+#endif
 
 void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr) {
   platform_ = std::make_shared<igl::shell::PlatformAndroid>(std::move(device));
@@ -1138,6 +1142,8 @@ XrFrameState XrApp::beginFrame() {
       session_, &projectionInfo, &viewState, views_.size(), &numViews, views_.data()));
 
   for (size_t i = 0; i < kNumViews; i++) {
+
+#ifndef EXTERNAL_XR_BUILD
     XrPosef eyePose = views_[i].pose;
     XrPosef_Multiply(&viewStagePoses_[i], &headPose_, &eyePose);
     XrPosef viewTransformXrPosef{};
@@ -1146,6 +1152,7 @@ XrFrameState XrApp::beginFrame() {
     XrMatrix4x4f_CreateFromRigidTransform(&xrMat4, &viewTransformXrPosef);
     viewTransforms_[i] = glm::make_mat4(xrMat4.m);
     cameraPositions_[i] = glm::vec3(eyePose.position.x, eyePose.position.y, eyePose.position.z);
+#endif
   }
 
   if (handsTrackingSupported_) {
@@ -1266,10 +1273,16 @@ void XrApp::endFrame(XrFrameState frameState) {
   }
 
 #if 1//ENABLE_CLOUDXR
-  if (cloudxr_connected_ && (override_display_time_ > 0))
+  if (cloudxr_connected_)// && (override_display_time_ > 0))
   {
-      frameState.predictedDisplayTime = override_display_time_;
+      //frameState.predictedDisplayTime = override_display_time_;
       //frameState.predictedDisplayTime = get_predicted_display_time();
+
+      XrCompositionLayerProjectionView& left_view = projectionViews[LEFT];
+      left_view.pose = override_hmd_poses_[LEFT];
+
+      XrCompositionLayerProjectionView& right_view = projectionViews[RIGHT];
+      right_view.pose = override_hmd_poses_[RIGHT];
   }
 #endif
 
@@ -1315,6 +1328,7 @@ void XrApp::endFrame(XrFrameState frameState) {
     const XrCompositionLayerBaseHeader* const layers[] = {
         (const XrCompositionLayerBaseHeader*)&projection,
     };
+
     const XrFrameEndInfo endFrameInfo = {XR_TYPE_FRAME_END_INFO,
                                          nullptr,
                                          frameState.predictedDisplayTime,

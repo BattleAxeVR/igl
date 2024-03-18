@@ -202,7 +202,7 @@ public:
 
 #if 1//ENABLE_CLOUDXR
     bool cloudxr_connected_ = false;
-    XrTime override_display_time_ = 0;
+    XrPosef override_hmd_poses_[NUM_SIDES] = {};
 #endif
 
   bool useSinglePassStereo_ = false;
