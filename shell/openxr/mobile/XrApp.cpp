@@ -1532,23 +1532,25 @@ void XrApp::pollActions(const bool mainThread) {
     }
 }
 
-XrTime XrApp::get_predicted_display_time()
+XrTime XrApp::get_predicted_display_time_ns()
 {
-    XrTime time;
-    struct timespec timespec;
-    clock_gettime(CLOCK_MONOTONIC, &timespec);
+    struct timespec now_ts = {0};
+    clock_gettime(CLOCK_MONOTONIC, &now_ts);
 
-    if (!xrConvertTimespecTimeToTimeKHR)
-    {
-        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR);
+    if (instance_ && !xrConvertTimespecTimeToTimeKHR_) {
+        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR_);
     }
 
-    if (xrConvertTimespecTimeToTimeKHR)
-    {
-        xrConvertTimespecTimeToTimeKHR(instance_, &timespec, &time);
+    XrTime now_time = 0;
+
+    if (xrConvertTimespecTimeToTimeKHR_) {
+        xrConvertTimespecTimeToTimeKHR_(instance_, &now_ts, &now_time);
+    }
+    else{
+        now_time = ((uint64_t)(now_ts.tv_sec * 1e9) + now_ts.tv_nsec);
     }
 
-    return time;
+    return now_time;
 }
 
 float XrApp::getCurrentRefreshRate(){

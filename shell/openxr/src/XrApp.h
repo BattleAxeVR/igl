@@ -115,8 +115,8 @@ struct XrInputState
 class XrApp {
 
   friend class igl::shell::OKCloudSession;
-  XrTime get_predicted_display_time();
-  PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR = nullptr;
+  XrTime get_predicted_display_time_ns();
+  PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR_ = nullptr;
 
 public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
