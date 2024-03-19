@@ -1370,30 +1370,7 @@ void XrApp::pollActions(const bool mainThread) {
     for (int controller_id = LEFT; controller_id < NUM_SIDES; controller_id++)
     {
         XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-        getInfo.action = xr_inputs_.grabAction;
         getInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-
-        XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
-        XR_CHECK(xrGetActionStateFloat(session_, &getInfo, &grabValue));
-
-        if (grabValue.isActive == XR_TRUE)
-        {
-            xr_inputs_.handScale[controller_id] = 1.0f - 0.5f * grabValue.currentState;
-
-            if (grabValue.currentState > 0.9f)
-            {
-                XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
-                vibration.amplitude = 0.5;
-                vibration.duration = XR_MIN_HAPTIC_DURATION;
-                vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-
-                XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
-                hapticActionInfo.action = xr_inputs_.vibrateAction;
-                hapticActionInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-                XR_CHECK(xrApplyHapticFeedback(session_, &hapticActionInfo, (XrHapticBaseHeader*)&vibration));
-            }
-        }
-
         getInfo.action = xr_inputs_.poseAction;
         XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
         XR_CHECK(xrGetActionStatePose(session_, &getInfo, &poseState));

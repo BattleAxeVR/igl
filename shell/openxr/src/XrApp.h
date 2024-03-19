@@ -87,8 +87,6 @@ struct XrInputState
 
     XrAction thumbstickXAction{ XR_NULL_HANDLE };
     XrAction thumbstickYAction{ XR_NULL_HANDLE };
-
-    std::mutex polling_mutex_;
 };
 
 class XrApp {
