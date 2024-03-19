@@ -81,12 +81,38 @@ struct XrInputState
     std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
     std::array<XrBool32, NUM_SIDES> handActive;
 
-    XrAction aimPoseAction{XR_NULL_HANDLE};
     std::array<XrPath, NUM_SIDES> aimSubactionPath;
     std::array<XrSpace, NUM_SIDES> aimSpace;
 
+    XrAction gripPoseAction{ XR_NULL_HANDLE };
+    XrAction aimPoseAction{ XR_NULL_HANDLE };
+    XrAction menuClickAction{ XR_NULL_HANDLE };
+
+    XrAction triggerClickAction{ XR_NULL_HANDLE };
+    XrAction triggerTouchAction{ XR_NULL_HANDLE };
+    XrAction triggerValueAction{ XR_NULL_HANDLE };
+
+    XrAction squeezeClickAction{ XR_NULL_HANDLE };
+    XrAction squeezeTouchAction{ XR_NULL_HANDLE };
+    XrAction squeezeValueAction{ XR_NULL_HANDLE };
+    // XrAction squeezeForceAction{ XR_NULL_HANDLE };
+
+    XrAction thumbstickTouchAction{ XR_NULL_HANDLE };
+    XrAction thumbstickClickAction{ XR_NULL_HANDLE };
+
     XrAction thumbstickXAction{ XR_NULL_HANDLE };
     XrAction thumbstickYAction{ XR_NULL_HANDLE };
+
+    XrAction thumbRestTouchAction{ XR_NULL_HANDLE };
+
+    XrAction buttonAXClickAction{ XR_NULL_HANDLE };
+    XrAction buttonAXTouchAction{ XR_NULL_HANDLE };
+
+    XrAction buttonBYClickAction{ XR_NULL_HANDLE };
+    XrAction buttonBYTouchAction{ XR_NULL_HANDLE };
+
+    std::array<XrPath, NUM_SIDES> handVibratePath;
+    XrAction handVibrateAction;
 };
 
 class XrApp {
