@@ -72,16 +72,15 @@ struct XrInputState
 {
     XrActionSet actionSet{XR_NULL_HANDLE};
     XrAction grabAction{XR_NULL_HANDLE};
-    XrAction poseAction{XR_NULL_HANDLE};
     XrAction vibrateAction{XR_NULL_HANDLE};
     XrAction quitAction{XR_NULL_HANDLE};
 
-    std::array<XrPath, NUM_SIDES> handSubactionPath;
-    std::array<XrSpace, NUM_SIDES> handSpace;
     std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
     std::array<XrBool32, NUM_SIDES> handActive;
 
-    std::array<XrPath, NUM_SIDES> aimSubactionPath;
+    std::array<XrPath, NUM_SIDES> handSubactionPath;
+
+    std::array<XrSpace, NUM_SIDES> gripSpace;
     std::array<XrSpace, NUM_SIDES> aimSpace;
 
     XrAction gripPoseAction{ XR_NULL_HANDLE };

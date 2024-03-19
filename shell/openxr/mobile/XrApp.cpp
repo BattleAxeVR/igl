@@ -864,11 +864,11 @@ void XrApp::createActions() {
 
         // Create an input action getting the left and right hand poses.
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
-        strcpy(actionInfo.actionName, "hand_pose");
-        strcpy(actionInfo.localizedActionName, "Hand Pose");
+        strcpy(actionInfo.actionName, "grip_pose");
+        strcpy(actionInfo.localizedActionName, "Grip Pose");
         actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
         actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.poseAction));
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.gripPoseAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
         strcpy(actionInfo.actionName, "aim_pose");
@@ -910,7 +910,7 @@ void XrApp::createActions() {
     std::array<XrPath, NUM_SIDES> squeezeValuePath;
     std::array<XrPath, NUM_SIDES> squeezeForcePath;
     std::array<XrPath, NUM_SIDES> squeezeClickPath;
-    std::array<XrPath, NUM_SIDES> posePath;
+    std::array<XrPath, NUM_SIDES> gripPath;
     std::array<XrPath, NUM_SIDES> aimPath;
     std::array<XrPath, NUM_SIDES> stickXPath;
     std::array<XrPath, NUM_SIDES> stickYPath;
@@ -927,8 +927,8 @@ void XrApp::createActions() {
     xrStringToPath(instance_, "/user/hand/right/input/squeeze/force", &squeezeForcePath[RIGHT]);
     xrStringToPath(instance_, "/user/hand/left/input/squeeze/click", &squeezeClickPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/squeeze/click", &squeezeClickPath[RIGHT]);
-    xrStringToPath(instance_, "/user/hand/left/input/grip/pose", &posePath[LEFT]);
-    xrStringToPath(instance_, "/user/hand/right/input/grip/pose", &posePath[RIGHT]);
+    xrStringToPath(instance_, "/user/hand/left/input/grip/pose", &gripPath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/grip/pose", &gripPath[RIGHT]);
     xrStringToPath(instance_, "/user/hand/left/input/aim/pose", &aimPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/aim/pose", &aimPath[RIGHT]);
     xrStringToPath(instance_, "/user/hand/left/input/thumbstick/x", &stickXPath[LEFT]);
@@ -952,8 +952,8 @@ void XrApp::createActions() {
         std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
                                                                {xr_inputs_.grabAction, selectPath[LEFT]},
                                                                {xr_inputs_.grabAction, selectPath[RIGHT]},
-                                                               {xr_inputs_.poseAction, posePath[LEFT]},
-                                                               {xr_inputs_.poseAction, posePath[RIGHT]},
+                                                               {xr_inputs_.gripPoseAction, gripPath[LEFT]},
+                                                               {xr_inputs_.gripPoseAction, gripPath[RIGHT]},
                                                                {xr_inputs_.aimPoseAction, aimPath[LEFT]},
                                                                {xr_inputs_.aimPoseAction, aimPath[RIGHT]},
                                                                {xr_inputs_.quitAction, menuClickPath[LEFT]},
@@ -975,8 +975,8 @@ void XrApp::createActions() {
 
         std::vector<XrActionSuggestedBinding> bindings{{{xr_inputs_.grabAction, squeezeValuePath[LEFT]},
                                                         {xr_inputs_.grabAction, squeezeValuePath[RIGHT]},
-                                                        {xr_inputs_.poseAction, posePath[LEFT]},
-                                                        {xr_inputs_.poseAction, posePath[RIGHT]},
+                                                        {xr_inputs_.gripPoseAction, gripPath[LEFT]},
+                                                        {xr_inputs_.gripPoseAction, gripPath[RIGHT]},
                                                         {xr_inputs_.aimPoseAction, aimPath[LEFT]},
                                                         {xr_inputs_.aimPoseAction, aimPath[RIGHT]},
                                                         {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
@@ -995,13 +995,13 @@ void XrApp::createActions() {
     }
 
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
-    actionSpaceInfo.action = xr_inputs_.poseAction;
+    actionSpaceInfo.action = xr_inputs_.gripPoseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
-    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[LEFT]));
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.gripSpace[LEFT]));
 
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[RIGHT];
-    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.handSpace[RIGHT]));
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.gripSpace[RIGHT]));
 
     actionSpaceInfo.action = xr_inputs_.aimPoseAction;
     actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
@@ -1371,7 +1371,7 @@ void XrApp::pollActions(const bool mainThread) {
     {
         XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
         getInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-        getInfo.action = xr_inputs_.poseAction;
+        getInfo.action = xr_inputs_.gripPoseAction;
         XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
         XR_CHECK(xrGetActionStatePose(session_, &getInfo, &poseState));
         xr_inputs_.handActive[controller_id] = poseState.isActive;
