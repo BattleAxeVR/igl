@@ -73,7 +73,6 @@ struct XrInputState
     XrActionSet actionSet{XR_NULL_HANDLE};
     XrAction grabAction{XR_NULL_HANDLE};
     XrAction vibrateAction{XR_NULL_HANDLE};
-    XrAction quitAction{XR_NULL_HANDLE};
 
     std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
     std::array<XrBool32, NUM_SIDES> handActive;
@@ -111,7 +110,6 @@ struct XrInputState
     XrAction buttonBYTouchAction{ XR_NULL_HANDLE };
 
     std::array<XrPath, NUM_SIDES> handVibratePath;
-    XrAction handVibrateAction;
 };
 
 class XrApp {
