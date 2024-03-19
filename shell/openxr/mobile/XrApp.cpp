@@ -1539,6 +1539,10 @@ bool XrApp::isSharpeningEnabled() const {
 }
 
 void XrApp::setSharpeningEnabled(const bool enabled) {
+  if (enabled == isSharpeningEnabled()) {
+    return;
+  }
+
   if (compositionLayerSettingsSupported_) {
     if (enabled) {
       compositionLayerSettings_.layerFlags |= XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB;
