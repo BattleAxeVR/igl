@@ -1076,6 +1076,15 @@ void XrApp::createActions() {
     xrStringToPath(instance_, "/user/hand/left/output/haptic", &hapticPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/output/haptic", &hapticPath[RIGHT]);
 
+    std::array<XrPath, NUM_SIDES> trackPad_X_Path;
+    std::array<XrPath, NUM_SIDES> trackPad_Y_Path;
+
+    xrStringToPath(instance_, "/user/hand/left/input/trackpad/x", &trackPad_X_Path[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/trackpad/x", &trackPad_X_Path[RIGHT]);
+
+    xrStringToPath(instance_, "/user/hand/left/input/trackpad/y", &trackPad_Y_Path[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/trackpad/y", &trackPad_Y_Path[RIGHT]);
+
     // Suggest bindings for KHR Simple.
     {
         XrPath khrSimpleInteractionProfilePath;
@@ -1099,7 +1108,7 @@ void XrApp::createActions() {
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
-    // Suggest bindings for the Oculus Touch.
+    // Oculus Touch.
     {
         XrPath oculusTouchInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller", &oculusTouchInteractionProfilePath);
@@ -1145,6 +1154,55 @@ void XrApp::createActions() {
         suggestedBindings.interactionProfile = oculusTouchInteractionProfilePath;
         suggestedBindings.suggestedBindings = oculus_touch_bindings.data();
         suggestedBindings.countSuggestedBindings = (uint32_t)oculus_touch_bindings.size();
+        XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
+    }
+
+    // Touch Pro
+    {
+        XrPath oculusTouchProInteractionProfilePath;
+        xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller_pro", &oculusTouchProInteractionProfilePath);
+
+        std::vector<XrActionSuggestedBinding> oculus_touch_pro_bindings{{
+                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                            {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                            {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                            {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                            {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                            {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                            {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                            {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                            {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                            {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                            {xr_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                            {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+
+        XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+        suggestedBindings.interactionProfile = oculusTouchProInteractionProfilePath;
+        suggestedBindings.suggestedBindings = oculus_touch_pro_bindings.data();
+        suggestedBindings.countSuggestedBindings = (uint32_t)oculus_touch_pro_bindings.size();
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
