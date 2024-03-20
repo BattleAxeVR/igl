@@ -948,6 +948,11 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Thumb Rest Touch");
         XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestTouchAction));
 
+        actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+        strcpy(actionInfo.actionName, "thumbrest_click");
+        strcpy(actionInfo.localizedActionName, "Thumb Rest Click");
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestClickAction));
+
         // A/X Button
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_a_click");
@@ -1068,6 +1073,11 @@ void XrApp::createActions() {
     xrStringToPath(instance_, "/user/hand/left/input/thumbrest/touch", &thumbRestTouchPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/thumbrest/touch", &thumbRestTouchPath[RIGHT]);
 
+    std::array<XrPath, NUM_SIDES> thumbRestClickPath;
+
+    xrStringToPath(instance_, "/user/hand/left/input/thumbrest/click", &thumbRestClickPath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/thumbrest/click", &thumbRestClickPath[RIGHT]);
+
     std::array<XrPath, NUM_SIDES> XA_ClickPath;
 
     xrStringToPath(instance_, "/user/hand/left/input/x/click", &XA_ClickPath[LEFT]);
@@ -1103,11 +1113,12 @@ void XrApp::createActions() {
     xrStringToPath(instance_, "/user/hand/right/output/haptic", &hapticPath[RIGHT]);
 
     // Suggest bindings for KHR Simple.
+    if (simpleControllersSupported_)
     {
         XrPath khrSimpleInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath);
 
-        std::vector<XrActionSuggestedBinding> bindings{{// Fall back to a click input for the grab action.
+        std::vector<XrActionSuggestedBinding> bindings{{
                                                                {xr_inputs_.grabAction, selectPath[LEFT]},
                                                                {xr_inputs_.grabAction, selectPath[RIGHT]},
                                                                {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
@@ -1126,6 +1137,7 @@ void XrApp::createActions() {
     }
 
     // Oculus Touch.
+    if (touchControllersSupported_)
     {
         XrPath oculusTouchInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller", &oculusTouchInteractionProfilePath);
@@ -1156,6 +1168,8 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
@@ -1206,6 +1220,8 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
@@ -1214,10 +1230,10 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                            {xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
-                                                                            {xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
-                                                                            {xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
-                                                                            {xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
+                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 

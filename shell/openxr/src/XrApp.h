@@ -102,6 +102,7 @@ struct XrInputState
     XrAction thumbstickYAction{ XR_NULL_HANDLE };
 
     XrAction thumbRestTouchAction{ XR_NULL_HANDLE };
+    XrAction thumbRestClickAction{ XR_NULL_HANDLE };
 
     XrAction buttonAXClickAction{ XR_NULL_HANDLE };
     XrAction buttonAXTouchAction{ XR_NULL_HANDLE };
@@ -275,6 +276,8 @@ public:
   XrCompositionLayerSettingsFB compositionLayerSettings_ = { XR_TYPE_COMPOSITION_LAYER_SETTINGS_FB, nullptr, 0 };
   bool enableSharpeningAtStartup_ = false;
 
+  bool simpleControllersSupported_ = true;
+  bool touchControllersSupported_ = false;
   bool touchProControllersSupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;
