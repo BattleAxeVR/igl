@@ -782,13 +782,13 @@ bool XrApp::initialize(const struct android_app* app) {
   if (handsTrackingSupported_ && !createHandsTracking()) {
     return false;
   }
-  if (refreshRateExtensionSupported_) {
+  if (refreshRateExtensionSupported_ && (useMaxRefreshRate_ || useSpecificRefreshRate_)) {
     getCurrentRefreshRate();
 
     if (useMaxRefreshRate_) {
       setMaxRefreshRate();
     }
-    else {
+    else if (useSpecificRefreshRate_) {
       setRefreshRate(desiredSpecificRefreshRate_);
     }
   }
@@ -1666,7 +1666,6 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
   if (enabled == isSharpeningEnabled()) {
     return;
   }
-
   if (compositionLayerSettingsSupported_) {
     if (enabled) {
       compositionLayerSettings_.layerFlags |= XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB;
