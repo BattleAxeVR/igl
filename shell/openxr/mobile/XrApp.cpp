@@ -953,6 +953,16 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Thumb Rest Click");
         XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestClickAction));
 
+        actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+        strcpy(actionInfo.actionName, "thumbrest_force");
+        strcpy(actionInfo.localizedActionName, "Thumb Rest Force");
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestForceAction));
+
+        actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+        strcpy(actionInfo.actionName, "thumb_proximity");
+        strcpy(actionInfo.localizedActionName, "Thumb Proximity");
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbProximityAction));
+
         // A/X Button
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_a_click");
@@ -1077,6 +1087,16 @@ void XrApp::createActions() {
 
     xrStringToPath(instance_, "/user/hand/left/input/thumbrest/click", &thumbRestClickPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/thumbrest/click", &thumbRestClickPath[RIGHT]);
+
+    std::array<XrPath, NUM_SIDES> thumbRestForcePath;
+
+    xrStringToPath(instance_, "/user/hand/left/input/thumbrest/force", &thumbRestForcePath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/thumbrest/force", &thumbRestForcePath[RIGHT]);
+
+    std::array<XrPath, NUM_SIDES> thumbProximityPath;
+
+    xrStringToPath(instance_, "/user/hand/left/input/thumb_fb/proximity_fb", &thumbProximityPath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/input/thumb_fb/proximity_fb", &thumbProximityPath[RIGHT]);
 
     std::array<XrPath, NUM_SIDES> XA_ClickPath;
 
@@ -1220,8 +1240,16 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            {xr_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
+                                                                            {xr_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
+                                                                            {xr_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
+                                                                            {xr_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
