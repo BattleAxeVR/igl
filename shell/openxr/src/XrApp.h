@@ -284,6 +284,7 @@ public:
   bool simpleControllersSupported_ = false;
   bool touchControllersSupported_ = false;
   bool touchProControllersSupported_ = false;
+  bool touchControllerProximitySupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;
 

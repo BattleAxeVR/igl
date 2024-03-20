@@ -246,10 +246,17 @@ bool XrApp::checkExtensions() {
   }
 
   touchProControllersSupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
-  IGL_LOG_INFO("Touch Pro controllers are %s", refreshRateExtensionSupported_ ? "supported" : "not supported");
+  IGL_LOG_INFO("Touch Pro controllers are %s", touchProControllersSupported_ ? "supported" : "not supported");
 
   if (touchProControllersSupported_ && checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
+  }
+
+  touchControllerProximitySupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
+  IGL_LOG_INFO("Touch controller proximity is %s", touchControllerProximitySupported_ ? "supported" : "not supported");
+
+  if (touchControllerProximitySupported_ && checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
   }
 
     return true;
