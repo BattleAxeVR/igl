@@ -1599,10 +1599,10 @@ void XrApp::endFrame(XrFrameState frameState) {
     }
   }
 
-#if 1//ENABLE_CLOUDXR
-  if (cloudxr_connected_)
+#if ENABLE_CLOUDXR
+  if (should_override_eye_poses_)
   {
-      for(int view_id = LEFT; view_id < NUM_SIDES; view_id++){
+      for(int view_id = LEFT; view_id < NUM_SIDES; view_id++) {
           projectionViews[view_id].pose = override_eye_poses_[view_id];
       }
   }

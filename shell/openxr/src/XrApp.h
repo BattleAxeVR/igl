@@ -228,9 +228,9 @@ public:
   XrTime headPoseTime_;
   XrInputState xr_inputs_;
 
-#if 1//ENABLE_CLOUDXR
-    bool cloudxr_connected_ = false;
-    XrPosef override_eye_poses_[NUM_SIDES] = {};
+#if ENABLE_CLOUDXR
+  bool should_override_eye_poses_ = false;
+  XrPosef override_eye_poses_[NUM_SIDES] = {};
 #endif
 
   bool useSinglePassStereo_ = false;
