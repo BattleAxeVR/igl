@@ -970,6 +970,16 @@ void XrApp::createActions() {
         strcpy(actionInfo.localizedActionName, "Button B Touch");
         XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.buttonBYTouchAction));
 
+        actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+        strcpy(actionInfo.actionName, "trackpad_x");
+        strcpy(actionInfo.localizedActionName, "trackpad X");
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.trackpadXAction));
+
+        actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
+        strcpy(actionInfo.actionName, "trackpad_y");
+        strcpy(actionInfo.localizedActionName, "trackpad Y");
+        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.trackpadXAction));
+
         actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
         strcpy(actionInfo.actionName, "vibrate_hand");
         strcpy(actionInfo.localizedActionName, "Vibrate Hand");
