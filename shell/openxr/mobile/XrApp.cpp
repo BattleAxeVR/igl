@@ -1261,9 +1261,31 @@ void XrApp::handleXrEvents() {
     case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
       IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING event");
       break;
-    case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+    case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:  {
+
       IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event");
+
+        XrInteractionProfileState profile_state = {XR_TYPE_INTERACTION_PROFILE_STATE};
+        res = xrGetCurrentInteractionProfile(session_, xr_inputs_.handSubactionPath[LEFT], &profile_state);
+
+        if (res == XR_SUCCESS) {
+            XrPath profile_path = profile_state.interactionProfile;
+
+            uint32_t length = 0;
+            char profile_str[XR_MAX_PATH_LENGTH] = {};
+
+            res = xrPathToString(instance_, profile_path, XR_MAX_PATH_LENGTH, &length, profile_str);
+
+            if (res == XR_SUCCESS) {
+                std::string profile = profile_str;
+
+                if (profile == "/interaction_profiles/facebook/touch_controller_pro") {
+                    IGL_LOG_INFO("Using Touch Pro controllers");
+                }
+            }
+        }
       break;
+    }
     case XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT: {
       const XrEventDataPerfSettingsEXT* perf_settings_event =
           (XrEventDataPerfSettingsEXT*)(baseEventHeader);
