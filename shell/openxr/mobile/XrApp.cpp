@@ -245,6 +245,13 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
   }
 
+  touchProControllersSupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
+  IGL_LOG_INFO("Touch Pro controllers are %s", refreshRateExtensionSupported_ ? "supported" : "not supported");
+
+  if (touchProControllersSupported_ && checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
+  }
+
     return true;
 }
 
@@ -1071,11 +1078,6 @@ void XrApp::createActions() {
     xrStringToPath(instance_, "/user/hand/left/input/y/touch", &YB_TouchPath[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/b/touch", &YB_TouchPath[RIGHT]);
 
-    std::array<XrPath, NUM_SIDES> hapticPath;
-
-    xrStringToPath(instance_, "/user/hand/left/output/haptic", &hapticPath[LEFT]);
-    xrStringToPath(instance_, "/user/hand/right/output/haptic", &hapticPath[RIGHT]);
-
     std::array<XrPath, NUM_SIDES> trackPad_X_Path;
     std::array<XrPath, NUM_SIDES> trackPad_Y_Path;
 
@@ -1084,6 +1086,11 @@ void XrApp::createActions() {
 
     xrStringToPath(instance_, "/user/hand/left/input/trackpad/y", &trackPad_Y_Path[LEFT]);
     xrStringToPath(instance_, "/user/hand/right/input/trackpad/y", &trackPad_Y_Path[RIGHT]);
+
+    std::array<XrPath, NUM_SIDES> hapticPath;
+
+    xrStringToPath(instance_, "/user/hand/left/output/haptic", &hapticPath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right/output/haptic", &hapticPath[RIGHT]);
 
     // Suggest bindings for KHR Simple.
     {
@@ -1158,6 +1165,7 @@ void XrApp::createActions() {
     }
 
     // Touch Pro
+    if (touchProControllersSupported_)
     {
         XrPath oculusTouchProInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller_pro", &oculusTouchProInteractionProfilePath);
@@ -1196,6 +1204,10 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                            {xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                            {xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                            {xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                            {xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
