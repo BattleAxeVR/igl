@@ -106,6 +106,9 @@ struct XrInputState
     XrAction thumbRestForceAction{ XR_NULL_HANDLE };
     XrAction thumbProximityAction{ XR_NULL_HANDLE };
 
+    XrAction pinchValueAction{ XR_NULL_HANDLE };
+    XrAction pinchForceAction{ XR_NULL_HANDLE };
+
     XrAction buttonAXClickAction{ XR_NULL_HANDLE };
     XrAction buttonAXTouchAction{ XR_NULL_HANDLE };
 
