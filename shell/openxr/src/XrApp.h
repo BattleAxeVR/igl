@@ -276,7 +276,7 @@ public:
   XrCompositionLayerSettingsFB compositionLayerSettings_ = { XR_TYPE_COMPOSITION_LAYER_SETTINGS_FB, nullptr, 0 };
   bool enableSharpeningAtStartup_ = false;
 
-  bool simpleControllersSupported_ = true;
+  bool simpleControllersSupported_ = false;
   bool touchControllersSupported_ = false;
   bool touchProControllersSupported_ = false;
 

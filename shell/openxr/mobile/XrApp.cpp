@@ -1192,7 +1192,7 @@ void XrApp::createActions() {
     if (touchProControllersSupported_)
     {
         XrPath oculusTouchProInteractionProfilePath;
-        xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller_pro", &oculusTouchProInteractionProfilePath);
+        xrStringToPath(instance_, "/interaction_profiles/facebook/touch_controller_pro", &oculusTouchProInteractionProfilePath);
 
         std::vector<XrActionSuggestedBinding> oculus_touch_pro_bindings{{
                                                                             {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
@@ -1230,10 +1230,6 @@ void XrApp::createActions() {
                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
-                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
-                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
-                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
