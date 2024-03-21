@@ -8,6 +8,8 @@
 #include <android_native_app_glue.h>
 #include <igl/Common.h>
 #include <igl/Macros.h>
+
+#include <android/window.h>
 //#define ATTACH_DEBUGGER
 
 #ifdef ATTACH_DEBUGGER
@@ -106,6 +108,8 @@ void android_main(struct android_app* app) {
 #ifdef ATTACH_DEBUGGER
   sleep(20);
 #endif
+
+    ANativeActivity_setWindowFlags(app->activity, AWINDOW_FLAG_KEEP_SCREEN_ON, 0);
 
 #if defined(USE_VULKAN_BACKEND)
   auto xrApp = std::make_unique<XrApp>(std::make_unique<mobile::XrAppImplVulkan>());
