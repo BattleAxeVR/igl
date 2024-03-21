@@ -231,35 +231,43 @@ bool XrApp::checkExtensions() {
     }
   }
 
-  refreshRateExtensionSupported_ = checkExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
+  refreshRateExtensionSupported_ =
+      checkExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
   IGL_LOG_INFO("RefreshRate is %s", refreshRateExtensionSupported_ ? "supported" : "not supported");
 
-  if (refreshRateExtensionSupported_ && checkNeedRequiredExtension(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME)) {
+  if (refreshRateExtensionSupported_ &&
+      checkNeedRequiredExtension(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
   }
+  
+  compositionLayerSettingsSupported_ = 
+      checkExtensionSupported(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
+  IGL_LOG_INFO("Composition Layer Settings are %s", 
+	compositionLayerSettingsSupported_ ? "supported" : "not supported");
 
-  compositionLayerSettingsSupported_ = checkExtensionSupported(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
-  IGL_LOG_INFO("Composition Layer Settings are %s", compositionLayerSettingsSupported_ ? "supported" : "not supported");
-
-  if (compositionLayerSettingsSupported_ && checkNeedRequiredExtension(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME)) {
+  if (compositionLayerSettingsSupported_ && 
+	checkNeedRequiredExtension(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
   }
 
-  touchProControllersSupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
+  touchProControllersSupported_ = 
+      checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
   IGL_LOG_INFO("Touch Pro controllers are %s", touchProControllersSupported_ ? "supported" : "not supported");
 
-  if (touchProControllersSupported_ && checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME)) {
+  if (touchProControllersSupported_ && 
+      checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
   }
 
   touchControllerProximitySupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
   IGL_LOG_INFO("Touch controller proximity is %s", touchControllerProximitySupported_ ? "supported" : "not supported");
 
-  if (touchControllerProximitySupported_ && checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME)) {
+  if (touchControllerProximitySupported_ && 
+      checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
   }
 
-    return true;
+  return true;
 }
 
 bool XrApp::createInstance() {
@@ -331,16 +339,19 @@ bool XrApp::createInstance() {
   }
 
   if (refreshRateExtensionSupported_) {
-    XR_CHECK(xrGetInstanceProcAddr(
-            instance_, "xrGetDisplayRefreshRateFB", (PFN_xrVoidFunction*)(&xrGetDisplayRefreshRateFB_)));
+    XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                   "xrGetDisplayRefreshRateFB",
+                                   (PFN_xrVoidFunction*)(&xrGetDisplayRefreshRateFB_)));
     IGL_ASSERT(xrGetDisplayRefreshRateFB_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(
-            instance_, "xrEnumerateDisplayRefreshRatesFB", (PFN_xrVoidFunction*)(&xrEnumerateDisplayRefreshRatesFB_)));
+    XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                   "xrEnumerateDisplayRefreshRatesFB",
+                                   (PFN_xrVoidFunction*)(&xrEnumerateDisplayRefreshRatesFB_)));
     IGL_ASSERT(xrEnumerateDisplayRefreshRatesFB_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(
-            instance_, "xrRequestDisplayRefreshRateFB", (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
+    XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                   "xrRequestDisplayRefreshRateFB",
+                                   (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
     IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
-}
+  }
 
   return true;
 } // namespace igl::shell::openxr
@@ -721,7 +732,7 @@ void XrApp::createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device
 }
 
 #ifndef EXTERNAL_XR_BUILD
-bool XrApp::initialize(const struct android_app* app) {
+bool XrApp::initialize(const struct android_app* app, const InitParams& params) {
   if (initialized_) {
     return false;
   }
@@ -796,22 +807,17 @@ bool XrApp::initialize(const struct android_app* app) {
   if (handsTrackingSupported_ && !createHandsTracking()) {
     return false;
   }
-  if (refreshRateExtensionSupported_ && (useMaxRefreshRate_ || useSpecificRefreshRate_)) {
-    getCurrentRefreshRate();
-
-    if (useMaxRefreshRate_) {
+  if (refreshRateExtensionSupported_) {
+    queryCurrentRefreshRate();
+    if (params.refreshRateMode_ == InitParams::UseMaxRefreshRate) {
       setMaxRefreshRate();
+    } else if (params.refreshRateMode_ == InitParams::UseSpecificRefreshRate) {
+      setRefreshRate(params.desiredSpecificRefreshRate_);
+    } else {
+      // Do nothing. Use default refresh rate.
     }
-    else if (useSpecificRefreshRate_) {
-      setRefreshRate(desiredSpecificRefreshRate_);
-    }
   }
-  if (compositionLayerSettingsSupported_ && enableSharpeningAtStartup_) {
-    setSharpeningEnabled(true);
-  }
-  if (handsTrackingMeshSupported_) {
-    updateHandMeshes();
-  }
+  updateHandMeshes();
 
   IGL_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
@@ -1726,18 +1732,20 @@ XrTime XrApp::get_predicted_display_time_ns()
     return now_time;
 }
 
-float XrApp::getCurrentRefreshRate(){
+float XrApp::getCurrentRefreshRate() {
   if (!session_ || !refreshRateExtensionSupported_ || (currentRefreshRate_ > 0.0f)) {
     return currentRefreshRate_;
   }
 
-  XrResult result = xrGetDisplayRefreshRateFB_(session_, &currentRefreshRate_);
+  queryCurrentRefreshRate();
+  return currentRefreshRate_;
+}
 
+void XrApp::queryCurrentRefreshRate() {
+  const XrResult result = xrGetDisplayRefreshRateFB_(session_, &currentRefreshRate_);
   if (result == XR_SUCCESS) {
     IGL_LOG_INFO("getCurrentRefreshRate success, current Hz = %.2f.", currentRefreshRate_);
   }
-
-  return currentRefreshRate_;
 }
 
 float XrApp::getMaxRefreshRate() {
@@ -1752,27 +1760,26 @@ float XrApp::getMaxRefreshRate() {
   }
 
   const float maxRefreshRate = supportedRefreshRates.back();
-  IGL_LOG_INFO("getMaxRefreshRate Hz = %.2f.",maxRefreshRate);
+  IGL_LOG_INFO("getMaxRefreshRate Hz = %.2f.", maxRefreshRate);
   return maxRefreshRate;
 }
 
-bool XrApp::setRefreshRate(const float refreshRate) {
-  if (!session_ || !refreshRateExtensionSupported_
-  || (refreshRate == currentRefreshRate_)
-  || !isRefreshRateSupported(refreshRate)) {
+bool XrApp::setRefreshRate(float refreshRate) {
+  if (!session_ || !refreshRateExtensionSupported_ || (refreshRate == currentRefreshRate_) ||
+      !isRefreshRateSupported(refreshRate)) {
     return false;
   }
 
-  XrResult result = xrRequestDisplayRefreshRateFB_(session_, refreshRate);
-
-  if (result == XR_SUCCESS) {
-    IGL_LOG_INFO("setRefreshRate SUCCESS, changed from %.2f Hz to %.2f Hz", currentRefreshRate_, refreshRate);
-    currentRefreshRate_ = refreshRate;
-
-    return true;
+  const XrResult result = xrRequestDisplayRefreshRateFB_(session_, refreshRate);
+  if (result != XR_SUCCESS) {
+    return false;
   }
 
-  return false;
+  IGL_LOG_INFO(
+      "setRefreshRate SUCCESS, changed from %.2f Hz to %.2f Hz", currentRefreshRate_, refreshRate);
+  currentRefreshRate_ = refreshRate;
+
+  return true;
 }
 
 void XrApp::setMaxRefreshRate() {
@@ -1787,14 +1794,14 @@ void XrApp::setMaxRefreshRate() {
   }
 }
 
-bool XrApp::isRefreshRateSupported(const float refreshRate) {
+bool XrApp::isRefreshRateSupported(float refreshRate) {
   if (!session_ || !refreshRateExtensionSupported_) {
     return false;
   }
 
   const std::vector<float>& supportedRefreshRates = getSupportedRefreshRates();
-  const bool found_it = (std::find(supportedRefreshRates.begin(), supportedRefreshRates.end(), refreshRate) != supportedRefreshRates.end());
-  return found_it;
+  return std::find(supportedRefreshRates.begin(), supportedRefreshRates.end(), refreshRate) !=
+         supportedRefreshRates.end();
 }
 
 const std::vector<float>& XrApp::getSupportedRefreshRates() {
@@ -1819,7 +1826,8 @@ void XrApp::querySupportedRefreshRates() {
 
   if ((result == XR_SUCCESS) && (numRefreshRates > 0)) {
     supportedRefreshRates_.resize(numRefreshRates);
-    result = xrEnumerateDisplayRefreshRatesFB_(session_, numRefreshRates, &numRefreshRates, supportedRefreshRates_.data());
+    result = xrEnumerateDisplayRefreshRatesFB_(
+        session_, numRefreshRates, &numRefreshRates, supportedRefreshRates_.data());
 
     if (result == XR_SUCCESS) {
       std::sort(supportedRefreshRates_.begin(), supportedRefreshRates_.end());
@@ -1832,25 +1840,21 @@ void XrApp::querySupportedRefreshRates() {
 }
 
 bool XrApp::isSharpeningEnabled() const {
-  return compositionLayerSettingsSupported_ && ((compositionLayerSettings_.layerFlags & XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB) != 0);
+  return compositionLayerSettingsSupported_ &&
+  ((compositionLayerSettings_.layerFlags & XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB) != 0);
 }
 
 void XrApp::setSharpeningEnabled(const bool enabled) {
-  if (enabled == isSharpeningEnabled()) {
+  if (!compositionLayerSettingsSupported_ || (enabled == isSharpeningEnabled())) {
     return;
   }
-  if (compositionLayerSettingsSupported_) {
     if (enabled) {
       compositionLayerSettings_.layerFlags |= XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB;
     }
     else {
       compositionLayerSettings_.layerFlags &= ~XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB;
     }
-    IGL_LOG_INFO("setSharpeningEnabled, Sharpening is now %s", isSharpeningEnabled() ? "ON" : "OFF");
-  }
-  else if (enabled) {
-    IGL_LOG_ERROR("setSharpeningEnabled FAILED, device does not support composition layer settings");
-  }
+    IGL_LOG_INFO("Link Sharpening is now %s", isSharpeningEnabled() ? "ON" : "OFF");
 }
 
 } // namespace igl::shell::openxr
