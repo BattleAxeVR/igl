@@ -108,7 +108,7 @@ XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl) :
 #if !defined(XR_USE_PLATFORM_MACOS) && !defined(IGL_CMAKE_BUILD)
         XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
 #endif
-    XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
+    //XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
   }),
   impl_(std::move(impl)),
   shellParams_(std::make_unique<ShellParams>()) {
@@ -646,9 +646,9 @@ bool XrApp::enumerateViewConfigurations() {
     for (auto& view : viewports_) {
       (void)view; // doesn't compile in release for unused variable
 
-#if 1//ENABLE_CLOUDXR
-        view.recommendedImageRectWidth = 2176;
-        view.recommendedImageRectHeight = 2176;
+#if ENABLE_CLOUDXR
+        view.recommendedImageRectWidth = 1920;
+        view.recommendedImageRectHeight = 1920;
 #endif
 
         IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d",
@@ -1718,18 +1718,18 @@ XrTime XrApp::get_predicted_display_time_ns()
     struct timespec now_ts = {0};
     clock_gettime(CLOCK_MONOTONIC, &now_ts);
 
-    if (instance_ && !xrConvertTimespecTimeToTimeKHR_) {
-        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR_);
-    }
+    //if (instance_ && !xrConvertTimespecTimeToTimeKHR_) {
+//        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR_);
+//    }
 
     XrTime now_time = 0;
 
-    if (xrConvertTimespecTimeToTimeKHR_) {
-        xrConvertTimespecTimeToTimeKHR_(instance_, &now_ts, &now_time);
-    }
-    else{
+//    if (xrConvertTimespecTimeToTimeKHR_) {
+//        xrConvertTimespecTimeToTimeKHR_(instance_, &now_ts, &now_time);
+//    }
+//    else{
         now_time = ((uint64_t)(now_ts.tv_sec * 1e9) + now_ts.tv_nsec);
-    }
+  //  }
 
     return now_time;
 }

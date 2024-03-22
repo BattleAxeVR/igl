@@ -123,7 +123,7 @@ class XrApp {
 
   friend class igl::shell::OKCloudSession;
   XrTime get_predicted_display_time_ns();
-  PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR_ = nullptr;
+  //PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR_ = nullptr;
 
 public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
