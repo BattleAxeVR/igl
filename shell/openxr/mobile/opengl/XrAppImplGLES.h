@@ -34,7 +34,9 @@ class XrAppImplGLES final : public impl::XrAppImpl {
   XrSession initXrSession(XrInstance instance, XrSystemId systemId, igl::IDevice& device) override;
   std::unique_ptr<impl::XrSwapchainProviderImpl> createSwapchainProviderImpl() const override;
 
- private:
+  XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {};
+
+private:
   XrGraphicsRequirementsOpenGLESKHR graphicsRequirements_ = {
       .type = XR_TYPE_GRAPHICS_REQUIREMENTS_OPENGL_ES_KHR,
   };
