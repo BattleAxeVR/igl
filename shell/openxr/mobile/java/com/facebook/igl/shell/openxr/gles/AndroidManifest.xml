@@ -24,7 +24,7 @@
       android:fullBackupContent="false"
       android:label="IGL Shell OpenXR OpenGL ES">
 
-    <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|questpro"/>
+    <meta-data android:name="com.oculus.supportedDevices" android:value="quest|quest2|quest3|questpro"/>
 
     <activity android:name="android.app.NativeActivity"
               android:theme="@android:style/Theme.NoTitleBar.Fullscreen"
