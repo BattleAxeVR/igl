@@ -52,7 +52,7 @@ const int RIGHT = 1;
 const int NUM_SIDES = 2;
 
 struct android_app;
-class AAssetManager;
+struct AAssetManager;
 
 namespace igl::shell{
     class OKCloudSession;
