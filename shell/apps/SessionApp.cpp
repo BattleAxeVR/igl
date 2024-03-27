@@ -8,7 +8,7 @@
 
 #if defined(IGL_SHELL_SESSION_EXTERNAL)
 #define IGL_SHELL_SESSION IGL_SHELL_SESSION_EXTERNAL
-#define IGL_SHELL_PATH <../../../../src/renderSessions/IGL_SHELL_SESSION.h>
+#define IGL_SHELL_PATH <../../../src/cpp/IGL_SHELL_SESSION.h>
 #elif defined(IGL_SHELL_SESSION)
 #define IGL_SHELL_PATH <shell/renderSessions/IGL_SHELL_SESSION.h>
 #else

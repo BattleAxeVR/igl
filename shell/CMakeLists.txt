@@ -107,7 +107,7 @@ macro(ADD_SHELL_SESSION_OPENXR_DESKTOP target)
 endmacro()
 
 macro(ADD_SHELL_SESSION_EXTERNAL target libs)
-  set(shell_srcs apps/SessionApp.cpp ../../../../src/renderSessions/${target}.cpp ../../../../src/renderSessions/${target}.h)
+  set(shell_srcs apps/SessionApp.cpp ../../src/cpp/${target}.cpp ../../src/cpp/${target}.h)
   add_shell_session_with_srcs(${target} "${shell_srcs}" "${libs}")
 endmacro()
 
