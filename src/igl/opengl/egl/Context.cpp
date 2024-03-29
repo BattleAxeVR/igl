@@ -99,7 +99,7 @@ EGLint attribs[] = {
     EGL_SURFACE_TYPE,
     EGL_PBUFFER_BIT,
     EGL_SAMPLES,
-    4,
+    1,
     // want opengl-es 3.x conformant CONTEXT
     EGL_RENDERABLE_TYPE,
     EGL_OPENGL_ES3_BIT,
@@ -114,6 +114,7 @@ EGLint contextAttribs[] = {
 std::pair<EGLDisplay, EGLContext> newEGLContext(EGLDisplay display,
                                                 EGLContext shareContext,
                                                 EGLConfig* config) {
+
   if (display == EGL_NO_DISPLAY || !eglInitialize(display, nullptr, nullptr)) {
     CHECK_EGL_ERRORS();
     // TODO: Handle error
