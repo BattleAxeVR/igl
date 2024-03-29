@@ -15,6 +15,17 @@
 
 #include "XrSwapchainProviderImplGLES.h"
 
+#include <algorithm>
+#include <array>
+#include <cassert>
+#include <chrono>
+#include <string>
+
+#if 0//CREATE_GL_ES_WINDOW
+#include "gfxwrapper_opengl.h"
+ksGpuWindow window{};
+#endif
+
 namespace igl::shell::openxr::mobile {
 std::vector<const char*> XrAppImplGLES::getXrRequiredExtensions() const {
   return {
@@ -43,11 +54,25 @@ std::unique_ptr<igl::IDevice> XrAppImplGLES::initIGL(XrInstance instance, XrSyst
 
   XR_CHECK(pfnGetOpenGLESGraphicsRequirementsKHR(instance, systemId, &graphicsRequirements_));
 
+#if 0//CREATE_GL_ES_WINDOW
+  ksDriverInstance driverInstance{};
+  ksGpuQueueInfo queueInfo{};
+  ksGpuSurfaceColorFormat colorFormat{KS_GPU_SURFACE_COLOR_FORMAT_B8G8R8A8};
+  ksGpuSurfaceDepthFormat depthFormat{KS_GPU_SURFACE_DEPTH_FORMAT_NONE};
+  ksGpuSampleCount sampleCount{KS_GPU_SAMPLE_COUNT_1};
+
+  if (!ksGpuWindow_Create(&window, &driverInstance, &queueInfo, 0, colorFormat, depthFormat, sampleCount, 640, 480, false))
+  {
+    return nullptr;
+  }
+#endif
+
   Result result;
   igl::HWDeviceQueryDesc queryDesc(HWDeviceType::IntegratedGpu);
-  auto hwDevice = opengl::egl::HWDevice();
-  auto hwDevices = hwDevice.queryDevices(queryDesc, &result);
+  opengl::egl::HWDevice hwDevice = opengl::egl::HWDevice();
+  std::vector<igl::HWDeviceDesc> hwDevices = hwDevice.queryDevices(queryDesc, &result);
   IGL_ASSERT(result.isOk());
+
   return hwDevice.create(hwDevices[0], igl::opengl::RenderingAPI::GLES3, nullptr, &result);
 }
 

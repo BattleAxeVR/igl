@@ -76,6 +76,18 @@ if(ANDROID)
       ${SHELL_OPENXR_HEADER_FILES}
       ${SHELL_OPENXR_PLATFORM_ANDROID_GL_SRC_FILES}
       ${SHELL_OPENXR_PLATFORM_ANDROID_GL_HEADER_FILES})
-    target_compile_definitions(IGLShellOpenXR_AndroidOpenGLES PRIVATE "USE_OPENGL_BACKEND" "XR_USE_PLATFORM_ANDROID" "XR_USE_GRAPHICS_API_OPENGL_ES" "XR_USE_TIMESPEC")
+    target_compile_definitions(IGLShellOpenXR_AndroidOpenGLES PRIVATE "USE_OPENGL_BACKEND" "XR_USE_PLATFORM_ANDROID" "XR_USE_GRAPHICS_API_OPENGL_ES" "XR_USE_TIMESPEC" "CREATE_GL_ES_WINDOW=1")
+	
+   if(DEFINED ENV{ANDROID_NDK})
+    cmake_path(SET NDK_PATH $ENV{ANDROID_NDK})
+  elseif(DEFINED ENV{NDK_ROOT})
+    cmake_path(SET NDK_PATH $ENV{NDK_ROOT})
+  else()
+    message(FATAL_ERROR "Android NDK not found, check environment variables ANDROID_NDK and NDK_ROOT")
+  endif()
+  
+    target_include_directories(IGLShellOpenXR_AndroidOpenGLES PUBLIC "${NDK_PATH}/sources/android/native_app_glue")
+	target_sources(IGLShellOpenXR_AndroidOpenGLES PUBLIC ../openxr/mobile/opengl/gfxwrapper_opengl.c)
+	
   endif()
 endif()
