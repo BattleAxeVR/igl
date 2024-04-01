@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <shell/openxr/src/XrApp.h>
+#include <shell/openxr/XrApp.h>
 
 #include <algorithm>
 #include <array>
@@ -13,12 +13,9 @@
 #include <chrono>
 #include <string>
 
-#ifndef EXTERNAL_XR_BUILD
 #include <android/asset_manager.h>
 #include <android/log.h>
 #include <android_native_app_glue.h>
-#include <xr_linear.h>
-#endif
 
 #include <openxr/openxr.h>
 
@@ -35,18 +32,13 @@
 #define XR_USE_GRAPHICS_API_OPENGL_ES
 #endif
 #endif // USE_OPENGL_BACKEND
-
-#ifndef XR_USE_TIMESPEC
-#define XR_USE_TIMESPEC
-#endif
-
 #include <openxr/openxr_platform.h>
 
-#ifndef XR_LOAD
-#define XR_LOAD(instance, fn) xrGetInstanceProcAddr(instance, #fn, reinterpret_cast<PFN_xrVoidFunction*>(&fn))
-#endif
-
 #include <glm/gtc/type_ptr.hpp>
+
+#ifndef EXTERNAL_XR_BUILD
+#include <xr_linear.h>
+#endif
 
 #include <shell/shared/fileLoader/android/FileLoaderAndroid.h>
 #include <shell/shared/imageLoader/android/ImageLoaderAndroid.h>
@@ -55,11 +47,10 @@
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
 
-#include <shell/openxr/src/XrLog.h>
-#include <shell/openxr/src/XrSwapchainProvider.h>
+#include <shell/openxr/XrLog.h>
+#include <shell/openxr/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
-
 namespace igl::shell::openxr {
 
 constexpr auto kAppName = "IGL Shell OpenXR";
