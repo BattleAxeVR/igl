@@ -20,11 +20,11 @@
 
 using namespace igl::shell::openxr;
 
-#ifndef OK_MAIN
-#define OK_MAIN 0
+#ifndef ENABLE_CLOUDXR
+#define ENABLE_CLOUDXR 0
 #endif
 
-#if OK_MAIN
+#if ENABLE_CLOUDXR
 
 XrInstance gInstance_;
 XrInstance getXrInstance()

@@ -67,11 +67,8 @@ if(ENABLE_CLOUDXR)
 
   add_definitions(-DENABLE_CLOUDXR=1)
   add_definitions(-DIGL_SHELL_SESSION_EXTERNAL=OKCloudSession)
-  add_definitions(-DOK_MAIN=1)
-
 else()
   add_definitions(-DENABLE_CLOUDXR=0)
-  add_definitions(-DOK_MAIN=0)
 endif()
 
 igl_set_folder(IGLShellShared "IGL")
