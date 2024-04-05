@@ -20,6 +20,20 @@
 
 using namespace igl::shell::openxr;
 
+#ifndef OK_MAIN
+#define OK_MAIN 0
+#endif
+
+#if OK_MAIN
+
+XrInstance gInstance_;
+XrInstance getXrInstance()
+{
+    return gInstance_;
+}
+
+#else
+
 void handleInitWindow(const struct android_app* app) {
   auto xrApp = static_cast<igl::shell::openxr::XrApp*>(app->userData);
   if (xrApp) {
@@ -154,3 +168,4 @@ void android_main(struct android_app* app) {
 
   app->activity->vm->DetachCurrentThread();
 }
+#endif
