@@ -205,8 +205,14 @@ public:
   void setSharpeningEnabled(const bool enabled);
 
  private:
+  static constexpr uint32_t kNumViews = 2; // 2 for stereo
+
   void queryCurrentRefreshRate();
   void querySupportedRefreshRates();
+  void setupProjectionAndDepth(
+      std::array<XrCompositionLayerProjectionView, kNumViews>& projectionViews,
+      std::array<XrCompositionLayerDepthInfoKHR, kNumViews>& depthInfos);
+  void endFrameQuadLayerComposition(XrFrameState frameState);
 
   void* nativeWindow_ = nullptr;
   bool resumed_ = false;
@@ -230,7 +236,6 @@ public:
   XrSession session_ = XR_NULL_HANDLE;
 
   XrViewConfigurationProperties viewConfigProps_ = {.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
-  static constexpr uint32_t kNumViews = 2; // 2 for stereo
   std::array<XrViewConfigurationView, kNumViews> viewports_;
   std::array<XrView, kNumViews> views_;
   std::array<XrPosef, kNumViews> viewStagePoses_;
