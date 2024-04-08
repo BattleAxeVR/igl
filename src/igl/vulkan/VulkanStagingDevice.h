@@ -51,12 +51,12 @@ class VulkanStagingDevice final {
    * function is synchronous and the data donwloaded from the device is expected to be available in
    * the location pointed by `data` upon return
    */
-  void getBufferSubData(VulkanBuffer& buffer, size_t srcOffset, size_t size, void* data);
+  void getBufferSubData(const VulkanBuffer& buffer, size_t srcOffset, size_t size, void* data);
 
   /// @brief Uploads the texture data pointed by `data` to the VulkanImage object on the device. The
   /// data may span the entire texture or just part of it. The upload operation is asynchronous and
   /// the data may or may not be available to the GPU when the function returns
-  void imageData(VulkanImage& image,
+  void imageData(const VulkanImage& image,
                  TextureType type,
                  const TextureRangeDesc& range,
                  const TextureFormatProperties& properties,

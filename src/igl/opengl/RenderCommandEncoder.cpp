@@ -250,6 +250,18 @@ void RenderCommandEncoder::bindBuffer(int index,
   }
 }
 
+void RenderCommandEncoder::bindVertexBuffer(uint32_t index,
+                                            const std::shared_ptr<IBuffer>& buffer,
+                                            size_t bufferOffset) {
+  if (IGL_VERIFY(adapter_) && buffer) {
+    auto glBuffer = std::static_pointer_cast<Buffer>(buffer);
+
+    IGL_ASSERT(glBuffer->getType() == Buffer::Type::Attribute);
+
+    adapter_->setVertexBuffer(std::move(glBuffer), bufferOffset, static_cast<int>(index));
+  }
+}
+
 void RenderCommandEncoder::bindBytes(size_t /*index*/,
                                      uint8_t /*target*/,
                                      const void* /*data*/,

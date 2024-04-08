@@ -53,6 +53,8 @@ class VulkanTexture;
 struct BindingsBuffers;
 struct BindingsTextures;
 struct VulkanContextImpl;
+struct VulkanImageCreateInfo;
+struct VulkanImageViewCreateInfo;
 
 /*
  * Descriptor sets:
@@ -159,6 +161,12 @@ class VulkanContext final {
   std::shared_ptr<VulkanTexture> createTexture(std::unique_ptr<VulkanImage> image,
                                                std::unique_ptr<VulkanImageView> imageView,
                                                const char* debugName) const;
+  std::shared_ptr<VulkanTexture> createTextureFromVkImage(
+      VkImage vkImage,
+      VulkanImageCreateInfo imageCreateInfo,
+      VulkanImageViewCreateInfo imageViewCreateInfo,
+      const char* debugName) const;
+
   std::shared_ptr<VulkanSampler> createSampler(const VkSamplerCreateInfo& ci,
                                                igl::Result* outResult,
                                                const char* debugName = nullptr) const;
@@ -292,8 +300,8 @@ class VulkanContext final {
   std::unique_ptr<igl::vulkan::VulkanImmediateCommands> immediate_;
   std::unique_ptr<igl::vulkan::VulkanStagingDevice> stagingDevice_;
 
-  std::shared_ptr<igl::vulkan::VulkanBuffer> dummyUniformBuffer_;
-  std::shared_ptr<igl::vulkan::VulkanBuffer> dummyStorageBuffer_;
+  std::unique_ptr<igl::vulkan::VulkanBuffer> dummyUniformBuffer_;
+  std::unique_ptr<igl::vulkan::VulkanBuffer> dummyStorageBuffer_;
   // don't use staging on devices with device-local host-visible memory
   bool useStagingForBuffers_ = true;
 

@@ -268,6 +268,16 @@ void RenderCommandEncoder::bindBuffer(int index,
   }
 }
 
+void RenderCommandEncoder::bindVertexBuffer(uint32_t index,
+                                            const std::shared_ptr<IBuffer>& buffer,
+                                            size_t bufferOffset) {
+  IGL_ASSERT(encoder_);
+  if (buffer) {
+    auto& metalBuffer = static_cast<Buffer&>(*buffer);
+    [encoder_ setVertexBuffer:metalBuffer.get() offset:bufferOffset atIndex:index];
+  }
+}
+
 void RenderCommandEncoder::bindBytes(size_t index,
                                      uint8_t bindTarget,
                                      const void* data,

@@ -183,7 +183,7 @@ VulkanStagingDevice::MemoryRegion VulkanStagingDevice::nextFreeBlock(VkDeviceSiz
           VulkanImmediateCommands::SubmitHandle()};
 }
 
-void VulkanStagingDevice::getBufferSubData(VulkanBuffer& buffer,
+void VulkanStagingDevice::getBufferSubData(const VulkanBuffer& buffer,
                                            size_t srcOffset,
                                            size_t size,
                                            void* data) {
@@ -228,7 +228,7 @@ void VulkanStagingDevice::getBufferSubData(VulkanBuffer& buffer,
   }
 }
 
-void VulkanStagingDevice::imageData(VulkanImage& image,
+void VulkanStagingDevice::imageData(const VulkanImage& image,
                                     TextureType type,
                                     const TextureRangeDesc& range,
                                     const TextureFormatProperties& properties,
