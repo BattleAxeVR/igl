@@ -20,6 +20,13 @@
 #include <igl/opengl/Texture.h>
 #include <tuple>
 
+#define CREATE_GL_ES_WINDOW 1
+
+#if CREATE_GL_ES_WINDOW
+#include "gfxwrapper_opengl.h"
+ksGpuWindow window{};
+#endif
+
 #define CHECK_EGL_ERRORS() error_checking::checkForEGLErrors(__FILE__, __FUNCTION__, __LINE__)
 
 namespace error_checking {
@@ -185,6 +192,38 @@ EGLConfig chooseConfig(EGLDisplay display) {
 Context::Context(RenderingAPI api, EGLNativeWindowType window) :
   Context(api, EGL_NO_CONTEXT, nullptr, true, window, {1920, 1920}) {}
 
+#if CREATE_GL_ES_WINDOW
+Context::Context(RenderingAPI api, size_t width, size_t height)
+{
+  ksDriverInstance driverInstance{};
+  ksGpuQueueInfo queueInfo{};
+  ksGpuSurfaceColorFormat colorFormat{KS_GPU_SURFACE_COLOR_FORMAT_B8G8R8A8};
+  ksGpuSurfaceDepthFormat depthFormat{KS_GPU_SURFACE_DEPTH_FORMAT_NONE};
+  ksGpuSampleCount sampleCount{KS_GPU_SAMPLE_COUNT_1};
+
+  if (!ksGpuWindow_Create(&window, &driverInstance, &queueInfo, 0, colorFormat, depthFormat, sampleCount, width, height, false))
+  {
+      return;
+  }
+
+  contextOwned_ = true;
+  api_ = api;
+  display_ = window.display;
+  context_ = window.context.context;
+
+  IContext::registerContext((void*)context_, this);
+
+  surface_ = window.context.mainSurface;
+  readSurface_ = surface_;
+  drawSurface_ = surface_;
+
+  config_ = window.context.config;
+  sharegroup_ = std::make_shared<std::vector<EGLContext>>();
+  sharegroup_->push_back(context_);
+
+  initialize();
+  }
+#else
 Context::Context(RenderingAPI api, size_t width, size_t height) :
   Context(api,
           EGL_NO_CONTEXT,
@@ -192,6 +231,7 @@ Context::Context(RenderingAPI api, size_t width, size_t height) :
           true,
           IGL_EGL_NULL_WINDOW,
           {static_cast<EGLint>(width), static_cast<EGLint>(height)}) {}
+#endif
 
 Context::Context(const Context& sharedContext) :
   Context(sharedContext.api_,

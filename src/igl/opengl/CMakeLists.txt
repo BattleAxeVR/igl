@@ -64,6 +64,17 @@ if(ANDROID)
   add_definitions("-DSUPPORT_ES31_IGL_OPENGL_ANDROID")
   add_definitions("-DGL_GLEXT_PROTOTYPES")
   target_link_libraries(IGLOpenGL PUBLIC log GLESv3 EGL)
+  
+  if(DEFINED ENV{ANDROID_NDK})
+    cmake_path(SET NDK_PATH $ENV{ANDROID_NDK})
+  elseif(DEFINED ENV{NDK_ROOT})
+    cmake_path(SET NDK_PATH $ENV{NDK_ROOT})
+  else()
+    message(FATAL_ERROR "Android NDK not found, check environment variables ANDROID_NDK and NDK_ROOT")
+  endif()
+  
+  target_include_directories(IGLOpenGL PUBLIC "${NDK_PATH}/sources/android/native_app_glue")
+	
 endif()
 
 if(APPLE)
