@@ -21,7 +21,9 @@
 #include <chrono>
 #include <string>
 
-#if 0//CREATE_GL_ES_WINDOW
+#define CREATE_GL_ES_WINDOW 1
+
+#if CREATE_GL_ES_WINDOW
 #include "gfxwrapper_opengl.h"
 ksGpuWindow window{};
 #endif
@@ -54,7 +56,7 @@ std::unique_ptr<igl::IDevice> XrAppImplGLES::initIGL(XrInstance instance, XrSyst
 
   XR_CHECK(pfnGetOpenGLESGraphicsRequirementsKHR(instance, systemId, &graphicsRequirements_));
 
-#if 0//CREATE_GL_ES_WINDOW
+#if CREATE_GL_ES_WINDOW
   ksDriverInstance driverInstance{};
   ksGpuQueueInfo queueInfo{};
   ksGpuSurfaceColorFormat colorFormat{KS_GPU_SURFACE_COLOR_FORMAT_B8G8R8A8};
@@ -65,7 +67,6 @@ std::unique_ptr<igl::IDevice> XrAppImplGLES::initIGL(XrInstance instance, XrSyst
   {
     return nullptr;
   }
-#endif
 
   Result result;
   igl::HWDeviceQueryDesc queryDesc(HWDeviceType::IntegratedGpu);
@@ -73,7 +74,17 @@ std::unique_ptr<igl::IDevice> XrAppImplGLES::initIGL(XrInstance instance, XrSyst
   std::vector<igl::HWDeviceDesc> hwDevices = hwDevice.queryDevices(queryDesc, &result);
   IGL_ASSERT(result.isOk());
 
+  return hwDevice.create(hwDevices[0], igl::opengl::RenderingAPI::GLES3, window.nativeWindow, &result);
+
+#else
+  Result result;
+  igl::HWDeviceQueryDesc queryDesc(HWDeviceType::IntegratedGpu);
+  opengl::egl::HWDevice hwDevice = opengl::egl::HWDevice();
+  std::vector<igl::HWDeviceDesc> hwDevices = hwDevice.queryDevices(queryDesc, &result);
+  IGL_ASSERT(result.isOk());
+
   return hwDevice.create(hwDevices[0], igl::opengl::RenderingAPI::GLES3, nullptr, &result);
+#endif
 }
 
 XrSession XrAppImplGLES::initXrSession(XrInstance instance,

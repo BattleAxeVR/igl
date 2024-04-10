@@ -41,6 +41,11 @@ class HWDevice {
                                                   EGLNativeWindowType nativeWindow,
                                                   Result* outResult) const = 0;
 
+    virtual std::unique_ptr<IContext> createOffscreenContext(RenderingAPI api,
+                                                     size_t width,
+                                                     size_t height,
+                                                     Result* outResult) const = 0;
+
   virtual std::unique_ptr<Device> createWithContext(std::unique_ptr<IContext> context,
                                                     Result* outResult) const = 0;
 

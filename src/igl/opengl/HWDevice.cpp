@@ -27,7 +27,9 @@ std::unique_ptr<IDevice> HWDevice::create(const HWDeviceDesc& /*desc*/,
                                           RenderingAPI api,
                                           EGLNativeWindowType nativeWindow,
                                           Result* outResult) {
-  auto context = createContext(api, nativeWindow, outResult);
+  //auto context = createContext(api, nativeWindow, outResult);
+  auto context = createOffscreenContext(api, 1920, 1920, outResult);
+
   if (!context) {
     Result::setResult(outResult, Result::Code::RuntimeError, "context is null");
     return nullptr;
