@@ -1571,7 +1571,7 @@ void XrApp::setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView
 #if ENABLE_CLOUDXR
     if (should_override_eye_poses_)
     {
-        projectionViews[i].pose = override_eye_poses_[i];
+        projectionViews[layer].pose = override_eye_poses_[layer];
     }
 #endif
 

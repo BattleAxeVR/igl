@@ -24,7 +24,7 @@ using namespace igl::shell::openxr;
 #define ENABLE_CLOUDXR 0
 #endif
 
-#if ENABLE_CLOUDXR
+#if 0//ENABLE_CLOUDXR
 
 XrInstance gInstance_;
 XrInstance getXrInstance()
