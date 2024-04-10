@@ -82,6 +82,10 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
   const auto& glDevice = static_cast<igl::opengl::Device&>(device); // Downcast is safe here
   const auto& context = static_cast<igl::opengl::egl::Context&>(glDevice.getContext());
 
+#if 1
+  XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {};
+#endif
+
   graphicsBindingAndroidGLES = {
       .type = XR_TYPE_GRAPHICS_BINDING_OPENGL_ES_ANDROID_KHR,
       .next = nullptr,

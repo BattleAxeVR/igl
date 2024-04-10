@@ -722,7 +722,8 @@ void XrApp::createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device
   }
 }
 
-#ifndef EXTERNAL_XR_BUILD
+//#ifndef EXTERNAL_XR_BUILD
+#if 1
 bool XrApp::initialize(const struct android_app* app, const InitParams& params) {
   if (initialized_) {
     return false;

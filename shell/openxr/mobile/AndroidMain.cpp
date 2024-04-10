@@ -24,13 +24,13 @@ using namespace igl::shell::openxr;
 #define ENABLE_CLOUDXR 0
 #endif
 
-#if 0//ENABLE_CLOUDXR
+#if ENABLE_CLOUDXR
 
-XrInstance gInstance_;
-XrInstance getXrInstance()
-{
-    return gInstance_;
-}
+//XrInstance gInstance_;
+//XrInstance getXrInstance()
+//{
+//    return gInstance_;
+//}
 
 #else
 
