@@ -199,16 +199,16 @@ class VulkanImage final {
    * Setting `numLevels` to a non-zero value will override `mipLevels_` value from the original
    * vulkan image, and can be used to create image views with different number of levels
    */
-  std::unique_ptr<VulkanImageView> createImageView(VkImageViewType type,
-                                                   VkFormat format,
-                                                   VkImageAspectFlags aspectMask,
-                                                   uint32_t baseLevel,
-                                                   uint32_t numLevels = VK_REMAINING_MIP_LEVELS,
-                                                   uint32_t baseLayer = 0,
-                                                   uint32_t numLayers = 1,
-                                                   const char* debugName = nullptr) const;
-  std::unique_ptr<VulkanImageView> createImageView(VulkanImageViewCreateInfo createInfo,
-                                                   const char* debugName = nullptr) const;
+  VulkanImageView createImageView(VkImageViewType type,
+                                  VkFormat format,
+                                  VkImageAspectFlags aspectMask,
+                                  uint32_t baseLevel,
+                                  uint32_t numLevels = VK_REMAINING_MIP_LEVELS,
+                                  uint32_t baseLayer = 0,
+                                  uint32_t numLayers = 1,
+                                  const char* debugName = nullptr) const;
+  VulkanImageView createImageView(VulkanImageViewCreateInfo createInfo,
+                                  const char* debugName = nullptr) const;
   void generateMipmap(VkCommandBuffer commandBuffer) const;
 
   /**
@@ -224,6 +224,9 @@ class VulkanImage final {
                         VkPipelineStageFlags srcStageMask,
                         VkPipelineStageFlags dstStageMask,
                         const VkImageSubresourceRange& subresourceRange) const;
+  void clearColorImage(VkCommandBuffer commandBuffer,
+                       const igl::Color& rgba,
+                       const VkImageSubresourceRange* subresourceRange = nullptr) const;
 
   VkImageAspectFlags getImageAspectFlags() const;
 
@@ -237,7 +240,6 @@ class VulkanImage final {
   VkImage vkImage_ = VK_NULL_HANDLE;
   VkImageUsageFlags usageFlags_ = 0;
   VkDeviceMemory vkMemory_ = VK_NULL_HANDLE;
-  VmaAllocationCreateInfo vmaAllocInfo_ = {};
   VmaAllocation vmaAllocation_ = VK_NULL_HANDLE;
   VkFormatProperties formatProperties_{};
   void* mappedPtr_ = nullptr;

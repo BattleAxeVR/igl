@@ -173,20 +173,26 @@ Result Texture::create(const TextureDesc& desc) {
     aspect = VK_IMAGE_ASPECT_COLOR_BIT;
   }
 
-  std::unique_ptr<VulkanImageView> imageView = image->createImageView(imageViewType,
-                                                                      vkFormat,
-                                                                      aspect,
-                                                                      0,
-                                                                      VK_REMAINING_MIP_LEVELS,
-                                                                      0,
-                                                                      arrayLayerCount,
-                                                                      debugNameImageView.c_str());
+  VulkanImageView imageView = image->createImageView(imageViewType,
+                                                     vkFormat,
+                                                     aspect,
+                                                     0,
+                                                     VK_REMAINING_MIP_LEVELS,
+                                                     0,
+                                                     arrayLayerCount,
+                                                     debugNameImageView.c_str());
 
-  if (!IGL_VERIFY(imageView)) {
+  if (!IGL_VERIFY(imageView.valid())) {
     return Result(Result::Code::InvalidOperation, "Cannot create VulkanImageView");
   }
 
   texture_ = ctx.createTexture(std::move(image), std::move(imageView), desc.debugName.c_str());
+
+  if (aspect == VK_IMAGE_ASPECT_COLOR_BIT && samples == VK_SAMPLE_COUNT_1_BIT &&
+      (usageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0) {
+    // always clear color attachments by default
+    clearColorTexture({0, 0, 0, 1});
+  }
 
   return Result();
 }
@@ -279,11 +285,11 @@ VkImageView Texture::getVkImageViewForFramebuffer(uint32_t mipLevel,
                                                   FramebufferMode mode) const {
   const bool isStereo = mode == FramebufferMode::Stereo;
   const auto index = mipLevel * getNumVkLayers() + layer;
-  std::vector<std::unique_ptr<VulkanImageView>>& imageViews =
-      isStereo ? imageViewsForFramebufferStereo_ : imageViewsForFramebufferMono_;
+  std::vector<VulkanImageView>& imageViews = isStereo ? imageViewsForFramebufferStereo_
+                                                      : imageViewsForFramebufferMono_;
 
-  if (index < imageViews.size() && imageViews[index]) {
-    return imageViews[index]->getVkImageView();
+  if (index < imageViews.size() && imageViews[index].valid()) {
+    return imageViews[index].getVkImageView();
   }
 
   if (index >= imageViews.size()) {
@@ -301,7 +307,7 @@ VkImageView Texture::getVkImageViewForFramebuffer(uint32_t mipLevel,
       isStereo ? VK_REMAINING_ARRAY_LAYERS : 1u,
       "Image View: igl/vulkan/Texture.cpp: Texture::getVkImageViewForFramebuffer()");
 
-  return imageViews[index]->vkImageView_;
+  return imageViews[index].vkImageView_;
 }
 
 VkImage Texture::getVkImage() const {
@@ -314,6 +320,20 @@ bool Texture::isSwapchainTexture() const {
 
 uint32_t Texture::getNumVkLayers() const {
   return desc_.type == TextureType::Cube ? 6u : static_cast<uint32_t>(desc_.numLayers);
+}
+
+void Texture::clearColorTexture(const igl::Color& rgba) {
+  if (!texture_) {
+    return;
+  }
+
+  igl::vulkan::VulkanImage& img = texture_->getVulkanImage();
+
+  const auto& wrapper = img.ctx_.immediate_->acquire();
+
+  img.clearColorImage(wrapper.cmdBuf_, rgba);
+
+  img.ctx_.immediate_->submit(wrapper);
 }
 
 } // namespace vulkan
