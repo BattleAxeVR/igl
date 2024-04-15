@@ -20,7 +20,7 @@
 #include <igl/opengl/Texture.h>
 #include <tuple>
 
-#define CREATE_GL_ES_WINDOW 1
+#define CREATE_GL_ES_WINDOW 0
 
 #if CREATE_GL_ES_WINDOW
 #include "gfxwrapper_opengl.h"
