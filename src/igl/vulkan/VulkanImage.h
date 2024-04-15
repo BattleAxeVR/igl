@@ -37,6 +37,7 @@ struct VulkanImageCreateInfo {
  */
 class VulkanImage final {
  public:
+  explicit VulkanImage() = default;
   /**
    * @brief Constructs a `VulkanImage` object from a `VkImage` object. If a debug name is provided,
    * the constructor will assign it to the `VkImage` object. No other Vulkan functions are called
@@ -158,18 +159,18 @@ class VulkanImage final {
    * On Windows, the exported `HANDLE` will be stored in `exportedMemoryHandle_`.
    * On Linux/Android, the exported file descriptor will be stored in `exportedFd_`.
    */
-  static std::shared_ptr<VulkanImage> createWithExportMemory(const VulkanContext& ctx,
-                                                             VkDevice device,
-                                                             VkExtent3D extent,
-                                                             VkImageType type,
-                                                             VkFormat format,
-                                                             uint32_t mipLevels,
-                                                             uint32_t arrayLayers,
-                                                             VkImageTiling tiling,
-                                                             VkImageUsageFlags usageFlags,
-                                                             VkImageCreateFlags createFlags,
-                                                             VkSampleCountFlagBits samples,
-                                                             const char* debugName = nullptr);
+  static VulkanImage createWithExportMemory(const VulkanContext& ctx,
+                                            VkDevice device,
+                                            VkExtent3D extent,
+                                            VkImageType type,
+                                            VkFormat format,
+                                            uint32_t mipLevels,
+                                            uint32_t arrayLayers,
+                                            VkImageTiling tiling,
+                                            VkImageUsageFlags usageFlags,
+                                            VkImageCreateFlags createFlags,
+                                            VkSampleCountFlagBits samples,
+                                            const char* debugName = nullptr);
 #endif // IGL_PLATFORM_WIN || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
 
   ~VulkanImage();
@@ -177,9 +178,19 @@ class VulkanImage final {
   VulkanImage(const VulkanImage&) = delete;
   VulkanImage& operator=(const VulkanImage&) = delete;
 
+  VulkanImage(VulkanImage&& other) {
+    *this = std::move(other);
+  }
+  VulkanImage& operator=(VulkanImage&& other);
+
   VkImage getVkImage() const {
     return vkImage_;
   }
+
+  /**
+   * @brief Returns true if the object is valid
+   */
+  bool valid() const;
 
   VkImageUsageFlags getVkImageUsageFlags() const {
     return usageFlags_;
@@ -234,7 +245,7 @@ class VulkanImage final {
   static bool isStencilFormat(VkFormat format);
 
  public:
-  const VulkanContext& ctx_;
+  const VulkanContext* ctx_ = nullptr;
   VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
   VkImage vkImage_ = VK_NULL_HANDLE;
@@ -300,6 +311,8 @@ class VulkanImage final {
 
   // No-op in all builds except DEBUG
   void setName(const std::string& name) noexcept;
+
+  void destroy();
 };
 
 } // namespace vulkan
