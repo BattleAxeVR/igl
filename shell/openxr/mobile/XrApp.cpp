@@ -712,14 +712,16 @@ void XrApp::createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device
   const size_t numViewsPerSwapchain = useSinglePassStereo_ ? kNumViews : 1;
   swapchainProviders_.reserve(numSwapchainProviders);
 
-  for (size_t i = 0; i < numSwapchainProviders; i++) {
-    swapchainProviders_.emplace_back(
-        std::make_unique<XrSwapchainProvider>(impl_->createSwapchainProviderImpl(),
-                                              platform_,
-                                              session_,
-                                              viewports_[i],
-                                              numViewsPerSwapchain));
-    swapchainProviders_.back()->initialize();
+  for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
+    for (size_t view = 0; view < kNumViews; view++) {
+      swapchainProviders_.emplace_back(
+                    std::make_unique<XrSwapchainProvider>(impl_->createSwapchainProviderImpl(),
+                                                          platform_,
+                                                          session_,
+                                                          viewports_[view],
+                                                          numViewsPerSwapchain));
+      swapchainProviders_.back()->initialize();
+    }
   }
 }
 
