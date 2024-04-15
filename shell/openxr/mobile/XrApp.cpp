@@ -638,8 +638,8 @@ bool XrApp::enumerateViewConfigurations() {
       (void)view; // doesn't compile in release for unused variable
 
 #if ENABLE_CLOUDXR
-        view.recommendedImageRectWidth = 1920;
-        view.recommendedImageRectHeight = 1920;
+        view.recommendedImageRectWidth = 2208;
+        view.recommendedImageRectHeight = 2208;
 #endif
 
         IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d",
