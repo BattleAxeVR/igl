@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
 #include <fmt/core.h>
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/Texture.h>
@@ -42,7 +44,7 @@ void enumerateSwapchainImages(
   outVulkanTextures.reserve(numImages);
 
   for (uint32_t i = 0; i < numImages; i++) {
-    auto image = std::make_unique<igl::vulkan::VulkanImage>(
+    auto image = igl::vulkan::VulkanImage(
         ctx,
         ctx.device_->device_,
         images[i].image,
@@ -56,16 +58,16 @@ void enumerateSwapchainImages(
         numViews);
 
     auto imageView =
-        image->createImageView(numViews > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
-                               (VkFormat)format,
-                               aspectMask,
-                               0,
-                               VK_REMAINING_MIP_LEVELS,
-                               0,
-                               numViews,
-                               fmt::format("Image View: swapchain #{}", i).c_str());
+        image.createImageView(numViews > 1 ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
+                              (VkFormat)format,
+                              aspectMask,
+                              0,
+                              VK_REMAINING_MIP_LEVELS,
+                              0,
+                              numViews,
+                              fmt::format("Image View: swapchain #{}", i).c_str());
     outVulkanTextures.emplace_back(
-        std::make_shared<igl::vulkan::VulkanTexture>(ctx, std::move(image), std::move(imageView)));
+        std::make_shared<igl::vulkan::VulkanTexture>(std::move(image), std::move(imageView)));
   }
 }
 

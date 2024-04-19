@@ -796,7 +796,8 @@ void VulkanImage::clearColorImage(VkCommandBuffer commandBuffer,
                                   const igl::Color& rgba,
                                   const VkImageSubresourceRange* subresourceRange) const {
   IGL_ASSERT(usageFlags_ & VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-  IGL_ASSERT(!isDepthFormat_);
+  IGL_ASSERT(samples_ == VK_SAMPLE_COUNT_1_BIT);
+  IGL_ASSERT(!isDepthOrStencilFormat_);
 
   const VkImageLayout oldLayout = imageLayout_;
 
@@ -827,9 +828,14 @@ void VulkanImage::clearColorImage(VkCommandBuffer commandBuffer,
                                  1,
                                  subresourceRange ? subresourceRange : &defaultRange);
 
+  const VkImageLayout newLayout =
+      oldLayout == VK_IMAGE_LAYOUT_UNDEFINED
+          ? (usageFlags_ & VK_IMAGE_USAGE_SAMPLED_BIT ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                                                      : VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
+          : oldLayout;
+
   transitionLayout(commandBuffer,
-                   oldLayout == VK_IMAGE_LAYOUT_UNDEFINED ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-                                                          : oldLayout,
+                   newLayout,
                    VK_PIPELINE_STAGE_TRANSFER_BIT,
                    VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
                    subresourceRange ? *subresourceRange : defaultRange);
