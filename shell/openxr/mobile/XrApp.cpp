@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
 #include <shell/openxr/XrApp.h>
 
 #include <algorithm>
@@ -94,10 +96,10 @@ inline int64_t currentTimeInNs() {
 XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl) :
   requiredExtensions_({
 #if USE_VULKAN_BACKEND
-    XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
+      XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
 #endif // USE_VULKAN_BACKEND
 #if !defined(XR_USE_PLATFORM_MACOS) && !defined(IGL_CMAKE_BUILD)
-        XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
+      XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
 #endif
     //XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
   }),

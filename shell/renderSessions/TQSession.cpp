@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
 #include <IGLU/simdtypes/SimdTypes.h>
 #include <igl/NameHandle.h>
 #include <igl/ShaderCreator.h>
@@ -290,10 +292,10 @@ void TQSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
       // @fb-only
       // @fb-only
     // @fb-only
-        if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
-      _fragmentUniformDescriptors.back().location =
-          _pipelineState->getIndexByName("color", igl::ShaderStage::Fragment);
-    }
+      if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
+        _fragmentUniformDescriptors.back().location =
+            _pipelineState->getIndexByName("color", igl::ShaderStage::Fragment);
+      }
     _fragmentUniformDescriptors.back().type = UniformType::Float3;
     _fragmentUniformDescriptors.back().offset = offsetof(FragmentFormat, color);
   }

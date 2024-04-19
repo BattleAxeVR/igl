@@ -15,13 +15,11 @@ namespace igl {
 
 namespace vulkan {
 
-VulkanTexture::VulkanTexture(const VulkanContext& ctx,
-                             std::unique_ptr<VulkanImage> image,
-                             VulkanImageView&& imageView) :
-  ctx_(ctx), image_(std::move(image)), imageView_(std::move(imageView)) {
+VulkanTexture::VulkanTexture(VulkanImage&& image, VulkanImageView&& imageView) :
+  image_(std::move(image)), imageView_(std::move(imageView)) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
 
-  IGL_ASSERT(image_);
+  IGL_ASSERT(image_.valid());
   IGL_ASSERT(imageView_.valid());
 }
 

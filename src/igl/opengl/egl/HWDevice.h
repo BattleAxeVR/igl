@@ -28,7 +28,8 @@ class HWDevice final : public ::igl::opengl::HWDevice {
   std::unique_ptr<IContext> createOffscreenContext(RenderingAPI api,
                                                    size_t width,
                                                    size_t height,
-                                                   Result* outResult) const;
+                                                   Result* outResult) const override;
+
   std::unique_ptr<opengl::Device> createWithContext(std::unique_ptr<IContext> context,
                                                     Result* outResult) const override;
 };
