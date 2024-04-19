@@ -79,6 +79,7 @@ if(ANDROID)
     message(FATAL_ERROR "Android NDK not found, check environment variables ANDROID_NDK and NDK_ROOT")
   endif()
   
+    target_include_directories(IGLShellOpenXR_AndroidOpenGLES PUBLIC "${IGL_ROOT_DIR}/../meta_openxr_preview")
     target_include_directories(IGLShellOpenXR_AndroidOpenGLES PUBLIC "${NDK_PATH}/sources/android/native_app_glue")
 	target_sources(IGLShellOpenXR_AndroidOpenGLES PUBLIC ../openxr/mobile/opengl/gfxwrapper_opengl.c)
 	
