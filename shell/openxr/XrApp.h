@@ -209,6 +209,16 @@ public:
       return bodyTrackingFBSupported_;
   }
 
+  bool isMetaFullBodyTrackingSupported() const
+  {
+    return metaFullBodyTrackingSupported_;
+  }
+
+  bool isMetaBodyTrackingFidelitySupported() const
+  {
+    return metaBodyTrackingFidelitySupported_;
+  }
+
   bool isEyeTrackingSocialFBSupported() const
   {
       return eyeTrackingSocialFBSupported_;
@@ -312,6 +322,9 @@ private:
   bool touchControllerProximitySupported_ = false;
 
   bool bodyTrackingFBSupported_ = false;
+  bool metaFullBodyTrackingSupported_ = false;
+  bool metaBodyTrackingFidelitySupported_ = false;
+
   bool eyeTrackingSocialFBSupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;

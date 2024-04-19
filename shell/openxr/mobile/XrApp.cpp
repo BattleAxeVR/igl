@@ -268,6 +268,24 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
   }
 
+#if 0
+  metaFullBodyTrackingSupported_ = checkExtensionSupported(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
+  IGL_LOG_INFO("Meta Full Body Tracking is %s", metaFullBodyTrackingSupported_ ? "supported" : "not supported");
+
+  if (metaFullBodyTrackingSupported_ &&
+    checkNeedRequiredExtension(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
+  }
+
+  metaBodyTrackingFidelitySupported_ = checkExtensionSupported(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
+  IGL_LOG_INFO("Meta Body Tracking Fidelity is %s", metaBodyTrackingFidelitySupported_ ? "supported" : "not supported");
+
+  if (metaBodyTrackingFidelitySupported_ &&
+    checkNeedRequiredExtension(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
+  }
+#endif
+
   eyeTrackingSocialFBSupported_ = checkExtensionSupported(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
   IGL_LOG_INFO("FB Eye Tracking Social is %s", eyeTrackingSocialFBSupported_ ? "supported" : "not supported");
 
