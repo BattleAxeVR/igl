@@ -260,6 +260,22 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
   }
 
+  bodyTrackingFBSupported_ = checkExtensionSupported(XR_FB_BODY_TRACKING_EXTENSION_NAME);
+  IGL_LOG_INFO("FB Body Tracking is %s", bodyTrackingFBSupported_ ? "supported" : "not supported");
+
+  if (bodyTrackingFBSupported_ &&
+    checkNeedRequiredExtension(XR_FB_BODY_TRACKING_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
+  }
+
+  eyeTrackingSocialFBSupported_ = checkExtensionSupported(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
+  IGL_LOG_INFO("FB Eye Tracking Social is %s", eyeTrackingSocialFBSupported_ ? "supported" : "not supported");
+
+  if (eyeTrackingSocialFBSupported_ &&
+    checkNeedRequiredExtension(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
+  }
+
   return true;
 }
 
