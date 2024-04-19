@@ -53,6 +53,34 @@
 #include <shell/openxr/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
+
+#define ENABLE_META_OPENXR_FEATURES 0
+
+#if ENABLE_META_OPENXR_FEATURES
+#include <openxr/extx1_event_channel.h>
+#include <openxr/fb_face_tracking2.h>
+#include <openxr/fb_scene.h>
+#include <openxr/fb_spatial_entity.h>
+
+#include <openxr/meta_automatic_layer_filter.h>
+
+#include <openxr/meta_body_tracking_calibration.h>
+#include <openxr/meta_body_tracking_fidelity.h>
+#include <openxr/meta_body_tracking_full_body.h>
+
+#include <openxr/meta_detached_controllers.h>
+#include <openxr/meta_environment_depth.h>
+
+#include <openxr/meta_hand_tracking_wide_motion_mode.h>
+#include <openxr/meta_recommended_layer_resolution.h>
+#include <openxr/meta_simultaneous_hands_and_controllers.h>
+
+#include <openxr/meta_spatial_entity_mesh.h>
+#include <openxr/metax1_hand_tracking_microgestures.h>
+
+#include <openxr/openxr_extension_helpers.h>
+#endif
+
 namespace igl::shell::openxr {
 
 constexpr auto kAppName = "IGL Shell OpenXR";
@@ -268,7 +296,7 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
   }
 
-#if 0
+#if ENABLE_META_OPENXR_FEATURES
   metaFullBodyTrackingSupported_ = checkExtensionSupported(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
   IGL_LOG_INFO("Meta Full Body Tracking is %s", metaFullBodyTrackingSupported_ ? "supported" : "not supported");
 
