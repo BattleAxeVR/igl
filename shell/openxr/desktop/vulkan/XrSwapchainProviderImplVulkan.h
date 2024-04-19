@@ -22,7 +22,9 @@ namespace igl::shell::openxr::desktop {
 class XrSwapchainProviderImplVulkan final : public impl::XrSwapchainProviderImpl {
  public:
   int64_t preferredColorFormat() const final {
-    return VK_FORMAT_R8G8B8A8_UNORM;
+    //return VK_FORMAT_R8G8B8A8_UNORM;
+    //return VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+    return VK_FORMAT_R16G16B16A16_SFLOAT;
   }
   int64_t preferredDepthFormat() const final {
     return VK_FORMAT_D24_UNORM_S8_UINT;
