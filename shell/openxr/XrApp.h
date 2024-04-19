@@ -204,7 +204,17 @@ public:
   bool isSharpeningEnabled() const;
   void setSharpeningEnabled(const bool enabled);
 
- private:
+  bool isBodyTrackingFBSupported() const
+  {
+      return bodyTrackingFBSupported_;
+  }
+
+  bool isEyeTrackingSocialFBSupported() const
+  {
+      return eyeTrackingSocialFBSupported_;
+  }
+
+private:
   static constexpr uint32_t kNumViews = 2; // 2 for stereo
 
   void queryCurrentRefreshRate();
@@ -300,6 +310,9 @@ public:
   bool touchControllersSupported_ = false;
   bool touchProControllersSupported_ = false;
   bool touchControllerProximitySupported_ = false;
+
+  bool bodyTrackingFBSupported_ = false;
+  bool eyeTrackingSocialFBSupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;
 
