@@ -313,6 +313,14 @@ bool XrApp::checkExtensions() {
     checkNeedRequiredExtension(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME)) {
     requiredExtensions_.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
   }
+
+  simultaneousHandsAndControllersSupported_ = checkExtensionSupported(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
+  IGL_LOG_INFO("Simultaneous Hands and Controllers are %s", simultaneousHandsAndControllersSupported_ ? "supported" : "not supported");
+
+  if (simultaneousHandsAndControllersSupported_ &&
+    checkNeedRequiredExtension(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
+  }
 #endif
 
   eyeTrackingSocialFBSupported_ = checkExtensionSupported(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
@@ -425,7 +433,30 @@ bool XrApp::createSystem() {
     return false;
   }
 
+#if ENABLE_META_OPENXR_FEATURES
+  XrSystemPropertiesBodyTrackingFullBodyMETA meta_full_body_tracking_properties{ XR_TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META };
+
+  if (metaFullBodyTrackingSupported_)
+  {
+      meta_full_body_tracking_properties.next = systemProps_.next;
+      systemProps_.next = &meta_full_body_tracking_properties;
+  }
+
+  XrSystemSimultaneousHandsAndControllersPropertiesMETA simultaneous_properties = { XR_TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META };
+
+  if (simultaneousHandsAndControllersSupported_)
+  {
+      simultaneous_properties.next = systemProps_.next;
+      systemProps_.next = &simultaneous_properties;
+  }
+#endif
+
   XR_CHECK(xrGetSystemProperties(instance_, systemId_, &systemProps_));
+
+#if ENABLE_META_OPENXR_FEATURES
+  metaFullBodyTrackingSupported_ = meta_full_body_tracking_properties.supportsFullBodyTracking;
+  simultaneousHandsAndControllersSupported_ = simultaneous_properties.supportsSimultaneousHandsAndControllers;
+#endif
 
   IGL_LOG_INFO(
       "System Properties: Name=%s VendorId=%x", systemProps_.systemName, systemProps_.vendorId);
@@ -436,6 +467,7 @@ bool XrApp::createSystem() {
   IGL_LOG_INFO("System Tracking Properties: OrientationTracking=%s PositionTracking=%s",
                systemProps_.trackingProperties.orientationTracking ? "True" : "False",
                systemProps_.trackingProperties.positionTracking ? "True" : "False");
+
   return true;
 }
 

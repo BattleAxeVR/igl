@@ -206,7 +206,7 @@ public:
 
   bool isBodyTrackingFBSupported() const
   {
-      return bodyTrackingFBSupported_;
+    return bodyTrackingFBSupported_;
   }
 
   bool isMetaFullBodyTrackingSupported() const
@@ -221,7 +221,12 @@ public:
 
   bool isEyeTrackingSocialFBSupported() const
   {
-      return eyeTrackingSocialFBSupported_;
+    return eyeTrackingSocialFBSupported_;
+  }
+
+  bool areSimultaneousHandsAndControllersSupported() const
+  {
+    return simpleControllersSupported_;
   }
 
 private:
@@ -324,6 +329,8 @@ private:
   bool bodyTrackingFBSupported_ = false;
   bool metaFullBodyTrackingSupported_ = false;
   bool metaBodyTrackingFidelitySupported_ = false;
+
+  bool simultaneousHandsAndControllersSupported_ = false;
 
   bool eyeTrackingSocialFBSupported_ = false;
 
