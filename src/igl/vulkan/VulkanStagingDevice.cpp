@@ -171,25 +171,27 @@ VulkanStagingDevice::MemoryRegion VulkanStagingDevice::nextFreeBlock(VkDeviceSiz
   IGL_LOG_INFO("nextFreeBlock() with %u bytes, aligned %u bytes\n", size, requestedAlignedSize);
 #endif
 
+  VkDeviceSize allocatedSize = 0;
   // at this point, there should be a free region that can fit the requested size
   auto regionItr = regions_.begin();
   while (regionItr != regions_.end()) {
     // if requested size is available or if contiguous memory is not requested
     if (regionItr->size >= requestedAlignedSize || (!contiguous)) {
+      allocatedSize = std::min(regionItr->size, requestedAlignedSize);
       break;
     }
     regionItr++;
   }
 
-  IGL_ASSERT(regionItr != regions_.end());
+  IGL_ASSERT(allocatedSize);
 
-  if (regionItr->size >= requestedAlignedSize) {
-    const uint32_t newSize = regionItr->size - requestedAlignedSize;
-    const uint32_t newOffset = regionItr->offset + requestedAlignedSize;
+  if (allocatedSize) {
+    const uint32_t newSize = regionItr->size - allocatedSize;
+    const uint32_t newOffset = regionItr->offset + allocatedSize;
     const uint32_t stagingBufferIndex = regionItr->stagingBufferIndex;
 
     const MemoryRegion allocatedRegion = {regionItr->offset,
-                                          requestedAlignedSize,
+                                          allocatedSize,
                                           regionItr->alignedSize,
                                           VulkanImmediateCommands::SubmitHandle(),
                                           stagingBufferIndex};
@@ -207,7 +209,7 @@ VulkanStagingDevice::MemoryRegion VulkanStagingDevice::nextFreeBlock(VkDeviceSiz
       }
     };
 
-    freeStagingBufferSize_ -= requestedAlignedSize;
+    freeStagingBufferSize_ -= allocatedSize;
     return allocatedRegion;
   }
 
@@ -600,7 +602,7 @@ void VulkanStagingDevice::allocateStagingBuffer(VkDeviceSize minimumSize) {
   IGL_ASSERT(minimumSize <= maxStagingBufferSize_);
 
 #if IGL_VULKAN_DEBUG_STAGING_DEVICE
-  IGL_LOG_INFO("Growing staging buffer from %u to %u bytes\n", stagingBufferSize_, minimumSize);
+  IGL_LOG_INFO("Allocating a new staging buffer of size %u bytes\n", minimumSize);
 #endif
 
   const auto stagingBufferSize = minimumSize;
