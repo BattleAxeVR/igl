@@ -55,7 +55,7 @@
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
 
 #ifndef ENABLE_META_OPENXR_FEATURES
-#define ENABLE_META_OPENXR_FEATURES 0
+#define ENABLE_META_OPENXR_FEATURES 1
 #endif
 
 #if ENABLE_META_OPENXR_FEATURES
