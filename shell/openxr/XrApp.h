@@ -229,6 +229,16 @@ public:
     return simpleControllersSupported_;
   }
 
+  bool areHTCViveFocus3ControllersSupported() const
+  {
+    return htcViveFocus3ControllersSupported_;
+  }
+
+  bool areByteDanceControllersSupported() const
+  {
+    return byteDanceControllersSupported_;
+  }
+
 private:
   static constexpr uint32_t kNumViews = 2; // 2 for stereo
 
@@ -331,8 +341,10 @@ private:
   bool metaBodyTrackingFidelitySupported_ = false;
 
   bool simultaneousHandsAndControllersSupported_ = false;
-
   bool eyeTrackingSocialFBSupported_ = false;
+
+  bool htcViveFocus3ControllersSupported_ = false;
+  bool byteDanceControllersSupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;
 

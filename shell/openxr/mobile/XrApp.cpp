@@ -331,6 +331,22 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
   }
 
+  htcViveFocus3ControllersSupported_ = checkExtensionSupported(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  IGL_LOG_INFO("HTC Vive Focus 3 Controllers are %s", htcViveFocus3ControllersSupported_ ? "supported" : "not supported");
+
+  if (htcViveFocus3ControllersSupported_ &&
+    checkNeedRequiredExtension(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  }
+
+  byteDanceControllersSupported_ = checkExtensionSupported(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  IGL_LOG_INFO("ByteDance (Pico 3/4) Controllers are %s", byteDanceControllersSupported_ ? "supported" : "not supported");
+
+  if (byteDanceControllersSupported_ &&
+    checkNeedRequiredExtension(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME)) {
+    requiredExtensions_.push_back(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  }
+
   return true;
 }
 
