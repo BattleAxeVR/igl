@@ -1417,6 +1417,201 @@ void XrApp::createActions() {
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
+    if (htcViveFocus3ControllersSupported_)
+    {
+        XrPath htcInteractionProfilePath;
+        xrStringToPath(instance_, "/interaction_profiles/htc/vive_focus3_controller", &htcInteractionProfilePath);
+
+        std::vector<XrActionSuggestedBinding> htc_vive_focus3_bindings{{
+                                                                                {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                                {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                                {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                                {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                                {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                                {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                                {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                                {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                                {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                                {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                                {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                                {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                                {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                                {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                                {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                                {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                                {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                                {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                                {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                                {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                                {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                                {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                                {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                                {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                                {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                                {xr_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
+                                                                                {xr_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
+                                                                                {xr_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
+                                                                                {xr_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
+                                                                                //{xr_inputs_.pinchValueAction, pinchValuePath[LEFT]},
+                                                                                //{xr_inputs_.pinchValueAction, pinchValuePath[RIGHT]},
+                                                                                //{xr_inputs_.pinchForceAction, pinchForcePath[LEFT]},
+                                                                                //{xr_inputs_.pinchForceAction, pinchForcePath[RIGHT]},-
+                                                                                //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                                //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                                //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                                //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                                //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                                //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
+                                                                                {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                                {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                                {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                                {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                                {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                                {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                                {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                                {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                                {xr_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                                {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+
+        XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+        suggestedBindings.interactionProfile = htcInteractionProfilePath;
+        suggestedBindings.suggestedBindings = htc_vive_focus3_bindings.data();
+        suggestedBindings.countSuggestedBindings = (uint32_t)htc_vive_focus3_bindings.size();
+        XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
+    }
+
+    if (byteDanceControllersSupported_)
+    {
+        const bool is_pico3 = true;
+
+        if (is_pico3)
+        {
+            XrPath pico_neo3_interaction_profile_path;
+            xrStringToPath(instance_, "/interaction_profiles/pico/neo3_controller", &pico_neo3_interaction_profile_path);
+
+            std::vector<XrActionSuggestedBinding> pico_neo3_bindings{{
+                                                                             {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                             {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                             {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                             {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                             {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                             {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                             {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                             {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                             {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                             {xr_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
+                                                                             {xr_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
+                                                                             {xr_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
+                                                                             {xr_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
+                                                                             //{xr_inputs_.pinchValueAction, pinchValuePath[LEFT]},
+                                                                             //{xr_inputs_.pinchValueAction, pinchValuePath[RIGHT]},
+                                                                             //{xr_inputs_.pinchForceAction, pinchForcePath[LEFT]},
+                                                                             //{xr_inputs_.pinchForceAction, pinchForcePath[RIGHT]},-
+                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                             //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                             //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                             //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                             //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
+                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+
+            XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+            suggestedBindings.interactionProfile = pico_neo3_interaction_profile_path;
+            suggestedBindings.suggestedBindings = pico_neo3_bindings.data();
+            suggestedBindings.countSuggestedBindings = (uint32_t)pico_neo3_bindings.size();
+            XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
+        }
+        else
+        {
+            XrPath pico_neo4_interaction_profile_path;
+            xrStringToPath(instance_, "/interaction_profiles/bytedance/pico4_controller", &pico_neo4_interaction_profile_path);
+
+            std::vector<XrActionSuggestedBinding> pico_neo4_bindings{{
+                                                                             {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                             {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                             {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                             {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                             {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                             {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                             {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                             {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                             {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                             {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                             {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                             {xr_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
+                                                                             {xr_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
+                                                                             {xr_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
+                                                                             {xr_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
+                                                                             //{xr_inputs_.pinchValueAction, pinchValuePath[LEFT]},
+                                                                             //{xr_inputs_.pinchValueAction, pinchValuePath[RIGHT]},
+                                                                             //{xr_inputs_.pinchForceAction, pinchForcePath[LEFT]},
+                                                                             //{xr_inputs_.pinchForceAction, pinchForcePath[RIGHT]},-
+                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                             //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                             //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                             //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                             //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                             //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
+                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                             {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                             {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+
+            XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
+            suggestedBindings.interactionProfile = pico_neo4_interaction_profile_path;
+            suggestedBindings.suggestedBindings = pico_neo4_bindings.data();
+            suggestedBindings.countSuggestedBindings = (uint32_t)pico_neo4_bindings.size();
+            XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
+        }
+
+
+    }
+
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
     actionSpaceInfo.action = xr_inputs_.gripPoseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
