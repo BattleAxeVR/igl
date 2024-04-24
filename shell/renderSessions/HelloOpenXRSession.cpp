@@ -26,7 +26,7 @@
 #endif
 
 #ifndef ENABLE_OBOE
-#define ENABLE_OBOE 1
+#define ENABLE_OBOE 0
 #endif
 
 #if ENABLE_CLOUDXR
