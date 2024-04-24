@@ -68,6 +68,63 @@ class XrAppImpl;
 
 namespace igl::shell::openxr {
 
+typedef enum {
+    UNKNOWN_,
+
+    META_QUEST_1_,
+    META_QUEST_2_,
+    META_QUEST_3_,
+    META_QUEST_PRO_,
+
+    PICO_NEO_3_,
+    PICO_NEO_3_EYE_,
+    PICO_NEO_4_,
+    PICO_NEO_4_EYE_,
+
+    HTC_FOCUS_3_,
+    HTC_VIVE_XR_ELITE_,
+
+    HEADSET_TYPE_COUNT
+} HeadsetType;
+
+
+static HeadsetType compute_headset_type(const std::string& system_name, const uint64_t systemID, const uint vendorID)
+{
+    const bool is_meta_headset = (vendorID == 10291);
+    const bool is_pico_headset = (vendorID == 42);
+    const bool is_htc_headset = (vendorID == 2996);
+
+    if (is_meta_headset) {
+        if (system_name == "Oculus Quest") {
+            return HeadsetType::META_QUEST_1_;
+        } else if (system_name == "Oculus Quest2") {
+            return HeadsetType::META_QUEST_2_;
+        } else if (system_name == "Meta Quest 3") {
+            return HeadsetType::META_QUEST_3_;
+        } else if (system_name == "Meta Quest Pro") {
+            return HeadsetType::META_QUEST_PRO_;
+        }
+    } else if (is_pico_headset) {
+        if (system_name == "Pico Neo 3" || (system_name == "PICO HMD")) {
+            return HeadsetType::PICO_NEO_3_;
+        } else if (system_name == "Pico Neo 3 Pro Eye") {
+            return HeadsetType::PICO_NEO_3_EYE_;
+        } else if (system_name == "PICO 4") {
+            return HeadsetType::PICO_NEO_4_;
+        } else if (system_name == "PICO 4 Pro") {
+            return HeadsetType::PICO_NEO_4_EYE_;
+        }
+    } else if (is_htc_headset) {
+        if (system_name == "WAVE:EYA") {
+            return HeadsetType::HTC_VIVE_XR_ELITE_;
+        } else if (system_name == "WAVE:SUE") {
+            return HeadsetType::HTC_FOCUS_3_;
+        }
+    }
+
+    return HeadsetType::UNKNOWN_;
+}
+
 struct XrInputState
 {
     std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
@@ -239,7 +296,14 @@ public:
     return byteDanceControllersSupported_;
   }
 
+  HeadsetType getHeadsetType() const
+  {
+      return headsetType_;
+  }
+
 private:
+  HeadsetType headsetType_ = HeadsetType::UNKNOWN_;
+
   static constexpr uint32_t kNumViews = 2; // 2 for stereo
 
   void queryCurrentRefreshRate();
@@ -251,6 +315,7 @@ private:
   void* nativeWindow_ = nullptr;
   bool resumed_ = false;
   bool sessionActive_ = false;
+
 
   std::vector<XrExtensionProperties> extensions_;
   std::vector<const char*> requiredExtensions_;

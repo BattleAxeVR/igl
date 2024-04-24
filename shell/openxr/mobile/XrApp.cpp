@@ -973,6 +973,8 @@ void XrApp::createSpaces() {
 
 void XrApp::createActions() {
 
+    headsetType_ = compute_headset_type(systemProps_.systemName, systemProps_.systemId, systemProps_.vendorId);
+
     XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
     strcpy(actionSetInfo.actionSetName, "gameplay");
     strcpy(actionSetInfo.localizedActionSetName, "Gameplay");
@@ -1470,9 +1472,10 @@ void XrApp::createActions() {
 
     if (byteDanceControllersSupported_)
     {
-        const bool is_pico3 = true;
+        const bool is_pico_3 = ((headsetType_ == HeadsetType::PICO_NEO_3_) || (headsetType_ == HeadsetType::PICO_NEO_3_EYE_));
+        const bool is_pico_4 = ((headsetType_ == HeadsetType::PICO_NEO_4_) || (headsetType_ == HeadsetType::PICO_NEO_4_EYE_));
 
-        if (is_pico3)
+        if (is_pico_3)
         {
             XrPath pico_neo3_interaction_profile_path;
             xrStringToPath(instance_, "/interaction_profiles/pico/neo3_controller", &pico_neo3_interaction_profile_path);
@@ -1521,7 +1524,7 @@ void XrApp::createActions() {
             suggestedBindings.countSuggestedBindings = (uint32_t)pico_neo3_bindings.size();
             XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
         }
-        else
+        else if (is_pico_4)
         {
             XrPath pico_neo4_interaction_profile_path;
             xrStringToPath(instance_, "/interaction_profiles/bytedance/pico4_controller", &pico_neo4_interaction_profile_path);
