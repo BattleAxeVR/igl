@@ -240,7 +240,7 @@ public:
   bool enumerateViewConfigurations();
   void enumerateReferenceSpaces();
   void enumerateBlendModes();
-  void createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device);
+  void updateSwapchainProviders();
   void handleSessionStateChanges(XrSessionState state);
   void createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr);
 
@@ -353,6 +353,7 @@ private:
   bool useSinglePassStereo_ = false;
   bool useQuadLayerComposition_ = false;
   uint32_t numQuadLayersPerView_ = 1;
+  igl::shell::QuadLayerParams quadLayersParams_;
 
   // If useSinglePassStereo_ is true, only one XrSwapchainProvider will be created.
   std::vector<std::unique_ptr<XrSwapchainProvider>> swapchainProviders_;
