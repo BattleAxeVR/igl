@@ -238,7 +238,7 @@ bool XrApp::createInstance() {
   appInfo.applicationVersion = 0;
   strcpy(appInfo.engineName, kEngineName);
   appInfo.engineVersion = 0;
-  appInfo.apiVersion = XR_CURRENT_API_VERSION;
+  appInfo.apiVersion = XR_MAKE_VERSION(1, 0, 34);
 
   XrInstanceCreateInfo instanceCreateInfo = {
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
@@ -671,22 +671,26 @@ void XrApp::enumerateBlendModes() {
                additiveBlendingSupported_ ? "supported" : "not supported");
 }
 
-void XrApp::createSwapchainProviders(const std::unique_ptr<igl::IDevice>& device) {
+void XrApp::updateSwapchainProviders() {
   const size_t numSwapchainProviders = useSinglePassStereo_ ? numQuadLayersPerView_
                                                             : kNumViews * numQuadLayersPerView_;
   const size_t numViewsPerSwapchain = useSinglePassStereo_ ? kNumViews : 1;
-  swapchainProviders_.reserve(numSwapchainProviders);
-
-  for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
-    for (size_t view = 0; view < kNumViews; view++) {
-      swapchainProviders_.emplace_back(
-          std::make_unique<XrSwapchainProvider>(impl_->createSwapchainProviderImpl(),
-                                                platform_,
-                                                session_,
-                                                viewports_[view],
-                                                numViewsPerSwapchain));
-      swapchainProviders_.back()->initialize();
+  if (numSwapchainProviders != swapchainProviders_.size()) {
+    swapchainProviders_.clear();
+    swapchainProviders_.reserve(numSwapchainProviders);
+    const size_t viewCnt = useSinglePassStereo_ ? 1 : kNumViews;
+    for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
+      for (size_t view = 0; view < viewCnt; view++) {
+        swapchainProviders_.emplace_back(
+            std::make_unique<XrSwapchainProvider>(impl_->createSwapchainProviderImpl(),
+                                                  platform_,
+                                                  session_,
+                                                  viewports_[view],
+                                                  numViewsPerSwapchain));
+        swapchainProviders_.back()->initialize();
+      }
     }
+    IGL_ASSERT(numSwapchainProviders == swapchainProviders_.size());
   }
 }
 
@@ -753,7 +757,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   // The following are initialization steps that happen after XrSession is created.
   enumerateReferenceSpaces();
   enumerateBlendModes();
-  createSwapchainProviders(device);
+  updateSwapchainProviders();
   createSpaces();
   if (passthroughSupported_ && !createPassthrough()) {
     return false;
@@ -793,10 +797,6 @@ void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManag
                                                   : RenderMode::DualPassStereo;
   shellParams_->viewParams.resize(useSinglePassStereo_ ? 2 : 1);
   renderSession_->setShellParams(*shellParams_);
-  numQuadLayersPerView_ = 1;
-  if (useQuadLayerComposition_ && renderSession_->appParams().quadLayerParams.has_value()) {
-    numQuadLayersPerView_ = renderSession_->appParams().quadLayerParams->numQuads();
-  }
 }
 
 void XrApp::createSpaces() {
@@ -910,6 +910,16 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
 }
 
 XrFrameState XrApp::beginFrame() {
+  const auto& appParams = renderSession_->appParams();
+  if (appParams.quadLayerParamsGetter) {
+    quadLayersParams_ = appParams.quadLayerParamsGetter();
+    numQuadLayersPerView_ = quadLayersParams_.numQuads() > 0 ? quadLayersParams_.numQuads() : 1;
+  } else {
+    quadLayersParams_ = {};
+    numQuadLayersPerView_ = 1;
+  }
+  updateSwapchainProviders();
+
   XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
   XrFrameState frameState = {XR_TYPE_FRAME_STATE};
@@ -1064,11 +1074,11 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
   XrExtent2Df size = {appParams.sizeX, appParams.sizeY};
   size_t layer = 0;
   for (size_t i = 0; i < numQuadLayersPerView_; i++) {
-    if (useQuadLayerComposition_ && appParams.quadLayerParams.has_value()) {
-      IGL_ASSERT(i < appParams.quadLayerParams->positions.size());
-      IGL_ASSERT(i < appParams.quadLayerParams->sizes.size());
-      auto glmPos = appParams.quadLayerParams->positions[i];
-      auto glmSize = appParams.quadLayerParams->sizes[i];
+    if (useQuadLayerComposition_ && quadLayersParams_.numQuads() > 0) {
+      IGL_ASSERT(i < quadLayersParams_.positions.size());
+      IGL_ASSERT(i < quadLayersParams_.sizes.size());
+      auto glmPos = quadLayersParams_.positions[i];
+      auto glmSize = quadLayersParams_.sizes[i];
       position = {glmPos.x, glmPos.y, glmPos.z};
       size = {glmSize.x, glmSize.y};
 #if USE_LOCAL_AR_SPACE
