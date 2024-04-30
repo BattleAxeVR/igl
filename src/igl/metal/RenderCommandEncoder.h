@@ -41,7 +41,6 @@ class RenderCommandEncoder final : public IRenderCommandEncoder {
   void bindDepthStencilState(const std::shared_ptr<IDepthStencilState>& depthStencilState) override;
 
   void bindBuffer(int index,
-                  uint8_t target,
                   const std::shared_ptr<IBuffer>& buffer,
                   size_t bufferOffset,
                   size_t bufferSize) override;
@@ -110,6 +109,8 @@ class RenderCommandEncoder final : public IRenderCommandEncoder {
   id<MTLRenderCommandEncoder> encoder_ = nil;
   // 4 KB - page aligned memory for metal managed resource
   static constexpr uint32_t MAX_RECOMMENDED_BYTES = 4 * 1024;
+
+  std::vector<bool> hasVertexBuffers_;
 };
 
 } // namespace metal
