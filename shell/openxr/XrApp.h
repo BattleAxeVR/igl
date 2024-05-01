@@ -400,7 +400,7 @@ private:
   { XR_TYPE_COMPOSITION_LAYER_SETTINGS_FB, nullptr, 0 };
 
   bool simpleControllersSupported_ = false;
-  bool touchControllersSupported_ = false;
+  bool touchControllersSupported_ = true;
   bool touchProControllersSupported_ = false;
   bool touchControllerProximitySupported_ = false;
 
