@@ -84,6 +84,8 @@
 
 #if ENABLE_CLOUDXR
 #include "../src/cpp/ok_defines.h"
+#include "../src/cpp/OKConfig.h"
+BVR::OKConfig ok_config_s;
 #endif
 
 namespace igl::shell::openxr {
@@ -748,6 +750,10 @@ bool XrApp::enumerateViewConfigurations() {
       return false;
     }
 
+#if ENABLE_CLOUDXR
+      ok_config_s.load();
+#endif
+
     XR_CHECK(xrEnumerateViewConfigurationViews(
         instance_, systemId_, viewConfigType, numViewports, &numViewports, viewports_.data()));
 
@@ -755,8 +761,8 @@ bool XrApp::enumerateViewConfigurations() {
       (void)view; // doesn't compile in release for unused variable
 
 #if ENABLE_CLOUDXR
-        view.recommendedImageRectWidth = DEFAULT_CLOUDXR_PER_EYE_WIDTH;
-        view.recommendedImageRectHeight = DEFAULT_CLOUDXR_PER_EYE_HEIGHT;
+        view.recommendedImageRectWidth = ok_config_s.per_eye_width_;
+        view.recommendedImageRectHeight = ok_config_s.per_eye_height_;
 #endif
 
         IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d",
