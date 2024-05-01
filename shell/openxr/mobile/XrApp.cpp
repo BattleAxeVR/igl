@@ -82,6 +82,10 @@
 #include <openxr_extension_helpers.h>
 #endif
 
+#if ENABLE_CLOUDXR
+#include "../src/cpp/ok_defines.h"
+#endif
+
 namespace igl::shell::openxr {
 
 constexpr auto kAppName = "IGL Shell OpenXR";
@@ -751,8 +755,8 @@ bool XrApp::enumerateViewConfigurations() {
       (void)view; // doesn't compile in release for unused variable
 
 #if ENABLE_CLOUDXR
-        view.recommendedImageRectWidth = 2176;
-        view.recommendedImageRectHeight = 2176;
+        view.recommendedImageRectWidth = DEFAULT_CLOUDXR_PER_EYE_WIDTH;
+        view.recommendedImageRectHeight = DEFAULT_CLOUDXR_PER_EYE_HEIGHT;
 #endif
 
         IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d",
