@@ -215,7 +215,7 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_FB_PASSTHROUGH_EXTENSION_NAME);
   }
 
-  handsTrackingSupported_ = false;//checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
+  handsTrackingSupported_ = checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
   IGL_LOG_INFO("Hands tracking is %s", handsTrackingSupported_ ? "supported" : "not supported");
 
   handsTrackingMeshSupported_ = checkExtensionSupported(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
@@ -293,7 +293,7 @@ bool XrApp::checkExtensions() {
     requiredExtensions_.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
   }
 
-  simultaneousHandsAndControllersSupported_ = checkExtensionSupported(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
+  simultaneousHandsAndControllersSupported_ = handsTrackingSupported_ && checkExtensionSupported(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
   IGL_LOG_INFO("Simultaneous Hands and Controllers are %s", simultaneousHandsAndControllersSupported_ ? "supported" : "not supported");
 
   if (simultaneousHandsAndControllersSupported_ &&
@@ -925,6 +925,13 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     }
   }
   updateHandMeshes();
+
+#if 0
+  if (areSimultaneousHandsAndControllersSupported())
+  {
+      setSimultaneousHandsAndControllersEnabled(true);
+  }
+#endif
 
   IGL_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
@@ -2200,9 +2207,21 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
 }
 
 bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
-    if (!simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
+    if (!handsTrackingSupported_ || !simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
         return false;
     }
+
+    if (handsTrackingSupported_ && (!leftHandTracker_ || !rightHandTracker_))
+    {
+        createHandsTracking();
+    }
+
+    if (!leftHandTracker_ || !rightHandTracker_)
+    {
+        return false;
+    }
+
+    updateHandMeshes();
 
     XrResult result = XR_SUCCESS;
 
