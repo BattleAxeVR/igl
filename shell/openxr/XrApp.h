@@ -49,6 +49,34 @@
 #include <shell/shared/platform/Platform.h>
 #include <shell/shared/renderSession/RenderSession.h>
 
+#ifndef ENABLE_META_OPENXR_FEATURES
+#define ENABLE_META_OPENXR_FEATURES 1
+#endif
+
+#if ENABLE_META_OPENXR_FEATURES
+#include <extx1_event_channel.h>
+#include <fb_face_tracking2.h>
+#include <fb_scene.h>
+
+#include <meta_automatic_layer_filter.h>
+
+#include <meta_body_tracking_calibration.h>
+#include <meta_body_tracking_fidelity.h>
+#include <meta_body_tracking_full_body.h>
+
+#include <meta_detached_controllers.h>
+#include <meta_environment_depth.h>
+
+#include <meta_hand_tracking_wide_motion_mode.h>
+#include <meta_recommended_layer_resolution.h>
+#include <meta_simultaneous_hands_and_controllers.h>
+
+#include <meta_spatial_entity_mesh.h>
+#include <metax1_hand_tracking_microgestures.h>
+
+#include <openxr_extension_helpers.h>
+#endif
+
 const int LEFT = 0;
 const int RIGHT = 1;
 const int NUM_SIDES = 2;
@@ -289,6 +317,11 @@ public:
     return simultaneousHandsAndControllersSupported_;
   }
 
+  bool areSimultaneousHandsAndControllersEnabled() const
+  {
+    return simultaneousHandsAndControllersEnabled_;
+  }
+
   bool areHTCViveFocus3ControllersSupported() const
   {
     return htcViveFocus3ControllersSupported_;
@@ -410,6 +443,11 @@ private:
   bool metaBodyTrackingFidelitySupported_ = false;
 
   bool simultaneousHandsAndControllersSupported_ = false;
+  bool simultaneousHandsAndControllersEnabled_ = false;
+  PFN_xrResumeSimultaneousHandsAndControllersTrackingMETA xrResumeSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
+  PFN_xrPauseSimultaneousHandsAndControllersTrackingMETA xrPauseSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
+  bool setSimultaneousHandsAndControllersEnabled(const bool enabled);
+
   bool eyeTrackingSocialFBSupported_ = false;
 
   bool htcViveFocus3ControllersSupported_ = false;

@@ -55,34 +55,6 @@
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
 
-#ifndef ENABLE_META_OPENXR_FEATURES
-#define ENABLE_META_OPENXR_FEATURES 1
-#endif
-
-#if ENABLE_META_OPENXR_FEATURES
-#include <extx1_event_channel.h>
-#include <fb_face_tracking2.h>
-#include <fb_scene.h>
-
-#include <meta_automatic_layer_filter.h>
-
-#include <meta_body_tracking_calibration.h>
-#include <meta_body_tracking_fidelity.h>
-#include <meta_body_tracking_full_body.h>
-
-#include <meta_detached_controllers.h>
-#include <meta_environment_depth.h>
-
-#include <meta_hand_tracking_wide_motion_mode.h>
-#include <meta_recommended_layer_resolution.h>
-#include <meta_simultaneous_hands_and_controllers.h>
-
-#include <meta_spatial_entity_mesh.h>
-#include <metax1_hand_tracking_microgestures.h>
-
-#include <openxr_extension_helpers.h>
-#endif
-
 #if ENABLE_CLOUDXR
 #include "../src/cpp/ok_defines.h"
 #include "../src/cpp/OKConfig.h"
@@ -438,6 +410,18 @@ bool XrApp::createInstance() {
                                    "xrRequestDisplayRefreshRateFB",
                                    (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
     IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
+  }
+
+  if (simultaneousHandsAndControllersSupported_) {
+      XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                     "xrResumeSimultaneousHandsAndControllersTrackingMETA",
+                                     (PFN_xrVoidFunction*)(&xrResumeSimultaneousHandsAndControllersTrackingMETA_)));
+      IGL_ASSERT(xrResumeSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
+
+      XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                     "xrPauseSimultaneousHandsAndControllersTrackingMETA",
+                                     (PFN_xrVoidFunction*)(&xrPauseSimultaneousHandsAndControllersTrackingMETA_)));
+      IGL_ASSERT(xrPauseSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
   }
 
   return true;
@@ -2213,6 +2197,40 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
       compositionLayerSettings_.layerFlags &= ~XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB;
     }
     IGL_LOG_INFO("Link Sharpening is now %s", isSharpeningEnabled() ? "ON" : "OFF");
+}
+
+bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
+    if (!simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
+        return false;
+    }
+
+    XrResult result = XR_SUCCESS;
+
+    if (enabled)
+    {
+        XrSimultaneousHandsAndControllersTrackingResumeInfoMETA resumeInfoMeta{
+                XR_TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_RESUME_INFO_META
+        };
+
+        result = xrResumeSimultaneousHandsAndControllersTrackingMETA_(session_, &resumeInfoMeta);
+    }
+    else
+    {
+        XrSimultaneousHandsAndControllersTrackingPauseInfoMETA pauseInfoMeta{
+                XR_TYPE_SIMULTANEOUS_HANDS_AND_CONTROLLERS_TRACKING_PAUSE_INFO_META
+        };
+
+        result = xrPauseSimultaneousHandsAndControllersTrackingMETA_(session_, &pauseInfoMeta);
+    }
+
+    if (result == XR_SUCCESS)
+    {
+        simultaneousHandsAndControllersEnabled_ = enabled;
+        IGL_LOG_INFO("Simultaneous Hands and Controllers are now %s", areSimultaneousHandsAndControllersEnabled() ? "ON" : "OFF");
+        return true;
+    }
+
+    return false;
 }
 
 } // namespace igl::shell::openxr
