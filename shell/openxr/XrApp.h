@@ -286,7 +286,7 @@ public:
 
   bool areSimultaneousHandsAndControllersSupported() const
   {
-    return simpleControllersSupported_;
+    return simultaneousHandsAndControllersSupported_;
   }
 
   bool areHTCViveFocus3ControllersSupported() const
