@@ -37,6 +37,7 @@
 #include <shell/shared/platform/win/PlatformWin.h>
 #endif
 
+#include <shell/shared/input/IntentListener.h>
 #include <shell/shared/renderSession/AppParams.h>
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
@@ -633,6 +634,15 @@ void XrApp::handleXrEvents() {
   }
 }
 
+void XrApp::handleActionView(const std::string& data) {
+  if (platform_ != nullptr) {
+    igl::shell::IntentEvent event;
+    event.type = igl::shell::IntentType::ActionView;
+    event.data = data;
+    platform_->getInputDispatcher().queueEvent(event);
+  }
+}
+
 void XrApp::handleSessionStateChanges(XrSessionState state) {
   if (state == XR_SESSION_STATE_READY) {
     assert(resumed_);
@@ -851,6 +861,10 @@ void XrApp::endFrame(XrFrameState frameState) {
 void XrApp::update() {
   if (!initialized_ || !resumed_ || !sessionActive_) {
     return;
+  }
+
+  if (platform_ != nullptr) {
+    platform_->getInputDispatcher().processEvents();
   }
 
   auto frameState = beginFrame();
