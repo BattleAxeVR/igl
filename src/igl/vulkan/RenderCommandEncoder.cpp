@@ -497,29 +497,40 @@ void RenderCommandEncoder::bindBuffer(int index,
   }
 }
 
-void RenderCommandEncoder::bindVertexBuffer(uint32_t index,
-                                            const std::shared_ptr<IBuffer>& buffer,
-                                            size_t bufferOffset) {
+void RenderCommandEncoder::bindVertexBuffer(uint32_t index, IBuffer& buffer, size_t bufferOffset) {
   IGL_PROFILER_FUNCTION();
   IGL_PROFILER_ZONE_GPU_VK("bindVertexBuffer()", ctx_.tracyCtx_, cmdBuffer_);
 
 #if IGL_VULKAN_PRINT_COMMANDS
   IGL_LOG_INFO(
-      "%p  bindVertexBuffer(%u, %p, %u)\n", cmdBuffer_, index, buffer, (uint32_t)bufferOffset);
+      "%p  bindVertexBuffer(%u, %p, %u)\n", cmdBuffer_, index, &buffer, (uint32_t)bufferOffset);
 #endif // IGL_VULKAN_PRINT_COMMANDS
 
-  const bool isVertexBuffer = (buffer->getBufferType() & BufferDesc::BufferTypeBits::Vertex) != 0;
+  const bool isVertexBuffer = (buffer.getBufferType() & BufferDesc::BufferTypeBits::Vertex) != 0;
 
-  if (!IGL_VERIFY(buffer && isVertexBuffer)) {
+  if (!IGL_VERIFY(isVertexBuffer)) {
     return;
   }
 
   if (IGL_VERIFY(index < IGL_ARRAY_NUM_ELEMENTS(isVertexBufferBound_))) {
     isVertexBufferBound_[index] = true;
   }
-  VkBuffer vkBuf = static_cast<igl::vulkan::Buffer*>(buffer.get())->getVkBuffer();
+  VkBuffer vkBuf = static_cast<igl::vulkan::Buffer&>(buffer).getVkBuffer();
   const VkDeviceSize offset = bufferOffset;
   ctx_.vf_.vkCmdBindVertexBuffers(cmdBuffer_, index, 1, &vkBuf, &offset);
+}
+
+void RenderCommandEncoder::bindIndexBuffer(IBuffer& buffer,
+                                           IndexFormat format,
+                                           size_t bufferOffset) {
+  const auto& buf = static_cast<igl::vulkan::Buffer&>(buffer);
+
+  IGL_ASSERT_MSG(buf.getBufferUsageFlags() & VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                 "Did you forget to specify BufferTypeBits::Index on your buffer?");
+
+  const VkIndexType type = indexFormatToVkIndexType(format);
+
+  ctx_.vf_.vkCmdBindIndexBuffer(cmdBuffer_, buf.getVkBuffer(), bufferOffset, type);
 }
 
 void RenderCommandEncoder::bindBytes(size_t /*index*/,
