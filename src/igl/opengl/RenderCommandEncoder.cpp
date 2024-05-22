@@ -362,31 +362,6 @@ void RenderCommandEncoder::draw(PrimitiveType primitiveType,
 
 void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
                                        size_t indexCount,
-                                       IndexFormat indexFormat,
-                                       IBuffer& indexBuffer,
-                                       size_t indexBufferOffset,
-                                       uint32_t instanceCount,
-                                       int32_t baseVertex,
-                                       uint32_t baseInstance) {
-  (void)instanceCount;
-  (void)baseVertex;
-  (void)baseInstance;
-
-  IGL_ASSERT_MSG(instanceCount == 1, "Instancing is not implemented");
-  IGL_ASSERT_MSG(baseVertex == 0, "baseVertex is not implemented");
-  IGL_ASSERT_MSG(baseInstance == 0, "Instancing is not implemented");
-
-  if (IGL_VERIFY(adapter_)) {
-    getCommandBuffer().incrementCurrentDrawCount();
-    auto mode = toGlPrimitive(primitiveType);
-    auto type = toGlType(indexFormat);
-    auto offset = reinterpret_cast<void*>(indexBufferOffset);
-    adapter_->drawElements(mode, (GLsizei)indexCount, type, (Buffer&)indexBuffer, offset);
-  }
-}
-
-void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
-                                       size_t indexCount,
                                        uint32_t instanceCount,
                                        uint32_t firstIndex,
                                        int32_t vertexOffset,
@@ -431,13 +406,25 @@ void RenderCommandEncoder::multiDrawIndirect(PrimitiveType /*primitiveType*/,
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-void RenderCommandEncoder::multiDrawIndexedIndirect(PrimitiveType /*primitiveType*/,
-                                                    IBuffer& /*indirectBuffer*/,
-                                                    size_t /*indirectBufferOffset*/,
-                                                    uint32_t /*drawCount*/,
-                                                    uint32_t /*stride*/) {
+void RenderCommandEncoder::multiDrawIndexedIndirect(PrimitiveType primitiveType,
+                                                    IBuffer& indirectBuffer,
+                                                    size_t indirectBufferOffset,
+                                                    uint32_t drawCount,
+                                                    uint32_t stride) {
   IGL_ASSERT_MSG(indexType_, "No index buffer bound");
-  IGL_ASSERT_NOT_IMPLEMENTED();
+
+  // TODO: use glMultiDrawElementsIndirect() when available
+
+  if (IGL_VERIFY(adapter_ && indexType_)) {
+    getCommandBuffer().incrementCurrentDrawCount();
+    const auto mode = toGlPrimitive(primitiveType);
+    const auto* indirectBufferOffsetPtr = reinterpret_cast<uint8_t*>(indirectBufferOffset);
+    for (uint32_t i = 0; i != drawCount; i++) {
+      adapter_->drawElementsIndirect(
+          mode, indexType_, (Buffer&)indirectBuffer, indirectBufferOffsetPtr);
+      indirectBufferOffsetPtr += stride ? stride : 20u; // sizeof(DrawElementsIndirectCommand)
+    }
+  }
 }
 
 void RenderCommandEncoder::setStencilReferenceValue(uint32_t value) {
