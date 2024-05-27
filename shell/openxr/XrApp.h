@@ -461,5 +461,9 @@ private:
   std::unique_ptr<igl::shell::RenderSession> renderSession_;
 
   std::unique_ptr<igl::shell::ShellParams> shellParams_;
+
+#ifdef XR_FB_composition_layer_alpha_blend
+  XrCompositionLayerAlphaBlendFB layerAlphaBlend_{};
+#endif
 };
 } // namespace igl::shell::openxr

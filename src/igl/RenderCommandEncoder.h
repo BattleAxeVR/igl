@@ -44,15 +44,13 @@ class IRenderCommandEncoder : public ICommandEncoder {
 
   // Binds the buffer to a shader
   //
-  // For metal, the index parameter is the buffer index specified in the shader, for opengl index
-  // refers to the location of uniform. The index value can be found by using
-  // igl::RenderPipelineState::getIndexByName
-  //
-  // target is the igl::BindTarget type
-  //
-  // bufferOffset is the offset into the buffer where the data starts
-  // bufferSize is the size of the buffer to bind used for additional validation (0 means the
-  // remaining size starting from `offset`)
+  // Vulkan: `index` is the buffer binding index specified in the shader.
+  // Metal: `index` is the buffer index specified in the shader.
+  // OpenGL: `index` refers to the location of a uniform. The `index` value can be found by using
+  // igl::RenderPipelineState::getIndexByName()
+  // `bufferOffset` is the offset into the buffer where the data starts
+  // `bufferSize` is the size of the buffer to bind used for additional validation (0 means the
+  // remaining size starting from `bufferOffset`)
   virtual void bindBuffer(int index,
                           const std::shared_ptr<IBuffer>& buffer,
                           size_t bufferOffset,
@@ -87,9 +85,6 @@ class IRenderCommandEncoder : public ICommandEncoder {
                            uint32_t firstIndex = 0,
                            int32_t vertexOffset = 0,
                            uint32_t baseInstance = 0) = 0;
-  virtual void drawIndexedIndirect(PrimitiveType primitiveType,
-                                   IBuffer& indirectBuffer,
-                                   size_t indirectBufferOffset) = 0;
   virtual void multiDrawIndirect(PrimitiveType primitiveType,
                                  IBuffer& indirectBuffer,
                                  size_t indirectBufferOffset,
