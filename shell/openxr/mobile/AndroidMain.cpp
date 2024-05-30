@@ -42,6 +42,15 @@ XrInstance getXrInstance() {
   return gInstance_;
 }
 
+
+#ifndef OK_MAIN
+#define OK_MAIN 0
+#endif
+
+#if OK_MAIN
+
+#else
+
 #if IGL_PLATFORM_ANDROID
 namespace {
 std::vector<std::string> gActionViewQueue;
@@ -77,14 +86,6 @@ Java_com_facebook_igl_shell_openxr_gles_MainActivity_onActionView(JNIEnv* env,
 }
 
 using namespace igl::shell::openxr;
-
-#ifndef OK_MAIN
-#define OK_MAIN 0
-#endif
-
-#if OK_MAIN
-
-#else
 
 void handleInitWindow(const struct android_app* app) {
   auto xrApp = static_cast<igl::shell::openxr::XrApp*>(app->userData);
