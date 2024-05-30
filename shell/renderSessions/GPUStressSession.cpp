@@ -831,6 +831,8 @@ void GPUStressSession::drawCubes(const igl::SurfaceTextures& surfaceTextures,
   int counter = 0;
   setProjectionMatrix(surfaceTextures.color->getAspectRatio());
 
+  commands->bindIndexBuffer(*ib0_, IndexFormat::UInt16);
+
   std::shared_ptr<iglu::ManagedUniformBuffer> vertUniformBuffer = nullptr;
   for (int i = -grid / 2; i < grid / 2 + grid % 2; i++) {
     for (int j = -grid / 2; j < grid / 2 + grid % 2; j++) {
@@ -891,8 +893,7 @@ void GPUStressSession::drawCubes(const igl::SurfaceTextures& surfaceTextures,
         vertUniformBuffer->bind(device, *pipelineState_, *commands);
       }
 
-      auto indexCount = indexData.size();
-      commands->drawIndexed(PrimitiveType::Triangle, indexCount, IndexFormat::UInt16, *ib0_, 0);
+      commands->drawIndexed(PrimitiveType::Triangle, indexData.size());
     }
   }
 }
@@ -1118,6 +1119,7 @@ void GPUStressSession::setNumLayers(size_t numLayers) {
   for (int i = 0; i < numLayers; i++) {
     params.positions.emplace_back(0.f, 0.f, 0.f);
     params.sizes.emplace_back(1.f, 1.f);
+    params.layerAlphaBlend_.emplace_back(igl::shell::LayerBlendMode::AlphaBlend);
   }
 
   appParamsRef().quadLayerParams.emplace(params);

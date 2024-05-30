@@ -7,20 +7,13 @@
 
 #pragma once
 
-#include <vector>
-
-#include <android/native_window_jni.h>
-
-#define VK_USE_PLATFORM_ANDROID_KHR
-#include <igl/vulkan/Common.h>
-#include <igl/vulkan/VulkanTexture.h>
-
-#ifndef XR_USE_GRAPHICS_API_VULKAN
-#define XR_USE_GRAPHICS_API_VULKAN
-#endif
-#include <openxr/openxr_platform.h>
+#include <shell/openxr/XrPlatform.h>
 
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
+
+#include <igl/vulkan/VulkanTexture.h>
+
+#include <vector>
 
 namespace igl::shell::openxr::mobile {
 class XrSwapchainProviderImplVulkan final : public impl::XrSwapchainProviderImpl {

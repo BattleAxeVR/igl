@@ -89,14 +89,9 @@ class RenderCommandAdapter final : public WithContext {
                         Result* outResult = nullptr);
 
   void drawArrays(GLenum mode, GLint first, GLsizei count);
-  void drawElements(GLenum mode,
-                    GLsizei indexCount,
-                    GLenum indexType,
-                    Buffer& indexBuffer,
-                    const GLvoid* indexOffset);
+  void drawElements(GLenum mode, GLsizei indexCount, GLenum indexType, const GLvoid* indexOffset);
   void drawElementsIndirect(GLenum mode,
                             GLenum indexType,
-                            Buffer& indexBuffer,
                             Buffer& indirectBuffer,
                             const GLvoid* indirectBufferOffset);
 
@@ -105,6 +100,11 @@ class RenderCommandAdapter final : public WithContext {
   void initialize(const RenderPassDesc& renderPass,
                   const std::shared_ptr<IFramebuffer>& framebuffer,
                   Result* outResult);
+
+  const igl::IRenderPipelineState& pipelineState() const {
+    IGL_ASSERT_MSG(pipelineState_, "No rendering pipeline is bound");
+    return *pipelineState_;
+  }
 
  private:
   RenderCommandAdapter(IContext& context);

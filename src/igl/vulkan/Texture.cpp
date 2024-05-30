@@ -81,8 +81,9 @@ Result Texture::create(const TextureDesc& desc) {
       (desc_.storage == ResourceStorage::Private) ? VK_IMAGE_USAGE_TRANSFER_DST_BIT : 0;
 
   // On M1 Macs, depth texture has to be ResourceStorage::Private.
+  // On Intel Macs, multisample does not work with shared or managed storage modes
   if (!ctx.useStagingForBuffers_ && desc_.storage == ResourceStorage::Private &&
-      !getProperties().isDepthOrStencil()) {
+      !getProperties().isDepthOrStencil() && desc.numSamples == 1) {
     desc_.storage = ResourceStorage::Shared;
   }
 
@@ -96,10 +97,17 @@ Result Texture::create(const TextureDesc& desc) {
   if (desc_.usage & TextureDesc::TextureUsageBits::Attachment) {
     usageFlags |= getProperties().isDepthOrStencil() ? VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
                                                      : VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    if (desc_.storage == igl::ResourceStorage::Memoryless) {
+      usageFlags |= VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT;
+    }
   }
 
   // For now, always set this flag so we can read it back
-  usageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  if (desc_.storage != igl::ResourceStorage::Memoryless) {
+    // not supported on transient attachments
+    usageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+  }
 
   IGL_ASSERT_MSG(usageFlags != 0, "Invalid usage flags");
 

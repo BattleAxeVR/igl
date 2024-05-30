@@ -15,34 +15,25 @@
 #include <chrono>
 #include <string>
 
+#if IGL_PLATFORM_ANDROID
 #include <android/asset_manager.h>
 #include <android/log.h>
 #include <android_native_app_glue.h>
-
-#include <openxr/openxr.h>
-
-#include <igl/Common.h>
-#if USE_VULKAN_BACKEND
-#include <igl/vulkan/Common.h>
-
-#ifndef XR_USE_GRAPHICS_API_VULKAN
-#define XR_USE_GRAPHICS_API_VULKAN
 #endif
-#endif // USE_VULKAN_BACKEND
-#if USE_OPENGL_BACKEND
-#if !defined(XR_USE_GRAPHICS_API_OPENGL_ES) && defined(IGL_CMAKE_BUILD)
-#define XR_USE_GRAPHICS_API_OPENGL_ES
-#endif
-#endif // USE_OPENGL_BACKEND
-#include <openxr/openxr_platform.h>
 
 #include <glm/gtc/type_ptr.hpp>
 #include <xr_linear.h>
 
+#if IGL_PLATFORM_ANDROID
 #include <shell/shared/fileLoader/android/FileLoaderAndroid.h>
 #include <shell/shared/imageLoader/android/ImageLoaderAndroid.h>
-#include <shell/shared/input/IntentListener.h>
 #include <shell/shared/platform/android/PlatformAndroid.h>
+#endif
+#if IGL_PLATFORM_WIN
+#include <shell/shared/platform/win/PlatformWin.h>
+#endif
+
+#include <shell/shared/input/IntentListener.h>
 #include <shell/shared/renderSession/AppParams.h>
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
@@ -51,6 +42,11 @@
 #include <shell/openxr/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
+
+#if !IGL_PLATFORM_ANDROID
+struct android_app {};
+struct AAssetManager {};
+#endif
 
 namespace igl::shell::openxr {
 constexpr auto kAppName = "IGL Shell OpenXR";
@@ -91,7 +87,7 @@ inline int64_t currentTimeInNs() {
 }
 } // namespace
 
-XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl) :
+XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl, bool shouldPresent) :
   requiredExtensions_({
 #if USE_VULKAN_BACKEND
       XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
@@ -102,6 +98,7 @@ XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl) :
   }),
   impl_(std::move(impl)),
   shellParams_(std::make_unique<ShellParams>()) {
+  shellParams_->shouldPresent = shouldPresent;
   viewports_.fill({XR_TYPE_VIEW_CONFIGURATION_VIEW});
   views_.fill({XR_TYPE_VIEW});
 #ifdef USE_COMPOSITION_LAYER_QUAD
@@ -113,6 +110,7 @@ XrApp::~XrApp() {
   if (!initialized_)
     return;
 
+  renderSession_.reset();
   swapchainProviders_.clear();
 
   if (leftHandTracker_ != XR_NULL_HANDLE) {
@@ -124,10 +122,20 @@ XrApp::~XrApp() {
   if (passthrough_ != XR_NULL_HANDLE) {
     xrDestroyPassthroughFB_(passthrough_);
   }
-  xrDestroySpace(currentSpace_);
-  xrDestroySpace(headSpace_);
-  xrDestroySession(session_);
-  xrDestroyInstance(instance_);
+  if (currentSpace_ != XR_NULL_HANDLE) {
+    xrDestroySpace(currentSpace_);
+  }
+  if (headSpace_ != XR_NULL_HANDLE) {
+    xrDestroySpace(headSpace_);
+  }
+  if (session_ != XR_NULL_HANDLE) {
+    xrDestroySession(session_);
+  }
+  if (instance_ != XR_NULL_HANDLE) {
+    xrDestroyInstance(instance_);
+  }
+
+  platform_.reset();
 }
 
 XrInstance XrApp::instance() const {
@@ -147,20 +155,20 @@ bool XrApp::checkExtensions() {
                                      "xrEnumerateInstanceExtensionProperties",
                                      (PFN_xrVoidFunction*)&xrEnumerateInstanceExtensionProperties));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("Failed to get xrEnumerateInstanceExtensionProperties function pointer.");
+    IGL_LOG_ERROR("Failed to get xrEnumerateInstanceExtensionProperties function pointer.\n");
     return false;
   }
 
   uint32_t numExtensions = 0;
   XR_CHECK(xrEnumerateInstanceExtensionProperties(nullptr, 0, &numExtensions, nullptr));
-  IGL_LOG_INFO("xrEnumerateInstanceExtensionProperties found %u extension(s).", numExtensions);
+  IGL_LOG_INFO("xrEnumerateInstanceExtensionProperties found %u extension(s).\n", numExtensions);
 
   extensions_.resize(numExtensions, {XR_TYPE_EXTENSION_PROPERTIES});
 
   XR_CHECK(xrEnumerateInstanceExtensionProperties(
       NULL, numExtensions, &numExtensions, extensions_.data()));
   for (uint32_t i = 0; i < numExtensions; i++) {
-    IGL_LOG_INFO("Extension #%d = '%s'.", i, extensions_[i].extensionName);
+    IGL_LOG_INFO("Extension #%d = '%s'.\n", i, extensions_[i].extensionName);
   }
 
   auto requiredExtensionsImpl_ = impl_->getXrRequiredExtensions();
@@ -175,7 +183,7 @@ bool XrApp::checkExtensions() {
                              return strcmp(extension.extensionName, requiredExtension) == 0;
                            });
     if (it == std::end(extensions_)) {
-      IGL_LOG_ERROR("Extension %s is required.", requiredExtension);
+      IGL_LOG_ERROR("Extension %s is required.\n", requiredExtension);
       return false;
     }
   }
@@ -189,7 +197,7 @@ bool XrApp::checkExtensions() {
   };
 
   passthroughSupported_ = checkExtensionSupported(XR_FB_PASSTHROUGH_EXTENSION_NAME);
-  IGL_LOG_INFO("Passthrough is %s", passthroughSupported_ ? "supported" : "not supported");
+  IGL_LOG_INFO("Passthrough is %s\n", passthroughSupported_ ? "supported" : "not supported");
 
   auto checkNeedRequiredExtension = [this](const char* name) {
     return std::find_if(std::begin(requiredExtensions_),
@@ -205,10 +213,10 @@ bool XrApp::checkExtensions() {
   }
 
   handsTrackingSupported_ = checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
-  IGL_LOG_INFO("Hands tracking is %s", handsTrackingSupported_ ? "supported" : "not supported");
+  IGL_LOG_INFO("Hands tracking is %s\n", handsTrackingSupported_ ? "supported" : "not supported");
 
   handsTrackingMeshSupported_ = checkExtensionSupported(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
-  IGL_LOG_INFO("Hands tracking mesh is %s",
+  IGL_LOG_INFO("Hands tracking mesh is %s\n",
                handsTrackingMeshSupported_ ? "supported" : "not supported");
 
   // Add hands tracking extension if supported.
@@ -223,7 +231,8 @@ bool XrApp::checkExtensions() {
 
   refreshRateExtensionSupported_ =
       checkExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
-  IGL_LOG_INFO("RefreshRate is %s", refreshRateExtensionSupported_ ? "supported" : "not supported");
+  IGL_LOG_INFO("RefreshRate is %s\n",
+               refreshRateExtensionSupported_ ? "supported" : "not supported");
 
   if (refreshRateExtensionSupported_ &&
       checkNeedRequiredExtension(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME)) {
@@ -255,12 +264,12 @@ bool XrApp::createInstance() {
   XrResult initResult;
   XR_CHECK(initResult = xrCreateInstance(&instanceCreateInfo, &instance_));
   if (initResult != XR_SUCCESS) {
-    IGL_LOG_ERROR("Failed to create XR instance: %d.", initResult);
+    IGL_LOG_ERROR("Failed to create XR instance: %d.\n", initResult);
     return false;
   }
 
   XR_CHECK(xrGetInstanceProperties(instance_, &instanceProps_));
-  IGL_LOG_INFO("Runtime %s: Version : %u.%u.%u",
+  IGL_LOG_INFO("Runtime %s: Version : %u.%u.%u\n",
                instanceProps_.runtimeName,
                XR_VERSION_MAJOR(instanceProps_.runtimeVersion),
                XR_VERSION_MINOR(instanceProps_.runtimeVersion),
@@ -328,19 +337,19 @@ bool XrApp::createSystem() {
   XrResult result;
   XR_CHECK(result = xrGetSystem(instance_, &systemGetInfo, &systemId_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("Failed to get system.");
+    IGL_LOG_ERROR("Failed to get system.\n");
     return false;
   }
 
   XR_CHECK(xrGetSystemProperties(instance_, systemId_, &systemProps_));
 
   IGL_LOG_INFO(
-      "System Properties: Name=%s VendorId=%x", systemProps_.systemName, systemProps_.vendorId);
-  IGL_LOG_INFO("System Graphics Properties: MaxWidth=%d MaxHeight=%d MaxLayers=%d",
+      "System Properties: Name=%s VendorId=%x\n", systemProps_.systemName, systemProps_.vendorId);
+  IGL_LOG_INFO("System Graphics Properties: MaxWidth=%d MaxHeight=%d MaxLayers=%d\n",
                systemProps_.graphicsProperties.maxSwapchainImageWidth,
                systemProps_.graphicsProperties.maxSwapchainImageHeight,
                systemProps_.graphicsProperties.maxLayerCount);
-  IGL_LOG_INFO("System Tracking Properties: OrientationTracking=%s PositionTracking=%s",
+  IGL_LOG_INFO("System Tracking Properties: OrientationTracking=%s PositionTracking=%s\n",
                systemProps_.trackingProperties.orientationTracking ? "True" : "False",
                systemProps_.trackingProperties.positionTracking ? "True" : "False");
   return true;
@@ -357,7 +366,7 @@ bool XrApp::createPassthrough() {
   XrResult result;
   XR_CHECK(result = xrCreatePassthroughFB_(session_, &passthroughInfo, &passthrough_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreatePassthroughFB failed.");
+    IGL_LOG_ERROR("xrCreatePassthroughFB failed.\n");
     return false;
   }
 
@@ -368,7 +377,7 @@ bool XrApp::createPassthrough() {
   layerInfo.flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
   XR_CHECK(result = xrCreatePassthroughLayerFB_(session_, &layerInfo, &passthrougLayer_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreatePassthroughLayerFB failed.");
+    IGL_LOG_ERROR("xrCreatePassthroughLayerFB failed.\n");
     return false;
   }
 
@@ -378,13 +387,13 @@ bool XrApp::createPassthrough() {
   style.edgeColor = {0.0f, 0.0f, 0.0f, 0.0f};
   XR_CHECK(result = xrPassthroughLayerSetStyleFB_(passthrougLayer_, &style));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrPassthroughLayerSetStyleFB failed.");
+    IGL_LOG_ERROR("xrPassthroughLayerSetStyleFB failed.\n");
     return false;
   }
 
   XR_CHECK(result = xrPassthroughStartFB_(passthrough_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrPassthroughStartFB failed.");
+    IGL_LOG_ERROR("xrPassthroughStartFB failed.\n");
     return false;
   }
   return true;
@@ -412,14 +421,14 @@ bool XrApp::createHandsTracking() {
   XrResult result;
   XR_CHECK(result = xrCreateHandTrackerEXT_(session_, &createInfo, &leftHandTracker_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreateHandTrackerEXT (left hand) failed.");
+    IGL_LOG_ERROR("xrCreateHandTrackerEXT (left hand) failed.\n");
     return false;
   }
 
   createInfo.hand = XR_HAND_RIGHT_EXT;
   XR_CHECK(result = xrCreateHandTrackerEXT_(session_, &createInfo, &rightHandTracker_));
   if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreateHandTrackerEXT (right hand) failed.");
+    IGL_LOG_ERROR("xrCreateHandTrackerEXT (right hand) failed.\n");
     return false;
   }
 
@@ -572,10 +581,10 @@ bool XrApp::enumerateViewConfigurations() {
   XR_CHECK(xrEnumerateViewConfigurations(
       instance_, systemId_, numViewConfigs, &numViewConfigs, viewConfigTypes.data()));
 
-  IGL_LOG_INFO("Available Viewport Configuration Types: %d", numViewConfigs);
+  IGL_LOG_INFO("Available Viewport Configuration Types: %d\n", numViewConfigs);
   auto foundViewConfig = false;
   for (auto& viewConfigType : viewConfigTypes) {
-    IGL_LOG_INFO("View configuration type %d : %s",
+    IGL_LOG_INFO("View configuration type %d : %s\n",
                  viewConfigType,
                  viewConfigType == kSupportedViewConfigType ? "Selected" : "");
 
@@ -587,7 +596,7 @@ bool XrApp::enumerateViewConfigurations() {
     XrViewConfigurationProperties viewConfigProps = {XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
     XR_CHECK(
         xrGetViewConfigurationProperties(instance_, systemId_, viewConfigType, &viewConfigProps));
-    IGL_LOG_INFO("FovMutable=%s ConfigurationType %d",
+    IGL_LOG_INFO("FovMutable=%s ConfigurationType %d\n",
                  viewConfigProps.fovMutable ? "true" : "false",
                  viewConfigProps.viewConfigurationType);
 
@@ -598,7 +607,7 @@ bool XrApp::enumerateViewConfigurations() {
 
     if (!IGL_VERIFY(numViewports == kNumViews)) {
       IGL_LOG_ERROR(
-          "numViewports must be %d. Make sure XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO is used.",
+          "numViewports must be %d. Make sure XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO is used.\n",
           kNumViews);
       return false;
     }
@@ -608,13 +617,13 @@ bool XrApp::enumerateViewConfigurations() {
 
     for (auto& view : viewports_) {
       (void)view; // doesn't compile in release for unused variable
-      IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d",
+      IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d\n",
                    view,
                    view.recommendedImageRectWidth,
                    view.recommendedImageRectHeight,
                    view.recommendedSwapchainSampleCount);
 
-      IGL_LOG_INFO("Viewport [%d]: Max Width=%d Height=%d SampleCount=%d",
+      IGL_LOG_INFO("Viewport [%d]: Max Width=%d Height=%d SampleCount=%d\n",
                    view,
                    view.maxImageRectWidth,
                    view.maxImageRectHeight,
@@ -647,7 +656,7 @@ void XrApp::enumerateReferenceSpaces() {
       std::any_of(std::begin(refSpaceTypes), std::end(refSpaceTypes), [](const auto& type) {
         return type == XR_REFERENCE_SPACE_TYPE_STAGE;
       });
-  IGL_LOG_INFO("OpenXR stage reference space is %s",
+  IGL_LOG_INFO("OpenXR stage reference space is %s\n",
                stageSpaceSupported_ ? "supported" : "not supported");
 }
 
@@ -668,7 +677,7 @@ void XrApp::enumerateBlendModes() {
       std::any_of(std::begin(blendModes), std::end(blendModes), [](const auto& type) {
         return type == XR_ENVIRONMENT_BLEND_MODE_ADDITIVE;
       });
-  IGL_LOG_INFO("OpenXR additive blending %s",
+  IGL_LOG_INFO("OpenXR additive blending %s\n",
                additiveBlendingSupported_ ? "supported" : "not supported");
 }
 
@@ -700,6 +709,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     return false;
   }
 
+#if IGL_PLATFORM_ANDROID
   PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
   XR_CHECK(xrGetInstanceProcAddr(
       XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction*)&xrInitializeLoaderKHR));
@@ -713,11 +723,13 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
 
     XR_CHECK(xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR*)&loaderInitializeInfoAndroid));
   }
+#endif
 
   if (!checkExtensions()) {
     return false;
   }
 
+#if IGL_PLATFORM_ANDROID
   XrInstanceCreateInfoAndroidKHR* instanceCreateInfoAndroid_ptr =
       (XrInstanceCreateInfoAndroidKHR*)impl_->getInstanceCreateExtension();
 
@@ -725,6 +737,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     instanceCreateInfoAndroid_ptr->applicationVM = app->activity->vm;
     instanceCreateInfoAndroid_ptr->applicationActivity = app->activity->clazz;
   }
+#endif
 
   if (!createInstance()) {
     return false;
@@ -741,17 +754,21 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   std::unique_ptr<igl::IDevice> device;
   device = impl_->initIGL(instance_, systemId_);
   if (!device) {
-    IGL_LOG_ERROR("Failed to initialize IGL");
+    IGL_LOG_ERROR("Failed to initialize IGL\n");
     return false;
   }
 
   useSinglePassStereo_ = useSinglePassStereo_ && device->hasFeature(igl::DeviceFeatures::Multiview);
 
+#if IGL_PLATFORM_ANDROID
   createShellSession(std::move(device), app->activity->assetManager);
+#else
+  createShellSession(std::move(device), nullptr);
+#endif
 
   session_ = impl_->initXrSession(instance_, systemId_, platform_->getDevice());
   if (session_ == XR_NULL_HANDLE) {
-    IGL_LOG_ERROR("Failed to initialize graphics system");
+    IGL_LOG_ERROR("Failed to initialize graphics system\n");
     return false;
   }
 
@@ -787,11 +804,18 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
 }
 
 void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr) {
+#if IGL_PLATFORM_ANDROID
   platform_ = std::make_shared<igl::shell::PlatformAndroid>(std::move(device));
   IGL_ASSERT(platform_ != nullptr);
   static_cast<igl::shell::ImageLoaderAndroid&>(platform_->getImageLoader())
       .setAssetManager(assetMgr);
   static_cast<igl::shell::FileLoaderAndroid&>(platform_->getFileLoader()).setAssetManager(assetMgr);
+#elif IGL_PLATFORM_APPLE
+  platform_ = std::make_shared<igl::shell::PlatformMac>(std::move(device));
+#elif IGL_PLATFORM_WIN
+  platform_ = std::make_shared<igl::shell::PlatformWin>(std::move(device));
+#endif
+
   renderSession_ = igl::shell::createDefaultRenderSession(platform_);
   shellParams_->shellControlsViewParams = true;
   shellParams_->rightHandedCoordinateSystem = true;
@@ -835,13 +859,13 @@ void XrApp::handleXrEvents() {
 
     switch (baseEventHeader->type) {
     case XR_TYPE_EVENT_DATA_EVENTS_LOST:
-      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_EVENTS_LOST event");
+      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_EVENTS_LOST event\n");
       break;
     case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
-      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING event");
+      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING event\n");
       break;
     case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
-      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event");
+      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event\n");
       break;
     case XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT: {
       const XrEventDataPerfSettingsEXT* perf_settings_event =
@@ -849,21 +873,22 @@ void XrApp::handleXrEvents() {
       (void)perf_settings_event; // suppress unused warning
       IGL_LOG_INFO(
           "xrPollEvent: received XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT event: type %d subdomain %d "
-          ": level %d -> level %d",
+          ": level %d -> level %d\n",
           perf_settings_event->type,
           perf_settings_event->subDomain,
           perf_settings_event->fromLevel,
           perf_settings_event->toLevel);
     } break;
     case XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING:
-      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING event");
+      IGL_LOG_INFO(
+          "xrPollEvent: received XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING event\n");
       break;
     case XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: {
       const XrEventDataSessionStateChanged* session_state_changed_event =
           (XrEventDataSessionStateChanged*)(baseEventHeader);
       IGL_LOG_INFO(
           "xrPollEvent: received XR_TYPE_EVENT_DATA_SESSION_STATE_CHANGED: %d for session %p at "
-          "time %lld",
+          "time %lld\n",
           session_state_changed_event->state,
           (void*)session_state_changed_event->session,
           session_state_changed_event->time);
@@ -878,7 +903,7 @@ void XrApp::handleXrEvents() {
       }
     } break;
     default:
-      IGL_LOG_INFO("xrPollEvent: Unknown event");
+      IGL_LOG_INFO("xrPollEvent: Unknown event\n");
       break;
     }
   }
@@ -910,13 +935,12 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
     XR_CHECK(result = xrBeginSession(session_, &sessionBeginInfo));
 
     sessionActive_ = (result == XR_SUCCESS);
-    IGL_LOG_INFO("XR session active");
+    IGL_LOG_INFO("XR session active\n");
   } else if (state == XR_SESSION_STATE_STOPPING) {
-    assert(resumed_ == false);
     assert(sessionActive_);
     XR_CHECK(xrEndSession(session_));
     sessionActive_ = false;
-    IGL_LOG_INFO("XR session inactive");
+    IGL_LOG_INFO("XR session inactive\n");
   }
 }
 
@@ -1013,7 +1037,6 @@ void XrApp::render() {
       renderSession_->update(std::move(surfaceTextures));
       swapchainProviders_[quadLayer]->releaseSwapchainImages();
     }
-
   } else {
     const uint32_t numSwapChains = numQuadLayersPerView_ * kNumViews;
     for (uint32_t swapChainIndex = 0; swapChainIndex < numSwapChains; swapChainIndex++) {
@@ -1064,7 +1087,7 @@ void XrApp::setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView
           subImageIndex,
       };
       depthInfos[layer].subImage = {
-          swapchainProviders_[swapChainIndex]->colorSwapchain(),
+          swapchainProviders_[swapChainIndex]->depthSwapchain(),
           imageRect,
           subImageIndex,
       };
@@ -1081,6 +1104,14 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
 
   std::vector<XrCompositionLayerQuad> quadLayers(static_cast<size_t>(kNumViews) *
                                                  numQuadLayersPerView_);
+#ifdef XR_FB_composition_layer_alpha_blend
+  XrCompositionLayerAlphaBlendFB blendMode = {XR_TYPE_COMPOSITION_LAYER_ALPHA_BLEND_FB};
+  blendMode.srcFactorColor = XR_BLEND_FACTOR_ONE_MINUS_DST_ALPHA_FB;
+  blendMode.dstFactorColor = XR_BLEND_FACTOR_ONE_FB;
+  blendMode.srcFactorAlpha = XR_BLEND_FACTOR_ZERO_FB;
+  blendMode.dstFactorAlpha = XR_BLEND_FACTOR_ONE_FB;
+#endif
+
   XrVector3f position = {0.f, 0.f, 0.f};
 #if USE_LOCAL_AR_SPACE
   position.z = -1.f;
@@ -1088,7 +1119,7 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
   XrExtent2Df size = {appParams.sizeX, appParams.sizeY};
   size_t layer = 0;
   for (size_t i = 0; i < numQuadLayersPerView_; i++) {
-    if (useQuadLayerComposition_ && quadLayersParams_.numQuads() > 0) {
+    if (quadLayersParams_.numQuads() > 0) {
       IGL_ASSERT(i < quadLayersParams_.positions.size());
       IGL_ASSERT(i < quadLayersParams_.sizes.size());
       auto glmPos = quadLayersParams_.positions[i];
@@ -1099,11 +1130,25 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
       position.z = -1.f;
 #endif
     }
+
     XrEyeVisibility eye = XR_EYE_VISIBILITY_LEFT;
     for (size_t view = 0; view < kNumViews; view++, layer++) {
+#ifdef XR_FB_composition_layer_alpha_blend
+      quadLayers[layer].next =
+          (quadLayersParams_.numQuads() > 0 &&
+           quadLayersParams_.blendModes_[layer] == igl::shell::LayerBlendMode::AlphaAdditive)
+              ? &blendMode
+              : nullptr;
+#else
       quadLayers[layer].next = nullptr;
+#endif
+
       quadLayers[layer].type = XR_TYPE_COMPOSITION_LAYER_QUAD;
-      quadLayers[layer].layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+      quadLayers[layer].layerFlags =
+          (quadLayersParams_.numQuads() > 0 &&
+           quadLayersParams_.blendModes_[i] == igl::shell::LayerBlendMode::AlphaBlend)
+              ? XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT
+              : 0;
       quadLayers[layer].space = currentSpace_;
       quadLayers[layer].eyeVisibility = eye;
       memset(&quadLayers[layer].subImage, 0, sizeof(XrSwapchainSubImage));
@@ -1127,6 +1172,7 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
   std::vector<const XrCompositionLayerBaseHeader*> layers(numQuadLayersPerView_ *
                                                           static_cast<std::size_t>(kNumViews + 1));
   uint32_t layerIndex = 0;
+
   XrCompositionLayerPassthroughFB compositionLayer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
 
   const bool passthroughEnabled = appParams.passthroughGetter ? appParams.passthroughGetter()
@@ -1212,7 +1258,7 @@ float XrApp::getCurrentRefreshRate() {
 void XrApp::queryCurrentRefreshRate() {
   const XrResult result = xrGetDisplayRefreshRateFB_(session_, &currentRefreshRate_);
   if (result == XR_SUCCESS) {
-    IGL_LOG_INFO("getCurrentRefreshRate success, current Hz = %.2f.", currentRefreshRate_);
+    IGL_LOG_INFO("getCurrentRefreshRate success, current Hz = %.2f.\n", currentRefreshRate_);
   }
 }
 
@@ -1228,7 +1274,7 @@ float XrApp::getMaxRefreshRate() {
   }
 
   const float maxRefreshRate = supportedRefreshRates.back();
-  IGL_LOG_INFO("getMaxRefreshRate Hz = %.2f.", maxRefreshRate);
+  IGL_LOG_INFO("getMaxRefreshRate Hz = %.2f.\n", maxRefreshRate);
   return maxRefreshRate;
 }
 
@@ -1243,8 +1289,9 @@ bool XrApp::setRefreshRate(float refreshRate) {
     return false;
   }
 
-  IGL_LOG_INFO(
-      "setRefreshRate SUCCESS, changed from %.2f Hz to %.2f Hz", currentRefreshRate_, refreshRate);
+  IGL_LOG_INFO("setRefreshRate SUCCESS, changed from %.2f Hz to %.2f Hz\n",
+               currentRefreshRate_,
+               refreshRate);
   currentRefreshRate_ = refreshRate;
 
   return true;
@@ -1303,7 +1350,7 @@ void XrApp::querySupportedRefreshRates() {
 
     for (float refreshRate : supportedRefreshRates_) {
       (void)refreshRate;
-      IGL_LOG_INFO("querySupportedRefreshRates Hz = %.2f.", refreshRate);
+      IGL_LOG_INFO("querySupportedRefreshRates Hz = %.2f.\n", refreshRate);
     }
   }
 }

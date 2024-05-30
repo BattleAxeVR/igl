@@ -5,10 +5,13 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
+#include <igl/Core.h>
 #include <vector>
 
-#include "XrSwapchainProvider.h"
 #include <shell/openxr/XrLog.h>
+#include <shell/openxr/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
 
 namespace igl::shell::openxr {
@@ -22,11 +25,14 @@ XrSwapchainProvider::XrSwapchainProvider(std::unique_ptr<impl::XrSwapchainProvid
   session_(session),
   viewport_(viewport),
   numViews_(numViews) {}
+
 XrSwapchainProvider::~XrSwapchainProvider() {
-  xrDestroySwapchain(colorSwapchain_);
-// @fb-only
-  xrDestroySwapchain(depthSwapchain_);
-// @fb-only
+  if (colorSwapchain_ != XR_NULL_HANDLE) {
+    xrDestroySwapchain(colorSwapchain_);
+  }
+  if (depthSwapchain_ != XR_NULL_HANDLE) {
+    xrDestroySwapchain(depthSwapchain_);
+  }
 }
 
 bool XrSwapchainProvider::initialize() {
@@ -42,31 +48,26 @@ bool XrSwapchainProvider::initialize() {
                   std::end(swapchainFormats),
                   [&](const auto& format) { return format == colorFormat; })) {
     selectedColorFormat_ = colorFormat;
+  } else {
+    IGL_ASSERT_MSG(false, "No supported color format found");
+    return false;
   }
-#if defined(__APPLE__)
-  selectedColorFormat_ = impl_->preferredColorFormat();
-#endif
-// @fb-only
-  // @fb-only
-// @fb-only
 
   colorSwapchain_ =
       createXrSwapchain(XR_SWAPCHAIN_USAGE_COLOR_ATTACHMENT_BIT, selectedColorFormat_);
 
-// @fb-only
   auto depthFormat = impl_->preferredDepthFormat();
   if (std::any_of(std::begin(swapchainFormats),
                   std::end(swapchainFormats),
                   [&](const auto& format) { return format == depthFormat; })) {
     selectedDepthFormat_ = depthFormat;
+  } else {
+    IGL_ASSERT_MSG(false, "No supported depth format found");
+    return false;
   }
-#if defined(__APPLE__)
-  selectedDepthFormat_ = impl_->preferredDepthFormat();
-#endif
 
   depthSwapchain_ =
       createXrSwapchain(XR_SWAPCHAIN_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, selectedDepthFormat_);
-// @fb-only
 
   impl_->enumerateImages(platform_->getDevice(),
                          colorSwapchain_,
@@ -93,9 +94,9 @@ XrSwapchain XrSwapchainProvider::createXrSwapchain(XrSwapchainUsageFlags extraUs
 
   XrSwapchain swapchain;
   XR_CHECK(xrCreateSwapchain(session_, &swapChainCreateInfo, &swapchain));
-  IGL_LOG_INFO("XrSwapchain created");
-  IGL_LOG_INFO("XrSwapchain viewport width: %d", viewport_.recommendedImageRectWidth);
-  IGL_LOG_INFO("XrSwapchain viewport height: %d", viewport_.recommendedImageRectHeight);
+  IGL_LOG_INFO("XrSwapchain created\n");
+  IGL_LOG_INFO("XrSwapchain viewport width: %d\n", viewport_.recommendedImageRectWidth);
+  IGL_LOG_INFO("XrSwapchain viewport height: %d\n", viewport_.recommendedImageRectHeight);
 
   return swapchain;
 }
@@ -109,11 +110,10 @@ igl::SurfaceTextures XrSwapchainProvider::getSurfaceTextures() const {
                                    viewport_,
                                    numViews_);
 }
+
 void XrSwapchainProvider::releaseSwapchainImages() const {
   XrSwapchainImageReleaseInfo releaseInfo = {XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO};
   XR_CHECK(xrReleaseSwapchainImage(colorSwapchain_, &releaseInfo));
-// @fb-only
   XR_CHECK(xrReleaseSwapchainImage(depthSwapchain_, &releaseInfo));
-// @fb-only
 }
 } // namespace igl::shell::openxr

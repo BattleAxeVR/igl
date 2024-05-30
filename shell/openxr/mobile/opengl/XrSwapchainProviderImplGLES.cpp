@@ -5,6 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
+#include <shell/openxr/mobile/opengl/XrSwapchainProviderImplGLES.h>
+
 #include <algorithm>
 
 #include <igl/opengl/Device.h>
@@ -12,8 +16,6 @@
 #include <igl/opengl/TextureBufferExternal.h>
 
 #include <shell/openxr/XrLog.h>
-
-#include "XrSwapchainProviderImplGLES.h"
 
 namespace igl::shell::openxr::mobile {
 namespace {
@@ -23,7 +25,7 @@ void enumerateSwapchainImages(igl::IDevice& device,
   uint32_t numImages = 0;
   XR_CHECK(xrEnumerateSwapchainImages(swapchain, 0, &numImages, NULL));
 
-  IGL_LOG_INFO("numImages: %d", numImages);
+  IGL_LOG_INFO("XRSwapchain numImages: %d\n", numImages);
 
   std::vector<XrSwapchainImageOpenGLESKHR> xrImages(
       numImages,
@@ -76,7 +78,7 @@ std::shared_ptr<igl::ITexture> getSurfaceTexture(
         externalTextureFormat,
         numViews);
     if (!texture) {
-      IGL_LOG_ERROR("Failed to create ITexture from swapchain image.");
+      IGL_LOG_ERROR("Failed to create ITexture from swapchain image.\n");
       return {};
     }
     inOutTextures[imageIndex] = std::move(texture);

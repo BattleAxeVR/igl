@@ -15,28 +15,7 @@
 #include <string>
 #include <vector>
 
-#if defined(IGL_CMAKE_BUILD)
-
-#if IGL_BACKEND_VULKAN
-#include <igl/vulkan/Common.h>
-#endif // IGL_BACKEND_VULKAN
-
-#if IGL_BACKEND_OPENGL
-#include <igl/opengl/GLIncludes.h>
-#endif // IGL_BACKEND_OPENGL
-
-#if IGL_PLATFORM_ANDROID
-#include <jni.h>
-#if IGL_BACKEND_OPENGL
-#include <EGL/egl.h>
-#endif // IGL_BACKEND_OPENGL
-#endif // IGL_PLATFORM_ANDROID
-
-#include <openxr/openxr_platform.h>
-
-#endif // IGL_CMAKE_BUILD
-
-#include <openxr/openxr.h>
+#include <shell/openxr/XrPlatform.h>
 
 #include <glm/glm.hpp>
 
@@ -59,7 +38,7 @@ namespace igl::shell::openxr {
 
 class XrApp {
  public:
-  XrApp(std::unique_ptr<impl::XrAppImpl>&& impl);
+  XrApp(std::unique_ptr<impl::XrAppImpl>&& impl, bool shouldPresent = true);
   ~XrApp();
 
   inline bool initialized() const {
@@ -181,8 +160,8 @@ class XrApp {
 
   bool additiveBlendingSupported_ = false;
 
-  XrPassthroughFB passthrough_;
-  XrPassthroughLayerFB passthrougLayer_;
+  XrPassthroughFB passthrough_ = XR_NULL_HANDLE;
+  XrPassthroughLayerFB passthrougLayer_ = XR_NULL_HANDLE;
 
   bool passthroughSupported_ = false;
   PFN_xrCreatePassthroughFB xrCreatePassthroughFB_ = nullptr;

@@ -5,6 +5,8 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+// @fb-only
+
 #include <shell/shared/imageLoader/android/ImageLoaderAndroid.h>
 
 #include <android/asset_manager.h>
@@ -21,8 +23,10 @@ ImageData ImageLoaderAndroid::loadImageData(const std::string& imageName) noexce
   }
 
   if (assetManager_ == nullptr) {
-    IGL_LOG_ERROR("Error in loadImageData(): Asset manager is nullptr\n");
-    return {};
+    IGL_LOG_INFO("Asset manager not set!\n");
+    // Fallback to default behavior (i.e., loading w/ C++ functions) when asset manager is not set
+    // as this is the case for some unit tests.
+    return ImageLoader::loadImageData(imageName);
   }
 
   // Load file
