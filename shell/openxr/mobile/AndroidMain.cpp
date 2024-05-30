@@ -236,3 +236,6 @@ int main(int argc, const char* argv[]) {
 }
 
 #endif // IGL_PLATFORM_ANDROID
+
+#endif // OK_MAIN
+
