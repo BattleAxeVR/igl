@@ -7,24 +7,10 @@
 
 #pragma once
 
-#include <array>
-
-#include <android/native_window_jni.h>
-
-#define VK_USE_PLATFORM_ANDROID_KHR
-#include <igl/vulkan/Common.h>
-
-#ifndef XR_USE_GRAPHICS_API_VULKAN
-#define XR_USE_GRAPHICS_API_VULKAN
-#endif
-
-#ifndef XR_USE_TIMESPEC
-#define XR_USE_TIMESPEC
-#endif
-
-#include <openxr/openxr_platform.h>
-
+#include <shell/openxr/XrPlatform.h>
 #include <shell/openxr/impl/XrAppImpl.h>
+
+#include <vector>
 
 namespace igl::shell::openxr::mobile {
 class XrSwapchainProvider;
@@ -43,7 +29,7 @@ class XrAppImplVulkan : public impl::XrAppImpl {
   XrGraphicsRequirementsVulkanKHR graphicsRequirements_ = {
       .type = XR_TYPE_GRAPHICS_REQUIREMENTS_VULKAN_KHR,
   };
-#if defined(IGL_CMAKE_BUILD)
+#if IGL_PLATFORM_ANDROID && defined(IGL_CMAKE_BUILD)
   XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid_ = {
       .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
   };

@@ -7,24 +7,10 @@
 
 #pragma once
 
-#include <vector>
-
-#include <android/native_window_jni.h>
-
-#include <EGL/egl.h>
-#include <GLES3/gl3.h>
-
-#ifndef XR_USE_GRAPHICS_API_OPENGL_ES
-#define XR_USE_GRAPHICS_API_OPENGL_ES
-#endif
-
-#ifndef XR_USE_TIMESPEC
-#define XR_USE_TIMESPEC
-#endif
-
-#include <openxr/openxr_platform.h>
-
+#include <shell/openxr/XrPlatform.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
+
+#include <vector>
 
 namespace igl::shell::openxr::mobile {
 class XrSwapchainProviderImplGLES final : public impl::XrSwapchainProviderImpl {

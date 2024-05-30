@@ -219,6 +219,8 @@ void RenderCommandEncoder::bindRenderPipelineState(
   bindCullMode(metalPipelineState.getCullMode());
   bindFrontFacingWinding(metalPipelineState.getWindingMode());
   bindPolygonFillMode(metalPipelineState.getPolygonFillMode());
+
+  metalPrimitive_ = convertPrimitiveType(pipelineState->getRenderPipelineDesc().topology);
 }
 
 void RenderCommandEncoder::bindDepthStencilState(
@@ -461,6 +463,52 @@ void RenderCommandEncoder::multiDrawIndexedIndirect(PrimitiveType primitiveType,
   for (uint32_t drawIndex = 0; drawIndex < drawCount; drawIndex++) {
     getCommandBuffer().incrementCurrentDrawCount();
     [encoder_ drawIndexedPrimitives:metalPrimitive
+                          indexType:indexType_
+                        indexBuffer:indexBuffer_
+                  indexBufferOffset:indexBufferOffset_
+                     indirectBuffer:indirectBufferRef.get()
+               indirectBufferOffset:indirectBufferOffset +
+                                    (stride ? static_cast<size_t>(stride)
+                                            : sizeof(MTLDrawIndexedPrimitivesIndirectArguments)) *
+                                        drawIndex];
+  }
+}
+
+void RenderCommandEncoder::multiDrawIndirect(IBuffer& indirectBuffer,
+                                             // Ignore bugprone-easily-swappable-parameters
+                                             // @lint-ignore CLANGTIDY
+                                             size_t indirectBufferOffset,
+                                             uint32_t drawCount,
+                                             uint32_t stride) {
+  IGL_ASSERT(encoder_);
+  stride = stride ? stride : sizeof(MTLDrawPrimitivesIndirectArguments);
+  auto& indirectBufferRef = (Buffer&)(indirectBuffer);
+
+  for (uint32_t drawIndex = 0; drawIndex < drawCount; drawIndex++) {
+    getCommandBuffer().incrementCurrentDrawCount();
+    [encoder_ drawPrimitives:metalPrimitive_
+              indirectBuffer:indirectBufferRef.get()
+        indirectBufferOffset:indirectBufferOffset + static_cast<size_t>(stride) * drawIndex];
+  }
+}
+
+void RenderCommandEncoder::multiDrawIndexedIndirect(IBuffer& indirectBuffer,
+                                                    // Ignore bugprone-easily-swappable-parameters
+                                                    // @lint-ignore CLANGTIDY
+                                                    size_t indirectBufferOffset,
+                                                    uint32_t drawCount,
+                                                    uint32_t stride) {
+  IGL_ASSERT(encoder_);
+  IGL_ASSERT_MSG(indexBuffer_, "No index buffer bound");
+  if (!IGL_VERIFY(encoder_ && indexBuffer_)) {
+    return;
+  }
+  stride = stride ? stride : sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+  auto& indirectBufferRef = (Buffer&)(indirectBuffer);
+
+  for (uint32_t drawIndex = 0; drawIndex < drawCount; drawIndex++) {
+    getCommandBuffer().incrementCurrentDrawCount();
+    [encoder_ drawIndexedPrimitives:metalPrimitive_
                           indexType:indexType_
                         indexBuffer:indexBuffer_
                   indexBufferOffset:indexBufferOffset_

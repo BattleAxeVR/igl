@@ -7,15 +7,15 @@
 
 // @fb-only
 
-#include "XrAppImplGLES.h"
+#include <shell/openxr/mobile/opengl/XrAppImplGLES.h>
 
 #include <igl/HWDevice.h>
 #include <igl/opengl/Device.h>
 #include <igl/opengl/egl/Context.h>
 #include <igl/opengl/egl/HWDevice.h>
-#include <shell/openxr/XrLog.h>
 
-#include "XrSwapchainProviderImplGLES.h"
+#include <shell/openxr/XrLog.h>
+#include <shell/openxr/mobile/opengl/XrSwapchainProviderImplGLES.h>
 
 #include <algorithm>
 #include <array>
@@ -88,10 +88,10 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
   XrSession session;
   XR_CHECK(xrResult = xrCreateSession(instance, &sessionCreateInfo, &session));
   if (xrResult != XR_SUCCESS) {
-    IGL_LOG_ERROR("Failed to create XR session: %d.", xrResult);
+    IGL_LOG_ERROR("Failed to create XR session: %d.\n", xrResult);
     return XR_NULL_HANDLE;
   }
-  IGL_LOG_INFO("XR session created");
+  IGL_LOG_INFO("XR session created.\n");
 
   return session;
 }

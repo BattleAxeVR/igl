@@ -9,11 +9,9 @@
 
 #pragma once
 
-#include <array>
 #include <memory>
-#include <vector>
 
-#include <openxr/openxr.h>
+#include <shell/openxr/XrPlatform.h>
 
 #include <igl/Device.h>
 #include <igl/Texture.h>
@@ -54,7 +52,6 @@ class XrSwapchainProvider {
  private:
   XrSwapchain createXrSwapchain(XrSwapchainUsageFlags extraUsageFlags, int64_t format);
 
- private:
   std::unique_ptr<impl::XrSwapchainProviderImpl> impl_;
   std::shared_ptr<igl::shell::Platform> platform_;
   const XrSession& session_;
