@@ -23,9 +23,9 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-#ifndef EXTERNAL_XR_BUILD
+//#ifndef EXTERNAL_XR_BUILD
 #include <xr_linear.h>
-#endif
+//#endif
 
 #if IGL_PLATFORM_ANDROID
 #include <shell/shared/fileLoader/android/FileLoaderAndroid.h>
@@ -240,6 +240,7 @@ bool XrApp::createInstance() {
                XR_VERSION_MINOR(instanceProps_.runtimeVersion),
                XR_VERSION_PATCH(instanceProps_.runtimeVersion));
 
+#if ENABLE_META_OPENXR_FEATURES
   if (refreshRateExtensionSupported()) {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrGetDisplayRefreshRateFB",
@@ -254,6 +255,19 @@ bool XrApp::createInstance() {
                                    (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
     IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
   }
+
+  if (simultaneousHandsAndControllersSupported_) {
+    XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                   "xrResumeSimultaneousHandsAndControllersTrackingMETA",
+                                   (PFN_xrVoidFunction*)(&xrResumeSimultaneousHandsAndControllersTrackingMETA_)));
+    IGL_ASSERT(xrResumeSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
+
+    XR_CHECK(xrGetInstanceProcAddr(instance_,
+                                   "xrPauseSimultaneousHandsAndControllersTrackingMETA",
+                                   (PFN_xrVoidFunction*)(&xrPauseSimultaneousHandsAndControllersTrackingMETA_)));
+    IGL_ASSERT(xrPauseSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
+}
+#endif
 
   return true;
 } // namespace igl::shell::openxr
@@ -271,7 +285,30 @@ bool XrApp::createSystem() {
     return false;
   }
 
+#if ENABLE_META_OPENXR_FEATURES
+    XrSystemPropertiesBodyTrackingFullBodyMETA meta_full_body_tracking_properties{ XR_TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META };
+
+    if (metaFullBodyTrackingSupported_)
+    {
+        meta_full_body_tracking_properties.next = systemProps_.next;
+        systemProps_.next = &meta_full_body_tracking_properties;
+    }
+
+    XrSystemSimultaneousHandsAndControllersPropertiesMETA simultaneous_properties = { XR_TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META };
+
+    if (simultaneousHandsAndControllersSupported_)
+    {
+        simultaneous_properties.next = systemProps_.next;
+        systemProps_.next = &simultaneous_properties;
+    }
+#endif
+
   XR_CHECK(xrGetSystemProperties(instance_, systemId_, &systemProps_));
+
+#if ENABLE_META_OPENXR_FEATURES
+    metaFullBodyTrackingSupported_ = meta_full_body_tracking_properties.supportsFullBodyTracking;
+    simultaneousHandsAndControllersSupported_ = simultaneous_properties.supportsSimultaneousHandsAndControllers;
+#endif
 
   IGL_LOG_INFO(
       "System Properties: Name=%s VendorId=%x\n", systemProps_.systemName, systemProps_.vendorId);
@@ -324,7 +361,6 @@ bool XrApp::enumerateViewConfigurations() {
       return false;
     }
 	
-
 #if ENABLE_CLOUDXR
       ok_config_s.load();
 #endif
@@ -509,6 +545,8 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
       return false;
     }
   }
+
+#if ENABLE_META_OPENXR_FEATURES
   if (refreshRateExtensionSupported()) {
     queryCurrentRefreshRate();
     if (params.refreshRateMode_ == InitParams::UseMaxRefreshRate) {
@@ -519,6 +557,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
       // Do nothing. Use default refresh rate.
     }
   }
+#endif
 
   if (hands_) {
     hands_->updateMeshes(shellParams_->handMeshes);
@@ -955,6 +994,7 @@ void XrApp::createActions() {
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
+#if ENABLE_META_OPENXR_FEATURES
     // Touch Pro
     if (touchProControllersSupported_)
     {
@@ -1018,6 +1058,7 @@ void XrApp::createActions() {
         suggestedBindings.countSuggestedBindings = (uint32_t)oculus_touch_pro_bindings.size();
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
+#endif
 
     if (htcViveFocus3ControllersSupported_)
     {
@@ -1757,6 +1798,8 @@ bool XrApp::alphaBlendCompositionSupported() const noexcept {
   return false;
 }
 
+#if ENABLE_META_OPENXR_FEATURES
+
 bool XrApp::isSharpeningEnabled() const {
   return compositionLayerSettingsSupported_ &&
   ((compositionLayerSettings_.layerFlags & XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB) != 0);
@@ -1776,21 +1819,9 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
 }
 
 bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
-    if (!handsTrackingSupported_ || !simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
+    if (!simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
         return false;
     }
-
-    if (handsTrackingSupported_ && (!leftHandTracker_ || !rightHandTracker_))
-    {
-        createHandsTracking();
-    }
-
-    if (!leftHandTracker_ || !rightHandTracker_)
-    {
-        return false;
-    }
-
-    updateHandMeshes();
 
     XrResult result = XR_SUCCESS;
 
@@ -1820,5 +1851,6 @@ bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
 
     return false;
 }
+#endif
 
 } // namespace igl::shell::openxr

@@ -24,7 +24,7 @@
 #include <shell/shared/renderSession/RenderSession.h>
 
 #ifndef ENABLE_META_OPENXR_FEATURES
-#define ENABLE_META_OPENXR_FEATURES 1
+#define ENABLE_META_OPENXR_FEATURES 0
 #endif
 
 #if ENABLE_META_OPENXR_FEATURES
@@ -264,6 +264,7 @@ class XrApp {
   bool isSharpeningEnabled() const;
   void setSharpeningEnabled(const bool enabled);
 
+#if ENABLE_META_OPENXR_FEATURES
   bool isBodyTrackingFBSupported() const
   {
     return bodyTrackingFBSupported_;
@@ -293,6 +294,7 @@ class XrApp {
   {
     return simultaneousHandsAndControllersEnabled_;
   }
+#endif
 
   bool areHTCViveFocus3ControllersSupported() const
   {
@@ -406,6 +408,8 @@ private:
 
   bool simpleControllersSupported_ = false;
   bool touchControllersSupported_ = true;
+
+#if ENABLE_META_OPENXR_FEATURES
   bool touchProControllersSupported_ = false;
   bool touchControllerProximitySupported_ = false;
 
@@ -418,8 +422,8 @@ private:
   PFN_xrResumeSimultaneousHandsAndControllersTrackingMETA xrResumeSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
   PFN_xrPauseSimultaneousHandsAndControllersTrackingMETA xrPauseSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
   bool setSimultaneousHandsAndControllersEnabled(const bool enabled);
-
   bool eyeTrackingSocialFBSupported_ = false;
+#endif
 
   bool htcViveFocus3ControllersSupported_ = false;
   bool byteDanceControllersSupported_ = false;
