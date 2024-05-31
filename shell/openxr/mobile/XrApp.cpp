@@ -41,7 +41,9 @@
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
 
+#include <shell/openxr/XrHands.h>
 #include <shell/openxr/XrLog.h>
+#include <shell/openxr/XrPassthrough.h>
 #include <shell/openxr/XrSwapchainProvider.h>
 #include <shell/openxr/impl/XrAppImpl.h>
 #include <shell/openxr/impl/XrSwapchainProviderImpl.h>
@@ -58,57 +60,12 @@ struct AAssetManager {};
 #endif
 
 namespace igl::shell::openxr {
-
 constexpr auto kAppName = "IGL Shell OpenXR";
 constexpr auto kEngineName = "IGL";
 constexpr auto kSupportedViewConfigType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
 
-namespace {
-inline glm::quat glmQuatFromXrQuat(const XrQuaternionf& quat) noexcept {
-  return glm::quat(quat.w, quat.x, quat.y, quat.z);
-}
-
-inline glm::vec4 glmVecFromXrVec(const XrVector4f& vec) noexcept {
-  return glm::vec4(vec.x, vec.y, vec.z, vec.w);
-}
-
-inline glm::vec4 glmVecFromXrVec(const XrVector4sFB& vec) noexcept {
-  return glm::vec4(vec.x, vec.y, vec.z, vec.w);
-}
-
-inline glm::vec3 glmVecFromXrVec(const XrVector3f& vec) noexcept {
-  return glm::vec3(vec.x, vec.y, vec.z);
-}
-
-inline glm::vec2 glmVecFromXrVec(const XrVector2f& vec) noexcept {
-  return glm::vec2(vec.x, vec.y);
-}
-
-inline Pose poseFromXrPose(const XrPosef& pose) noexcept {
-  return Pose{
-      /*.orientation = */ glmQuatFromXrQuat(pose.orientation),
-      /*.position = */ glmVecFromXrVec(pose.position),
-  };
-}
-
-inline int64_t currentTimeInNs() {
-  const auto now = std::chrono::steady_clock::now();
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()).count();
-}
-} // namespace
-
 XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl, bool shouldPresent) :
-  requiredExtensions_({
-#if USE_VULKAN_BACKEND
-      XR_KHR_VULKAN_ENABLE_EXTENSION_NAME,
-#endif // USE_VULKAN_BACKEND
-#if !defined(XR_USE_PLATFORM_MACOS) && !defined(IGL_CMAKE_BUILD)
-      XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
-#endif
-    //XR_KHR_CONVERT_TIMESPEC_TIME_EXTENSION_NAME,
-  }),
-  impl_(std::move(impl)),
-  shellParams_(std::make_unique<ShellParams>()) {
+  impl_(std::move(impl)), shellParams_(std::make_unique<ShellParams>()) {
   shellParams_->shouldPresent = shouldPresent;
   viewports_.fill({XR_TYPE_VIEW_CONFIGURATION_VIEW});
   views_.fill({XR_TYPE_VIEW});
@@ -123,16 +80,9 @@ XrApp::~XrApp() {
 
   renderSession_.reset();
   swapchainProviders_.clear();
+  passthrough_.reset();
+  hands_.reset();
 
-  if (leftHandTracker_ != XR_NULL_HANDLE) {
-    xrDestroyHandTrackerEXT_(leftHandTracker_);
-  }
-  if (rightHandTracker_ != XR_NULL_HANDLE) {
-    xrDestroyHandTrackerEXT_(rightHandTracker_);
-  }
-  if (passthrough_ != XR_NULL_HANDLE) {
-    xrDestroyPassthroughFB_(passthrough_);
-  }
   if (currentSpace_ != XR_NULL_HANDLE) {
     xrDestroySpace(currentSpace_);
   }
@@ -158,7 +108,6 @@ XrSession XrApp::session() const {
 }
 
 bool XrApp::checkExtensions() {
-  // Check that the extensions required are present.
   XrResult result;
   PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties;
   XR_CHECK(result =
@@ -182,23 +131,6 @@ bool XrApp::checkExtensions() {
     IGL_LOG_INFO("Extension #%d = '%s'.\n", i, extensions_[i].extensionName);
   }
 
-  auto requiredExtensionsImpl_ = impl_->getXrRequiredExtensions();
-  requiredExtensions_.insert(std::end(requiredExtensions_),
-                             std::begin(requiredExtensionsImpl_),
-                             std::end(requiredExtensionsImpl_));
-
-  for (auto& requiredExtension : requiredExtensions_) {
-    auto it = std::find_if(std::begin(extensions_),
-                           std::end(extensions_),
-                           [&requiredExtension](const XrExtensionProperties& extension) {
-                             return strcmp(extension.extensionName, requiredExtension) == 0;
-                           });
-    if (it == std::end(extensions_)) {
-      IGL_LOG_ERROR("Extension %s is required.\n", requiredExtension);
-      return false;
-    }
-  }
-
   auto checkExtensionSupported = [this](const char* name) {
     return std::any_of(std::begin(extensions_),
                        std::end(extensions_),
@@ -207,132 +139,65 @@ bool XrApp::checkExtensions() {
                        });
   };
 
-  passthroughSupported_ = checkExtensionSupported(XR_FB_PASSTHROUGH_EXTENSION_NAME);
-  IGL_LOG_INFO("Passthrough is %s\n", passthroughSupported_ ? "supported" : "not supported");
-
-  auto checkNeedRequiredExtension = [this](const char* name) {
-    return std::find_if(std::begin(requiredExtensions_),
-                        std::end(requiredExtensions_),
-                        [&](const char* extensionName) {
-                          return strcmp(extensionName, name) == 0;
-                        }) == std::end(requiredExtensions_);
-  };
-
-  // Add passthough extension if supported.
-  if (passthroughSupported_ && checkNeedRequiredExtension(XR_FB_PASSTHROUGH_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_PASSTHROUGH_EXTENSION_NAME);
-  }
-
-  handsTrackingSupported_ = checkExtensionSupported(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
-  IGL_LOG_INFO("Hands tracking is %s\n", handsTrackingSupported_ ? "supported" : "not supported");
-
-  handsTrackingMeshSupported_ = checkExtensionSupported(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
-  IGL_LOG_INFO("Hands tracking mesh is %s\n",
-               handsTrackingMeshSupported_ ? "supported" : "not supported");
-
-  // Add hands tracking extension if supported.
-  if (handsTrackingSupported_ && checkNeedRequiredExtension(XR_EXT_HAND_TRACKING_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_EXT_HAND_TRACKING_EXTENSION_NAME);
-
-    if (handsTrackingMeshSupported_ &&
-        checkNeedRequiredExtension(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME)) {
-      requiredExtensions_.push_back(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME);
+  // Check all required extensions are supported.
+  auto requiredExtensionsImpl = impl_->getXrRequiredExtensions();
+  for (const char* requiredExtension : requiredExtensionsImpl) {
+    if (!checkExtensionSupported(requiredExtension)) {
+      IGL_LOG_ERROR("Extension %s is required, but not supported.\n", requiredExtension);
+      return false;
     }
   }
 
-  refreshRateExtensionSupported_ =
-      checkExtensionSupported(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
-  IGL_LOG_INFO("RefreshRate is %s\n",
-               refreshRateExtensionSupported_ ? "supported" : "not supported");
+  auto checkNeedEnableExtension = [this](const char* name) {
+    return std::find_if(std::begin(enabledExtensions_),
+                        std::end(enabledExtensions_),
+                        [&](const char* extensionName) {
+                          return strcmp(extensionName, name) == 0;
+                        }) == std::end(enabledExtensions_);
+  };
 
-  if (refreshRateExtensionSupported_ &&
-      checkNeedRequiredExtension(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME);
-  }
-  
-  compositionLayerSettingsSupported_ = 
-      checkExtensionSupported(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
-  IGL_LOG_INFO("Composition Layer Settings are %s", 
-	compositionLayerSettingsSupported_ ? "supported" : "not supported");
-
-  if (compositionLayerSettingsSupported_ && 
-	checkNeedRequiredExtension(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
+  // Add required extensions to enabledExtensions_.
+  for (const char* requiredExtension : requiredExtensionsImpl) {
+    if (checkNeedEnableExtension(requiredExtension)) {
+      IGL_LOG_INFO("Extension %s is enabled.\n", requiredExtension);
+      enabledExtensions_.push_back(requiredExtension);
+    }
   }
 
-  touchProControllersSupported_ = 
-      checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
-  IGL_LOG_INFO("Touch Pro controllers are %s", touchProControllersSupported_ ? "supported" : "not supported");
+  // Get list of all optional extensions.
+  auto optionalExtensionsImpl = impl_->getXrOptionalExtensions();
+  std::vector<const char*> additionalOptionalExtensions = {
+#if IGL_PLATFORM_ANDROID
+      XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME,
+#endif // IGL_PLATFORM_ANDROID
+#ifdef XR_FB_composition_layer_alpha_blend
+      XR_FB_COMPOSITION_LAYER_ALPHA_BLEND_EXTENSION_NAME,
+#endif // XR_FB_composition_layer_alpha_blend
+      XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME};
 
-  if (touchProControllersSupported_ && 
-      checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
-  }
+  optionalExtensionsImpl.insert(optionalExtensionsImpl.end(),
+                                std::begin(XrPassthrough::getExtensions()),
+                                std::end(XrPassthrough::getExtensions()));
 
-  touchControllerProximitySupported_ = checkExtensionSupported(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
-  IGL_LOG_INFO("Touch controller proximity is %s", touchControllerProximitySupported_ ? "supported" : "not supported");
+  optionalExtensionsImpl.insert(optionalExtensionsImpl.end(),
+                                std::begin(XrHands::getExtensions()),
+                                std::end(XrHands::getExtensions()));
 
-  if (touchControllerProximitySupported_ && 
-      checkNeedRequiredExtension(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
-  }
+  optionalExtensionsImpl.insert(optionalExtensionsImpl.end(),
+                                std::begin(additionalOptionalExtensions),
+                                std::end(additionalOptionalExtensions));
 
-  bodyTrackingFBSupported_ = checkExtensionSupported(XR_FB_BODY_TRACKING_EXTENSION_NAME);
-  IGL_LOG_INFO("FB Body Tracking is %s", bodyTrackingFBSupported_ ? "supported" : "not supported");
-
-  if (bodyTrackingFBSupported_ &&
-    checkNeedRequiredExtension(XR_FB_BODY_TRACKING_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
-  }
-
-#if ENABLE_META_OPENXR_FEATURES
-  metaFullBodyTrackingSupported_ = checkExtensionSupported(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
-  IGL_LOG_INFO("Meta Full Body Tracking is %s", metaFullBodyTrackingSupported_ ? "supported" : "not supported");
-
-  if (metaFullBodyTrackingSupported_ &&
-    checkNeedRequiredExtension(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
-  }
-
-  metaBodyTrackingFidelitySupported_ = checkExtensionSupported(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
-  IGL_LOG_INFO("Meta Body Tracking Fidelity is %s", metaBodyTrackingFidelitySupported_ ? "supported" : "not supported");
-
-  if (metaBodyTrackingFidelitySupported_ &&
-    checkNeedRequiredExtension(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
-  }
-
-  simultaneousHandsAndControllersSupported_ = handsTrackingSupported_ && checkExtensionSupported(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
-  IGL_LOG_INFO("Simultaneous Hands and Controllers are %s", simultaneousHandsAndControllersSupported_ ? "supported" : "not supported");
-
-  if (simultaneousHandsAndControllersSupported_ &&
-    checkNeedRequiredExtension(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
-  }
-#endif
-
-  eyeTrackingSocialFBSupported_ = checkExtensionSupported(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
-  IGL_LOG_INFO("FB Eye Tracking Social is %s", eyeTrackingSocialFBSupported_ ? "supported" : "not supported");
-
-  if (eyeTrackingSocialFBSupported_ &&
-    checkNeedRequiredExtension(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
-  }
-
-  htcViveFocus3ControllersSupported_ = checkExtensionSupported(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
-  IGL_LOG_INFO("HTC Vive Focus 3 Controllers are %s", htcViveFocus3ControllersSupported_ ? "supported" : "not supported");
-
-  if (htcViveFocus3ControllersSupported_ &&
-    checkNeedRequiredExtension(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
-  }
-
-  byteDanceControllersSupported_ = checkExtensionSupported(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
-  IGL_LOG_INFO("ByteDance (Pico 3/4) Controllers are %s", byteDanceControllersSupported_ ? "supported" : "not supported");
-
-  if (byteDanceControllersSupported_ &&
-    checkNeedRequiredExtension(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME)) {
-    requiredExtensions_.push_back(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  // Add optional extensions to enabledExtensions_.
+  for (const char* optionalExtension : optionalExtensionsImpl) {
+    if (checkExtensionSupported(optionalExtension)) {
+      supportedOptionalXrExtensions_.insert(optionalExtension);
+      if (checkNeedEnableExtension(optionalExtension)) {
+        IGL_LOG_INFO("Extension %s is enabled.\n", optionalExtension);
+        enabledExtensions_.push_back(optionalExtension);
+      }
+    } else {
+      IGL_LOG_INFO("Warning: Extension %s is not supported.\n", optionalExtension);
+    }
   }
 
   return true;
@@ -348,13 +213,17 @@ bool XrApp::createInstance() {
 
   XrInstanceCreateInfo instanceCreateInfo = {
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
-      .next = impl_->getInstanceCreateExtension(),
+#if IGL_PLATFORM_ANDROID
+      .next = instanceCreateInfoAndroidSupported() ? &instanceCreateInfoAndroid_ : nullptr,
+#else
+      .next = nullptr,
+#endif // IGL_PLATFORM_ANDROID
       .createFlags = 0,
       .applicationInfo = appInfo,
       .enabledApiLayerCount = 0,
       .enabledApiLayerNames = nullptr,
-      .enabledExtensionCount = static_cast<uint32_t>(requiredExtensions_.size()),
-      .enabledExtensionNames = requiredExtensions_.data()
+      .enabledExtensionCount = static_cast<uint32_t>(enabledExtensions_.size()),
+      .enabledExtensionNames = enabledExtensions_.data(),
   };
 
   XrResult initResult;
@@ -371,42 +240,7 @@ bool XrApp::createInstance() {
                XR_VERSION_MINOR(instanceProps_.runtimeVersion),
                XR_VERSION_PATCH(instanceProps_.runtimeVersion));
 
-  if (passthroughSupported_) {
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrCreatePassthroughFB", (PFN_xrVoidFunction*)(&xrCreatePassthroughFB_)));
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrDestroyPassthroughFB", (PFN_xrVoidFunction*)(&xrDestroyPassthroughFB_)));
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrPassthroughStartFB", (PFN_xrVoidFunction*)(&xrPassthroughStartFB_)));
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrCreatePassthroughLayerFB",
-                                   (PFN_xrVoidFunction*)(&xrCreatePassthroughLayerFB_)));
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrDestroyPassthroughLayerFB",
-                                   (PFN_xrVoidFunction*)(&xrDestroyPassthroughLayerFB_)));
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrPassthroughLayerSetStyleFB",
-                                   (PFN_xrVoidFunction*)(&xrPassthroughLayerSetStyleFB_)));
-  }
-
-  if (handsTrackingSupported_) {
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrCreateHandTrackerEXT", (PFN_xrVoidFunction*)(&xrCreateHandTrackerEXT_)));
-    IGL_ASSERT(xrCreateHandTrackerEXT_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrDestroyHandTrackerEXT", (PFN_xrVoidFunction*)(&xrDestroyHandTrackerEXT_)));
-    IGL_ASSERT(xrDestroyHandTrackerEXT_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(
-        instance_, "xrLocateHandJointsEXT", (PFN_xrVoidFunction*)(&xrLocateHandJointsEXT_)));
-    IGL_ASSERT(xrLocateHandJointsEXT_ != nullptr);
-    if (handsTrackingMeshSupported_) {
-      XR_CHECK(xrGetInstanceProcAddr(
-          instance_, "xrGetHandMeshFB", (PFN_xrVoidFunction*)(&xrGetHandMeshFB_)));
-      IGL_ASSERT(xrGetHandMeshFB_ != nullptr);
-    }
-  }
-
-  if (refreshRateExtensionSupported_) {
+  if (refreshRateExtensionSupported()) {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrGetDisplayRefreshRateFB",
                                    (PFN_xrVoidFunction*)(&xrGetDisplayRefreshRateFB_)));
@@ -419,18 +253,6 @@ bool XrApp::createInstance() {
                                    "xrRequestDisplayRefreshRateFB",
                                    (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
     IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
-  }
-
-  if (simultaneousHandsAndControllersSupported_) {
-      XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                     "xrResumeSimultaneousHandsAndControllersTrackingMETA",
-                                     (PFN_xrVoidFunction*)(&xrResumeSimultaneousHandsAndControllersTrackingMETA_)));
-      IGL_ASSERT(xrResumeSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
-
-      XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                     "xrPauseSimultaneousHandsAndControllersTrackingMETA",
-                                     (PFN_xrVoidFunction*)(&xrPauseSimultaneousHandsAndControllersTrackingMETA_)));
-      IGL_ASSERT(xrPauseSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
   }
 
   return true;
@@ -449,30 +271,7 @@ bool XrApp::createSystem() {
     return false;
   }
 
-#if ENABLE_META_OPENXR_FEATURES
-  XrSystemPropertiesBodyTrackingFullBodyMETA meta_full_body_tracking_properties{ XR_TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META };
-
-  if (metaFullBodyTrackingSupported_)
-  {
-      meta_full_body_tracking_properties.next = systemProps_.next;
-      systemProps_.next = &meta_full_body_tracking_properties;
-  }
-
-  XrSystemSimultaneousHandsAndControllersPropertiesMETA simultaneous_properties = { XR_TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META };
-
-  if (simultaneousHandsAndControllersSupported_)
-  {
-      simultaneous_properties.next = systemProps_.next;
-      systemProps_.next = &simultaneous_properties;
-  }
-#endif
-
   XR_CHECK(xrGetSystemProperties(instance_, systemId_, &systemProps_));
-
-#if ENABLE_META_OPENXR_FEATURES
-  metaFullBodyTrackingSupported_ = meta_full_body_tracking_properties.supportsFullBodyTracking;
-  simultaneousHandsAndControllersSupported_ = simultaneous_properties.supportsSimultaneousHandsAndControllers;
-#endif
 
   IGL_LOG_INFO(
       "System Properties: Name=%s VendorId=%x\n", systemProps_.systemName, systemProps_.vendorId);
@@ -483,226 +282,7 @@ bool XrApp::createSystem() {
   IGL_LOG_INFO("System Tracking Properties: OrientationTracking=%s PositionTracking=%s\n",
                systemProps_.trackingProperties.orientationTracking ? "True" : "False",
                systemProps_.trackingProperties.positionTracking ? "True" : "False");
-
   return true;
-}
-
-bool XrApp::createPassthrough() {
-  if (!passthroughSupported_) {
-    return false;
-  }
-  XrPassthroughCreateInfoFB passthroughInfo{XR_TYPE_PASSTHROUGH_CREATE_INFO_FB};
-  passthroughInfo.next = nullptr;
-  passthroughInfo.flags = 0u;
-
-  XrResult result;
-  XR_CHECK(result = xrCreatePassthroughFB_(session_, &passthroughInfo, &passthrough_));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreatePassthroughFB failed.\n");
-    return false;
-  }
-
-  XrPassthroughLayerCreateInfoFB layerInfo{XR_TYPE_PASSTHROUGH_LAYER_CREATE_INFO_FB};
-  layerInfo.next = nullptr;
-  layerInfo.passthrough = passthrough_;
-  layerInfo.purpose = XR_PASSTHROUGH_LAYER_PURPOSE_RECONSTRUCTION_FB;
-  layerInfo.flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB;
-  XR_CHECK(result = xrCreatePassthroughLayerFB_(session_, &layerInfo, &passthrougLayer_));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreatePassthroughLayerFB failed.\n");
-    return false;
-  }
-
-  XrPassthroughStyleFB style{XR_TYPE_PASSTHROUGH_STYLE_FB};
-  style.next = nullptr;
-  style.textureOpacityFactor = 1.0f;
-  style.edgeColor = {0.0f, 0.0f, 0.0f, 0.0f};
-  XR_CHECK(result = xrPassthroughLayerSetStyleFB_(passthrougLayer_, &style));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrPassthroughLayerSetStyleFB failed.\n");
-    return false;
-  }
-
-  XR_CHECK(result = xrPassthroughStartFB_(passthrough_));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrPassthroughStartFB failed.\n");
-    return false;
-  }
-  return true;
-}
-
-bool XrApp::createHandsTracking() {
-  if (!handsTrackingSupported_) {
-    return false;
-  }
-  XrHandTrackerCreateInfoEXT createInfo{XR_TYPE_HAND_TRACKER_CREATE_INFO_EXT};
-  createInfo.handJointSet = XR_HAND_JOINT_SET_DEFAULT_EXT;
-  createInfo.hand = XR_HAND_LEFT_EXT;
-
-  std::array<XrHandTrackingDataSourceEXT, 2> dataSources = {
-      XR_HAND_TRACKING_DATA_SOURCE_UNOBSTRUCTED_EXT,
-      XR_HAND_TRACKING_DATA_SOURCE_CONTROLLER_EXT,
-  };
-
-  XrHandTrackingDataSourceInfoEXT dataSourceInfo{XR_TYPE_HAND_TRACKING_DATA_SOURCE_INFO_EXT};
-  dataSourceInfo.requestedDataSourceCount = static_cast<uint32_t>(dataSources.size());
-  dataSourceInfo.requestedDataSources = dataSources.data();
-
-  createInfo.next = &dataSourceInfo;
-
-  XrResult result;
-  XR_CHECK(result = xrCreateHandTrackerEXT_(session_, &createInfo, &leftHandTracker_));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreateHandTrackerEXT (left hand) failed.\n");
-    return false;
-  }
-
-  createInfo.hand = XR_HAND_RIGHT_EXT;
-  XR_CHECK(result = xrCreateHandTrackerEXT_(session_, &createInfo, &rightHandTracker_));
-  if (result != XR_SUCCESS) {
-    IGL_LOG_ERROR("xrCreateHandTrackerEXT (right hand) failed.\n");
-    return false;
-  }
-
-  return true;
-}
-
-void XrApp::updateHandMeshes() {
-  if (!handsTrackingMeshSupported_ || !xrGetHandMeshFB_) {
-    return;
-  }
-  auto& handMeshes = shellParams_->handMeshes;
-
-  XrResult result;
-  XrHandTrackerEXT trackers[] = {leftHandTracker_, rightHandTracker_};
-  for (uint8_t i = 0; i < 2; ++i) {
-    XrHandTrackingMeshFB mesh{XR_TYPE_HAND_TRACKING_MESH_FB};
-    XR_CHECK(result = xrGetHandMeshFB_(trackers[i], &mesh));
-    if (result != XR_SUCCESS) {
-      continue;
-    }
-
-    IGL_ASSERT(mesh.jointCountOutput <= XR_HAND_JOINT_COUNT_EXT);
-    XrPosef jointBindPoses[XR_HAND_JOINT_COUNT_EXT]{};
-    XrHandJointEXT jointParents[XR_HAND_JOINT_COUNT_EXT]{};
-    float jointRadii[XR_HAND_JOINT_COUNT_EXT]{};
-
-    mesh.jointCapacityInput = mesh.jointCountOutput;
-    mesh.vertexCapacityInput = mesh.vertexCountOutput;
-    mesh.indexCapacityInput = mesh.indexCountOutput;
-
-    std::vector<XrVector3f> vertexPositions(mesh.vertexCapacityInput);
-    std::vector<XrVector3f> vertexNormals(mesh.vertexCapacityInput);
-    std::vector<XrVector2f> vertexUVs(mesh.vertexCapacityInput);
-    std::vector<XrVector4sFB> vertexBlendIndices(mesh.vertexCapacityInput);
-    std::vector<XrVector4f> vertexBlendWeights(mesh.vertexCapacityInput);
-
-    handMeshes[i].indices.resize(mesh.indexCapacityInput);
-
-    mesh.jointBindPoses = jointBindPoses;
-    mesh.jointParents = jointParents;
-    mesh.jointRadii = jointRadii;
-    mesh.vertexPositions = vertexPositions.data();
-    mesh.vertexNormals = vertexNormals.data();
-    mesh.vertexUVs = vertexUVs.data();
-    mesh.vertexBlendIndices = vertexBlendIndices.data();
-    mesh.vertexBlendWeights = vertexBlendWeights.data();
-    mesh.indices = handMeshes[i].indices.data();
-
-    XR_CHECK(result = xrGetHandMeshFB_(trackers[i], &mesh));
-    if (result != XR_SUCCESS) {
-      continue;
-    }
-
-    handMeshes[i].vertexCountOutput = mesh.vertexCountOutput;
-    handMeshes[i].indexCountOutput = mesh.indexCountOutput;
-    handMeshes[i].jointCountOutput = mesh.jointCountOutput;
-    handMeshes[i].vertexPositions.reserve(mesh.vertexCountOutput);
-    handMeshes[i].vertexNormals.reserve(mesh.vertexCountOutput);
-    handMeshes[i].vertexUVs.reserve(mesh.vertexCountOutput);
-    handMeshes[i].vertexBlendIndices.reserve(mesh.vertexCountOutput);
-    handMeshes[i].vertexBlendWeights.reserve(mesh.vertexCountOutput);
-    handMeshes[i].jointBindPoses.reserve(mesh.jointCountOutput);
-
-    for (uint32_t j = 0; j < mesh.vertexCountOutput; ++j) {
-      handMeshes[i].vertexPositions.emplace_back(glmVecFromXrVec(mesh.vertexPositions[j]));
-      handMeshes[i].vertexUVs.emplace_back(glmVecFromXrVec(mesh.vertexUVs[j]));
-      handMeshes[i].vertexNormals.emplace_back(glmVecFromXrVec(mesh.vertexNormals[j]));
-      handMeshes[i].vertexBlendIndices.emplace_back(glmVecFromXrVec(mesh.vertexBlendIndices[j]));
-      handMeshes[i].vertexBlendWeights.emplace_back(glmVecFromXrVec(mesh.vertexBlendWeights[j]));
-    }
-
-    for (uint32_t j = 0; j < mesh.jointCountOutput; ++j) {
-      handMeshes[i].jointBindPoses.emplace_back(poseFromXrPose(mesh.jointBindPoses[j]));
-    }
-  }
-}
-
-void XrApp::updateHandTracking() {
-  if (!handsTrackingSupported_) {
-    return;
-  }
-  auto& handTracking = shellParams_->handTracking;
-
-  XrResult result;
-  XrHandTrackerEXT trackers[] = {leftHandTracker_, rightHandTracker_};
-  for (uint8_t i = 0; i < 2; ++i) {
-    XrHandJointLocationEXT jointLocations[XR_HAND_JOINT_COUNT_EXT];
-    XrHandJointVelocityEXT jointVelocities[XR_HAND_JOINT_COUNT_EXT];
-
-    XrHandJointVelocitiesEXT velocities{.type = XR_TYPE_HAND_JOINT_VELOCITIES_EXT,
-                                        .next = nullptr,
-                                        .jointCount = XR_HAND_JOINT_COUNT_EXT,
-                                        .jointVelocities = jointVelocities};
-
-    XrHandJointLocationsEXT locations{.type = XR_TYPE_HAND_JOINT_LOCATIONS_EXT,
-                                      .next = &velocities,
-                                      .jointCount = XR_HAND_JOINT_COUNT_EXT,
-                                      .jointLocations = jointLocations};
-
-    XrHandJointsMotionRangeInfoEXT motionRangeInfo{XR_TYPE_HAND_JOINTS_MOTION_RANGE_INFO_EXT};
-    motionRangeInfo.handJointsMotionRange =
-        XR_HAND_JOINTS_MOTION_RANGE_CONFORMING_TO_CONTROLLER_EXT;
-
-    const XrHandJointsLocateInfoEXT locateInfo{.type = XR_TYPE_HAND_JOINTS_LOCATE_INFO_EXT,
-                                               .next = &motionRangeInfo,
-                                               .baseSpace = currentSpace_,
-                                               .time = currentTimeInNs()};
-
-    handTracking[i].jointPose.resize(XR_HAND_JOINT_COUNT_EXT);
-    handTracking[i].jointVelocity.resize(XR_HAND_JOINT_COUNT_EXT);
-    handTracking[i].isJointTracked.resize(XR_HAND_JOINT_COUNT_EXT);
-
-    XR_CHECK(result = xrLocateHandJointsEXT_(trackers[i], &locateInfo, &locations));
-    if (result != XR_SUCCESS) {
-      for (size_t jointIndex = 0; jointIndex < XR_HAND_JOINT_COUNT_EXT; ++jointIndex) {
-        handTracking[i].isJointTracked[jointIndex] = false;
-      }
-      continue;
-    }
-
-    if (!locations.isActive) {
-      for (size_t jointIndex = 0; jointIndex < XR_HAND_JOINT_COUNT_EXT; ++jointIndex) {
-        handTracking[i].isJointTracked[jointIndex] = false;
-      }
-      continue;
-    }
-
-    constexpr XrSpaceLocationFlags isValid =
-        XR_SPACE_LOCATION_ORIENTATION_VALID_BIT | XR_SPACE_LOCATION_POSITION_VALID_BIT;
-    for (size_t jointIndex = 0; jointIndex < XR_HAND_JOINT_COUNT_EXT; ++jointIndex) {
-      if ((jointLocations[jointIndex].locationFlags & isValid) != 0) {
-        handTracking[i].jointPose[jointIndex] = poseFromXrPose(jointLocations[jointIndex].pose);
-        handTracking[i].jointVelocity[jointIndex].linear =
-            glmVecFromXrVec(jointVelocities[jointIndex].linearVelocity);
-        handTracking[i].jointVelocity[jointIndex].angular =
-            glmVecFromXrVec(jointVelocities[jointIndex].angularVelocity);
-        handTracking[i].isJointTracked[jointIndex] = true;
-      } else {
-        handTracking[i].isJointTracked[jointIndex] = false;
-      }
-    }
-  }
 }
 
 bool XrApp::enumerateViewConfigurations() {
@@ -743,6 +323,7 @@ bool XrApp::enumerateViewConfigurations() {
           kNumViews);
       return false;
     }
+	
 
 #if ENABLE_CLOUDXR
       ok_config_s.load();
@@ -752,11 +333,12 @@ bool XrApp::enumerateViewConfigurations() {
         instance_, systemId_, viewConfigType, numViewports, &numViewports, viewports_.data()));
 
     for (auto& view : viewports_) {
-      (void)view; // doesn't compile in release for unused variable
-
+	  
 #if ENABLE_CLOUDXR
-        view.recommendedImageRectWidth = ok_config_s.per_eye_width_;
-        view.recommendedImageRectHeight = ok_config_s.per_eye_height_;
+	view.recommendedImageRectWidth = ok_config_s.per_eye_width_;
+	view.recommendedImageRectHeight = ok_config_s.per_eye_height_;
+#else
+	(void)view; // doesn't compile in release for unused variable
 #endif
 
       IGL_LOG_INFO("Viewport [%d]: Recommended Width=%d Height=%d SampleCount=%d\n",
@@ -826,28 +408,29 @@ void XrApp::enumerateBlendModes() {
 void XrApp::updateSwapchainProviders() {
   const size_t numSwapchainProviders = useSinglePassStereo_ ? numQuadLayersPerView_
                                                             : kNumViews * numQuadLayersPerView_;
-  const size_t numViewsPerSwapchain = useSinglePassStereo_ ? kNumViews : 1;
+  const auto numViewsPerSwapchain = static_cast<uint8_t>(useSinglePassStereo_ ? kNumViews : 1);
   if (numSwapchainProviders != swapchainProviders_.size()) {
     swapchainProviders_.clear();
     swapchainProviders_.reserve(numSwapchainProviders);
     const size_t viewCnt = useSinglePassStereo_ ? 1 : kNumViews;
     for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
       for (size_t view = 0; view < viewCnt; view++) {
-        swapchainProviders_.emplace_back(
-            std::make_unique<XrSwapchainProvider>(impl_->createSwapchainProviderImpl(),
-                                                  platform_,
-                                                  session_,
-                                                  viewports_[view],
-                                                  numViewsPerSwapchain));
-        swapchainProviders_.back()->initialize();
+        swapchainProviders_.emplace_back(std::make_unique<XrSwapchainProvider>(
+            impl_->createSwapchainProviderImpl(),
+            platform_,
+            session_,
+            impl::SwapchainImageInfo{.imageWidth = viewports_[view].recommendedImageRectWidth,
+                                     .imageHeight = viewports_[view].recommendedImageRectHeight},
+            numViewsPerSwapchain));
+        if (!swapchainProviders_.back()->initialize()) {
+          IGL_ASSERT_MSG(false, "Failed to initialize swapchain provider");
+        }
       }
     }
     IGL_ASSERT(numSwapchainProviders == swapchainProviders_.size());
   }
 }
 
-//#ifndef EXTERNAL_XR_BUILD
-#if 1
 bool XrApp::initialize(const struct android_app* app, const InitParams& params) {
   if (initialized_) {
     return false;
@@ -867,21 +450,14 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
 
     XR_CHECK(xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR*)&loaderInitializeInfoAndroid));
   }
+
+  instanceCreateInfoAndroid_.applicationVM = app->activity->vm;
+  instanceCreateInfoAndroid_.applicationActivity = app->activity->clazz;
 #endif
 
   if (!checkExtensions()) {
     return false;
   }
-
-#if IGL_PLATFORM_ANDROID
-  XrInstanceCreateInfoAndroidKHR* instanceCreateInfoAndroid_ptr =
-      (XrInstanceCreateInfoAndroidKHR*)impl_->getInstanceCreateExtension();
-
-  if (instanceCreateInfoAndroid_ptr) {
-    instanceCreateInfoAndroid_ptr->applicationVM = app->activity->vm;
-    instanceCreateInfoAndroid_ptr->applicationActivity = app->activity->clazz;
-  }
-#endif
 
   if (!createInstance()) {
     return false;
@@ -921,17 +497,19 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   enumerateBlendModes();
   updateSwapchainProviders();
   createSpaces();
-  createActions();
-
-#if !ENABLE_CLOUDXR
-  if (passthroughSupported_ && !createPassthrough()) {
-    return false;
+  if (passthroughSupported()) {
+    passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
+    if (!passthrough_->initialize()) {
+      return false;
+    }
   }
-#endif
-  if (handsTrackingSupported_ && !createHandsTracking()) {
-    return false;
+  if (handsTrackingSupported()) {
+    hands_ = std::make_unique<XrHands>(instance_, session_, handsTrackingMeshSupported());
+    if (!hands_->initialize()) {
+      return false;
+    }
   }
-  if (refreshRateExtensionSupported_) {
+  if (refreshRateExtensionSupported()) {
     queryCurrentRefreshRate();
     if (params.refreshRateMode_ == InitParams::UseMaxRefreshRate) {
       setMaxRefreshRate();
@@ -941,14 +519,10 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
       // Do nothing. Use default refresh rate.
     }
   }
-  updateHandMeshes();
 
-#if 0
-  if (areSimultaneousHandsAndControllersSupported())
-  {
-      setSimultaneousHandsAndControllersEnabled(true);
+  if (hands_) {
+    hands_->updateMeshes(shellParams_->handMeshes);
   }
-#endif
 
   IGL_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
@@ -956,7 +530,6 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
 
   return initialized_;
 }
-#endif
 
 void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr) {
 #if IGL_PLATFORM_ANDROID
@@ -1625,6 +1198,7 @@ void XrApp::createActions() {
     XR_CHECK(xrAttachSessionActionSets(session_, &attachInfo));
 }
 
+
 void XrApp::handleXrEvents() {
   XrEventDataBuffer eventDataBuffer = {};
 
@@ -1646,32 +1220,9 @@ void XrApp::handleXrEvents() {
     case XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING:
       IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INSTANCE_LOSS_PENDING event\n");
       break;
-    case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:  {
-
-      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event");
-
-        XrInteractionProfileState profile_state = {XR_TYPE_INTERACTION_PROFILE_STATE};
-        res = xrGetCurrentInteractionProfile(session_, xr_inputs_.handSubactionPath[LEFT], &profile_state);
-
-        if (res == XR_SUCCESS) {
-            XrPath profile_path = profile_state.interactionProfile;
-
-            uint32_t length = 0;
-            char profile_str[XR_MAX_PATH_LENGTH] = {};
-
-            res = xrPathToString(instance_, profile_path, XR_MAX_PATH_LENGTH, &length, profile_str);
-
-            if (res == XR_SUCCESS) {
-                std::string profile = profile_str;
-
-                if (profile == "/interaction_profiles/facebook/touch_controller_pro") {
-                    IGL_LOG_INFO("Using Touch Pro controllers");
-                }
-            }
-        }
-
+    case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+      IGL_LOG_INFO("xrPollEvent: received XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED event\n");
       break;
-    }
     case XR_TYPE_EVENT_DATA_PERF_SETTINGS_EXT: {
       const XrEventDataPerfSettingsEXT* perf_settings_event =
           (XrEventDataPerfSettingsEXT*)(baseEventHeader);
@@ -1750,6 +1301,10 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
 }
 
 XrFrameState XrApp::beginFrame() {
+  if (passthrough_) {
+    passthrough_->setEnabled(passthroughEnabled());
+  }
+
   const auto& appParams = renderSession_->appParams();
   if (appParams.quadLayerParamsGetter) {
     quadLayersParams_ = appParams.quadLayerParamsGetter();
@@ -1774,8 +1329,7 @@ XrFrameState XrApp::beginFrame() {
       loc.type = XR_TYPE_SPACE_LOCATION,
   };
   XR_CHECK(xrLocateSpace(headSpace_, currentSpace_, frameState.predictedDisplayTime, &loc));
-  headPose_ = loc.pose;
-  headPoseTime_ = frameState.predictedDisplayTime;
+  XrPosef headPose = loc.pose;
 
   XrViewState viewState = {XR_TYPE_VIEW_STATE};
 
@@ -1793,21 +1347,18 @@ XrFrameState XrApp::beginFrame() {
       session_, &projectionInfo, &viewState, views_.size(), &numViews, views_.data()));
 
   for (size_t i = 0; i < kNumViews; i++) {
-
-#ifndef EXTERNAL_XR_BUILD
     XrPosef eyePose = views_[i].pose;
-    XrPosef_Multiply(&viewStagePoses_[i], &headPose_, &eyePose);
+    XrPosef_Multiply(&viewStagePoses_[i], &headPose, &eyePose);
     XrPosef viewTransformXrPosef{};
     XrPosef_Invert(&viewTransformXrPosef, &viewStagePoses_[i]);
     XrMatrix4x4f xrMat4{};
     XrMatrix4x4f_CreateFromRigidTransform(&xrMat4, &viewTransformXrPosef);
     viewTransforms_[i] = glm::make_mat4(xrMat4.m);
     cameraPositions_[i] = glm::vec3(eyePose.position.x, eyePose.position.y, eyePose.position.z);
-#endif
   }
 
-  if (handsTrackingSupported_) {
-    updateHandTracking();
+  if (hands_) {
+    hands_->updateTracking(currentSpace_, shellParams_->handTracking);
   }
 
   return frameState;
@@ -1823,19 +1374,10 @@ void copyFov(igl::shell::Fov& dst, const XrFovf& src) {
 } // namespace
 
 void XrApp::render() {
-  const auto& appParams = renderSession_->appParams();
-  const bool passthroughEnabled = appParams.passthroughGetter ? appParams.passthroughGetter()
-                                                              : useQuadLayerComposition_;
-  if (passthroughEnabled) {
+  if (passthroughEnabled()) {
     shellParams_->clearColorValue = igl::Color{0.0f, 0.0f, 0.0f, 0.0f};
   } else {
     shellParams_->clearColorValue.reset();
-  }
-
-  shellParams_->xr_app_ptr_ = this;
-
-  if (!renderSession_->pre_update()) {
-    return;
   }
 
   if (useSinglePassStereo_) {
@@ -1863,16 +1405,10 @@ void XrApp::render() {
         const uint32_t quadLayerIndexPerView = swapChainIndex / kNumViews;
         renderSession_->setCurrentQuadLayer(quadLayerIndexPerView);
       }
-#if ENABLE_CLOUDXR
-        shellParams_->viewParams[0].cameraPosition = cameraPositions_[view];
-        shellParams_->current_view_id_ = view;
-#endif
       renderSession_->update(surfaceTextures);
       swapchainProviders_[swapChainIndex]->releaseSwapchainImages();
     }
   }
-
-    renderSession_->post_update();
 }
 
 void XrApp::setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView>& projectionViews,
@@ -1916,15 +1452,47 @@ void XrApp::setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView
       depthInfos[layer].maxDepth = appParams.depthParams.maxDepth;
       depthInfos[layer].nearZ = appParams.depthParams.nearZ;
       depthInfos[layer].farZ = appParams.depthParams.farZ;
-	  
-#if ENABLE_CLOUDXR
-      if (should_override_eye_poses_)
-      {
-        projectionViews[layer].pose = override_eye_poses_[layer];
-      }
-#endif
     }
   }
+}
+
+void XrApp::endFrameProjectionComposition(XrFrameState frameState) {
+  std::vector<XrCompositionLayerProjectionView> projectionViews;
+  std::vector<XrCompositionLayerDepthInfoKHR> depthInfos;
+  setupProjectionAndDepth(projectionViews, depthInfos);
+
+  XrCompositionLayerFlags compositionFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+  if (passthroughEnabled()) {
+    compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+  }
+
+  XrCompositionLayerProjection projection = {
+      XR_TYPE_COMPOSITION_LAYER_PROJECTION,
+      nullptr,
+      compositionFlags,
+      currentSpace_,
+      static_cast<uint32_t>(kNumViews),
+      projectionViews.data(),
+  };
+
+  std::vector<const XrCompositionLayerBaseHeader*> layers;
+  layers.reserve(2);
+
+  if (passthroughEnabled()) {
+    passthrough_->injectLayer(layers);
+  }
+  layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&projection));
+
+  const XrFrameEndInfo endFrameInfo{
+      .type = XR_TYPE_FRAME_END_INFO,
+      .next = nullptr,
+      .displayTime = frameState.predictedDisplayTime,
+      .environmentBlendMode = additiveBlendingSupported_ ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
+                                                         : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+      .layerCount = static_cast<uint32_t>(layers.size()),
+      .layers = layers.data(),
+  };
+  XR_CHECK(xrEndFrame(session_, &endFrameInfo));
 }
 
 void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
@@ -1933,6 +1501,7 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
   std::vector<XrCompositionLayerQuad> quadLayers(static_cast<size_t>(kNumViews) *
                                                  numQuadLayersPerView_);
 #ifdef XR_FB_composition_layer_alpha_blend
+  const auto isAlphaBlendCompositionSupported = alphaBlendCompositionSupported();
   XrCompositionLayerAlphaBlendFB blendMode = {XR_TYPE_COMPOSITION_LAYER_ALPHA_BLEND_FB};
   blendMode.srcFactorColor = XR_BLEND_FACTOR_ONE_MINUS_DST_ALPHA_FB;
   blendMode.dstFactorColor = XR_BLEND_FACTOR_ONE_FB;
@@ -1963,7 +1532,7 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
     for (size_t view = 0; view < kNumViews; view++, layer++) {
 #ifdef XR_FB_composition_layer_alpha_blend
       quadLayers[layer].next =
-          (quadLayersParams_.numQuads() > 0 &&
+          (isAlphaBlendCompositionSupported && quadLayersParams_.numQuads() > 0 &&
            quadLayersParams_.blendModes_[layer] == igl::shell::LayerBlendMode::AlphaAdditive)
               ? &blendMode
               : nullptr;
@@ -1997,67 +1566,34 @@ void XrApp::endFrameQuadLayerComposition(XrFrameState frameState) {
     quadLayers[i].subImage = projectionViews[i].subImage;
   }
 
-  std::vector<const XrCompositionLayerBaseHeader*> layers(numQuadLayersPerView_ *
-                                                          static_cast<std::size_t>(kNumViews + 1));
-  uint32_t layerIndex = 0;
+  std::vector<const XrCompositionLayerBaseHeader*> layers;
+  layers.reserve(numQuadLayersPerView_ * static_cast<std::size_t>(kNumViews + 1));
 
-  XrCompositionLayerPassthroughFB compositionLayer{XR_TYPE_COMPOSITION_LAYER_PASSTHROUGH_FB};
-
-  const bool passthroughEnabled = appParams.passthroughGetter ? appParams.passthroughGetter()
-                                                              : useQuadLayerComposition_;
-  if (passthroughSupported_ && passthroughEnabled) {
-    compositionLayer.next = nullptr;
-    compositionLayer.layerHandle = passthrougLayer_;
-    layers[layerIndex++] = (const XrCompositionLayerBaseHeader*)&compositionLayer;
+  if (passthroughEnabled()) {
+    passthrough_->injectLayer(layers);
   }
-
   for (auto& quadLayer : quadLayers) {
-    IGL_ASSERT(layerIndex < layers.size());
-    layers[layerIndex++] = (const XrCompositionLayerBaseHeader*)&quadLayer;
+    layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quadLayer));
   }
 
-  const XrFrameEndInfo endFrameInfo = {XR_TYPE_FRAME_END_INFO,
-                                       nullptr,
-                                       frameState.predictedDisplayTime,
-                                       additiveBlendingSupported_
-                                           ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
-                                           : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-                                       layerIndex,
-                                       layers.data()};
+  const XrFrameEndInfo endFrameInfo{
+      .type = XR_TYPE_FRAME_END_INFO,
+      .next = nullptr,
+      .displayTime = frameState.predictedDisplayTime,
+      .environmentBlendMode = additiveBlendingSupported_ ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
+                                                         : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+      .layerCount = static_cast<uint32_t>(layers.size()),
+      .layers = layers.data(),
+  };
   XR_CHECK(xrEndFrame(session_, &endFrameInfo));
 }
 
 void XrApp::endFrame(XrFrameState frameState) {
   if (useQuadLayerComposition_) {
     endFrameQuadLayerComposition(frameState);
-    return;
+  } else {
+    endFrameProjectionComposition(frameState);
   }
-
-  std::vector<XrCompositionLayerProjectionView> projectionViews;
-  std::vector<XrCompositionLayerDepthInfoKHR> depthInfos;
-  setupProjectionAndDepth(projectionViews, depthInfos);
-
-  XrCompositionLayerProjection projection = {
-      XR_TYPE_COMPOSITION_LAYER_PROJECTION,
-      nullptr,
-      XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT,
-      currentSpace_,
-      static_cast<uint32_t>(kNumViews),
-      projectionViews.data(),
-  };
-
-  const XrCompositionLayerBaseHeader* const layers[] = {
-      (const XrCompositionLayerBaseHeader*)&projection,
-  };
-  const XrFrameEndInfo endFrameInfo = {XR_TYPE_FRAME_END_INFO,
-                                       nullptr,
-                                       frameState.predictedDisplayTime,
-                                       additiveBlendingSupported_
-                                           ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
-                                           : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
-                                       1,
-                                       layers};
-  XR_CHECK(xrEndFrame(session_, &endFrameInfo));
 }
 
 void XrApp::update() {
@@ -2070,65 +1606,12 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
-  pollActions(true);
   render();
   endFrame(frameState);
 }
 
-void XrApp::pollActions(const bool mainThread) {
-    if (!initialized_ || !resumed_ || !sessionActive_) {
-        return;
-    }
-
-    if (mainThread && !enableMainThreadPolling_) {
-        return;
-    }
-    else if (!mainThread && !enableAsyncPolling_) {
-        return;
-    }
-
-    xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
-
-    const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
-    XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
-    syncInfo.countActiveActionSets = 1;
-    syncInfo.activeActionSets = &activeActionSet;
-    XR_CHECK(xrSyncActions(session_, &syncInfo));
-
-    for (int controller_id = LEFT; controller_id < NUM_SIDES; controller_id++)
-    {
-        XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-        getInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-        getInfo.action = xr_inputs_.gripPoseAction;
-        XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
-        XR_CHECK(xrGetActionStatePose(session_, &getInfo, &poseState));
-        xr_inputs_.handActive[controller_id] = poseState.isActive;
-    }
-}
-
-XrTime XrApp::get_predicted_display_time_ns()
-{
-    struct timespec now_ts = {0};
-    clock_gettime(CLOCK_MONOTONIC, &now_ts);
-
-    //if (instance_ && !xrConvertTimespecTimeToTimeKHR_) {
-//        XR_LOAD(instance_, xrConvertTimespecTimeToTimeKHR_);
-//    }
-
-    XrTime now_time = 0;
-
-//    if (xrConvertTimespecTimeToTimeKHR_) {
-//        xrConvertTimespecTimeToTimeKHR_(instance_, &now_ts, &now_time);
-//    }
-//    else{
-        now_time = ((uint64_t)(now_ts.tv_sec * 1e9) + now_ts.tv_nsec);
-  //  }
-
-    return now_time;
-}
-
 float XrApp::getCurrentRefreshRate() {
-  if (!session_ || !refreshRateExtensionSupported_ || (currentRefreshRate_ > 0.0f)) {
+  if (!session_ || (currentRefreshRate_ > 0.0f) || !refreshRateExtensionSupported()) {
     return currentRefreshRate_;
   }
 
@@ -2144,7 +1627,7 @@ void XrApp::queryCurrentRefreshRate() {
 }
 
 float XrApp::getMaxRefreshRate() {
-  if (!session_ || !refreshRateExtensionSupported_) {
+  if (!session_ || !refreshRateExtensionSupported()) {
     return 0.0f;
   }
 
@@ -2160,8 +1643,7 @@ float XrApp::getMaxRefreshRate() {
 }
 
 bool XrApp::setRefreshRate(float refreshRate) {
-  if (!session_ || !refreshRateExtensionSupported_ || (refreshRate == currentRefreshRate_) ||
-      !isRefreshRateSupported(refreshRate)) {
+  if (!session_ || (refreshRate == currentRefreshRate_) || !isRefreshRateSupported(refreshRate)) {
     return false;
   }
 
@@ -2179,7 +1661,7 @@ bool XrApp::setRefreshRate(float refreshRate) {
 }
 
 void XrApp::setMaxRefreshRate() {
-  if (!session_ || !refreshRateExtensionSupported_) {
+  if (!session_ || !refreshRateExtensionSupported()) {
     return;
   }
 
@@ -2191,7 +1673,7 @@ void XrApp::setMaxRefreshRate() {
 }
 
 bool XrApp::isRefreshRateSupported(float refreshRate) {
-  if (!session_ || !refreshRateExtensionSupported_) {
+  if (!session_ || !refreshRateExtensionSupported()) {
     return false;
   }
 
@@ -2201,7 +1683,7 @@ bool XrApp::isRefreshRateSupported(float refreshRate) {
 }
 
 const std::vector<float>& XrApp::getSupportedRefreshRates() {
-  if (!session_ || !refreshRateExtensionSupported_) {
+  if (!session_ || !refreshRateExtensionSupported()) {
     return supportedRefreshRates_;
   }
 
@@ -2213,7 +1695,7 @@ const std::vector<float>& XrApp::getSupportedRefreshRates() {
 }
 
 void XrApp::querySupportedRefreshRates() {
-  if (!session_ || !refreshRateExtensionSupported_ || !supportedRefreshRates_.empty()) {
+  if (!session_ || !supportedRefreshRates_.empty() || !refreshRateExtensionSupported()) {
     return;
   }
 
@@ -2234,6 +1716,45 @@ void XrApp::querySupportedRefreshRates() {
       IGL_LOG_INFO("querySupportedRefreshRates Hz = %.2f.\n", refreshRate);
     }
   }
+}
+
+bool XrApp::passthroughSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_PASSTHROUGH_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::passthroughEnabled() const noexcept {
+  if (!renderSession_ || !passthrough_) {
+    return false;
+  }
+  const auto& appParams = renderSession_->appParams();
+  return appParams.passthroughGetter ? appParams.passthroughGetter() : useQuadLayerComposition_;
+}
+
+bool XrApp::handsTrackingSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_EXT_HAND_TRACKING_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::handsTrackingMeshSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::refreshRateExtensionSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::instanceCreateInfoAndroidSupported() const noexcept {
+#if IGL_PLATFORM_ANDROID
+  return supportedOptionalXrExtensions_.count(XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME) != 0;
+#endif // IGL_PLATFORM_ANDROID
+  return false;
+}
+
+bool XrApp::alphaBlendCompositionSupported() const noexcept {
+#ifdef XR_FB_composition_layer_alpha_blend
+  return supportedOptionalXrExtensions_.count(XR_FB_COMPOSITION_LAYER_ALPHA_BLEND_EXTENSION_NAME) !=
+         0;
+#endif // XR_FB_composition_layer_alpha_blend
+  return false;
 }
 
 bool XrApp::isSharpeningEnabled() const {
