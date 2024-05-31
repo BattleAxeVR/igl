@@ -13,6 +13,7 @@
 
 #include <array>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <shell/openxr/XrPlatform.h>
@@ -28,7 +29,9 @@ struct AAssetManager;
 
 // forward declarations
 namespace igl::shell::openxr {
+class XrHands;
 class XrSwapchainProvider;
+class XrPassthrough;
 namespace impl {
 class XrAppImpl;
 }
@@ -86,10 +89,6 @@ class XrApp {
   bool checkExtensions();
   bool createInstance();
   bool createSystem();
-  bool createPassthrough();
-  bool createHandsTracking();
-  void updateHandMeshes();
-  void updateHandTracking();
   bool enumerateViewConfigurations();
   void enumerateReferenceSpaces();
   void enumerateBlendModes();
@@ -116,14 +115,24 @@ class XrApp {
   void querySupportedRefreshRates();
   void setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView>& projectionViews,
                                std::vector<XrCompositionLayerDepthInfoKHR>& depthInfos);
+  void endFrameProjectionComposition(XrFrameState frameState);
   void endFrameQuadLayerComposition(XrFrameState frameState);
+
+  [[nodiscard]] inline bool passthroughSupported() const noexcept;
+  [[nodiscard]] inline bool passthroughEnabled() const noexcept;
+
+  [[nodiscard]] inline bool handsTrackingSupported() const noexcept;
+  [[nodiscard]] inline bool handsTrackingMeshSupported() const noexcept;
+  [[nodiscard]] inline bool refreshRateExtensionSupported() const noexcept;
+  [[nodiscard]] inline bool instanceCreateInfoAndroidSupported() const noexcept;
+  [[nodiscard]] inline bool alphaBlendCompositionSupported() const noexcept;
 
   void* nativeWindow_ = nullptr;
   bool resumed_ = false;
   bool sessionActive_ = false;
 
   std::vector<XrExtensionProperties> extensions_;
-  std::vector<const char*> requiredExtensions_;
+  std::vector<const char*> enabledExtensions_;
 
   XrInstanceProperties instanceProps_ = {
       .type = XR_TYPE_INSTANCE_PROPERTIES,
@@ -134,6 +143,14 @@ class XrApp {
       .type = XR_TYPE_SYSTEM_PROPERTIES,
       .next = nullptr,
   };
+
+#if IGL_PLATFORM_ANDROID
+  XrInstanceCreateInfoAndroidKHR instanceCreateInfoAndroid_ = {
+      .type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
+  };
+#endif // IGL_PLATFORM_ANDROID
+
+  std::unordered_set<std::string> supportedOptionalXrExtensions_;
 
   XrInstance instance_ = XR_NULL_HANDLE;
   XrSystemId systemId_ = XR_NULL_SYSTEM_ID;
@@ -160,28 +177,9 @@ class XrApp {
 
   bool additiveBlendingSupported_ = false;
 
-  XrPassthroughFB passthrough_ = XR_NULL_HANDLE;
-  XrPassthroughLayerFB passthrougLayer_ = XR_NULL_HANDLE;
+  std::unique_ptr<XrPassthrough> passthrough_;
+  std::unique_ptr<XrHands> hands_;
 
-  bool passthroughSupported_ = false;
-  PFN_xrCreatePassthroughFB xrCreatePassthroughFB_ = nullptr;
-  PFN_xrDestroyPassthroughFB xrDestroyPassthroughFB_ = nullptr;
-  PFN_xrPassthroughStartFB xrPassthroughStartFB_ = nullptr;
-  PFN_xrCreatePassthroughLayerFB xrCreatePassthroughLayerFB_ = nullptr;
-  PFN_xrDestroyPassthroughLayerFB xrDestroyPassthroughLayerFB_ = nullptr;
-  PFN_xrPassthroughLayerSetStyleFB xrPassthroughLayerSetStyleFB_ = nullptr;
-
-  bool handsTrackingSupported_ = false;
-  bool handsTrackingMeshSupported_ = false;
-  PFN_xrCreateHandTrackerEXT xrCreateHandTrackerEXT_ = nullptr;
-  PFN_xrDestroyHandTrackerEXT xrDestroyHandTrackerEXT_ = nullptr;
-  PFN_xrLocateHandJointsEXT xrLocateHandJointsEXT_ = nullptr;
-  PFN_xrGetHandMeshFB xrGetHandMeshFB_ = nullptr;
-
-  XrHandTrackerEXT leftHandTracker_ = XR_NULL_HANDLE;
-  XrHandTrackerEXT rightHandTracker_ = XR_NULL_HANDLE;
-
-  bool refreshRateExtensionSupported_ = false;
   std::vector<float> supportedRefreshRates_;
   float currentRefreshRate_ = 0.0f;
 
