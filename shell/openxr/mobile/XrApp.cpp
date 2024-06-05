@@ -1539,15 +1539,22 @@ void XrApp::endFrame(XrFrameState frameState) {
 #if ENABLE_CLOUDXR
         if (should_override_eye_poses_)
         {
-            for (int view = LEFT; view < NUM_SIDES; view++)
-            {
-                viewStagePoses_[view] = override_eye_poses_[view];
-            }
-        }
-#endif
+            std::array<XrPosef, XrComposition::kNumViews> viewStagePoseOverrides = viewStagePoses_;
 
-      layer->doComposition(
-          appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
+            for (int view = 0; view < XrComposition::kNumViews; view++)
+            {
+                viewStagePoseOverrides[view] = override_eye_poses_[view];
+            }
+
+            layer->doComposition(appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
+        }
+        else
+
+#endif
+        {
+            layer->doComposition(
+                    appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
+        }
     }
   }
 
