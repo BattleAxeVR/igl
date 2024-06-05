@@ -264,48 +264,6 @@ class XrApp {
   bool isSharpeningEnabled() const;
   void setSharpeningEnabled(const bool enabled);
 
-#if ENABLE_META_OPENXR_FEATURES
-  bool isBodyTrackingFBSupported() const
-  {
-    return bodyTrackingFBSupported_;
-  }
-
-  bool isMetaFullBodyTrackingSupported() const
-  {
-    return metaFullBodyTrackingSupported_;
-  }
-
-  bool isMetaBodyTrackingFidelitySupported() const
-  {
-    return metaBodyTrackingFidelitySupported_;
-  }
-
-  bool isEyeTrackingSocialFBSupported() const
-  {
-    return eyeTrackingSocialFBSupported_;
-  }
-
-  bool areSimultaneousHandsAndControllersSupported() const
-  {
-    return simultaneousHandsAndControllersSupported_;
-  }
-
-  bool areSimultaneousHandsAndControllersEnabled() const
-  {
-    return simultaneousHandsAndControllersEnabled_;
-  }
-#endif
-
-  bool areHTCViveFocus3ControllersSupported() const
-  {
-    return htcViveFocus3ControllersSupported_;
-  }
-
-  bool areByteDanceControllersSupported() const
-  {
-    return byteDanceControllersSupported_;
-  }
-
   HeadsetType getHeadsetType() const
   {
       return headsetType_;
@@ -331,6 +289,17 @@ private:
   [[nodiscard]] inline bool refreshRateExtensionSupported() const noexcept;
   [[nodiscard]] inline bool instanceCreateInfoAndroidSupported() const noexcept;
   [[nodiscard]] inline bool alphaBlendCompositionSupported() const noexcept;
+
+  [[nodiscard]] inline bool compositionLayerSettingsSupported() const noexcept;
+  [[nodiscard]] inline bool touchProControllersSupported() const noexcept;
+  [[nodiscard]] inline bool touchControllerProximitySupported() const noexcept;
+  [[nodiscard]] inline bool bodyTrackingFBSupported() const noexcept;
+  [[nodiscard]] inline bool metaFullBodyTrackingSupported() const noexcept;
+  [[nodiscard]] inline bool metaBodyTrackingFidelitySupported() const noexcept;
+  [[nodiscard]] inline bool simultaneousHandsAndControllersSupported() const noexcept;
+  [[nodiscard]] inline bool eyeTrackingSocialFBSupported() const noexcept;
+  [[nodiscard]] inline bool htcViveFocus3ControllersSupported() const noexcept;
+  [[nodiscard]] inline bool byteDanceControllersSupported() const noexcept;
 
   void* nativeWindow_ = nullptr;
   bool resumed_ = false;
@@ -410,23 +379,15 @@ private:
   bool touchControllersSupported_ = true;
 
 #if ENABLE_META_OPENXR_FEATURES
-  bool touchProControllersSupported_ = true;
-  bool touchControllerProximitySupported_ = false;
-
-  bool bodyTrackingFBSupported_ = false;
-  bool metaFullBodyTrackingSupported_ = false;
-  bool metaBodyTrackingFidelitySupported_ = false;
-
-  bool simultaneousHandsAndControllersSupported_ = false;
   bool simultaneousHandsAndControllersEnabled_ = false;
   PFN_xrResumeSimultaneousHandsAndControllersTrackingMETA xrResumeSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
   PFN_xrPauseSimultaneousHandsAndControllersTrackingMETA xrPauseSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
   bool setSimultaneousHandsAndControllersEnabled(const bool enabled);
-  bool eyeTrackingSocialFBSupported_ = false;
+  bool areSimultaneousHandsAndControllersEnabled() const
+  {
+    return simultaneousHandsAndControllersEnabled_;
+  }
 #endif
-
-  bool htcViveFocus3ControllersSupported_ = false;
-  bool byteDanceControllersSupported_ = false;
 
   std::unique_ptr<impl::XrAppImpl> impl_;
 

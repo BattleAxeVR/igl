@@ -256,7 +256,7 @@ bool XrApp::createInstance() {
     IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
   }
 
-  if (simultaneousHandsAndControllersSupported_) {
+  if (simultaneousHandsAndControllersSupported()) {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrResumeSimultaneousHandsAndControllersTrackingMETA",
                                    (PFN_xrVoidFunction*)(&xrResumeSimultaneousHandsAndControllersTrackingMETA_)));
@@ -267,6 +267,8 @@ bool XrApp::createInstance() {
                                    (PFN_xrVoidFunction*)(&xrPauseSimultaneousHandsAndControllersTrackingMETA_)));
     IGL_ASSERT(xrPauseSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
 }
+
+
 #endif
 
   return true;
@@ -288,7 +290,7 @@ bool XrApp::createSystem() {
 #if ENABLE_META_OPENXR_FEATURES
     XrSystemPropertiesBodyTrackingFullBodyMETA meta_full_body_tracking_properties{ XR_TYPE_SYSTEM_PROPERTIES_BODY_TRACKING_FULL_BODY_META };
 
-    if (metaFullBodyTrackingSupported_)
+    if (metaFullBodyTrackingSupported())
     {
         meta_full_body_tracking_properties.next = systemProps_.next;
         systemProps_.next = &meta_full_body_tracking_properties;
@@ -296,7 +298,7 @@ bool XrApp::createSystem() {
 
     XrSystemSimultaneousHandsAndControllersPropertiesMETA simultaneous_properties = { XR_TYPE_SYSTEM_SIMULTANEOUS_HANDS_AND_CONTROLLERS_PROPERTIES_META };
 
-    if (simultaneousHandsAndControllersSupported_)
+    if (simultaneousHandsAndControllersSupported())
     {
         simultaneous_properties.next = systemProps_.next;
         systemProps_.next = &simultaneous_properties;
@@ -306,8 +308,8 @@ bool XrApp::createSystem() {
   XR_CHECK(xrGetSystemProperties(instance_, systemId_, &systemProps_));
 
 #if ENABLE_META_OPENXR_FEATURES
-    metaFullBodyTrackingSupported_ = meta_full_body_tracking_properties.supportsFullBodyTracking;
-    simultaneousHandsAndControllersSupported_ = simultaneous_properties.supportsSimultaneousHandsAndControllers;
+    //metaFullBodyTrackingSupported_ = meta_full_body_tracking_properties.supportsFullBodyTracking;
+    //simultaneousHandsAndControllersSupported_ = simultaneous_properties.supportsSimultaneousHandsAndControllers;
 #endif
 
   IGL_LOG_INFO(
@@ -1003,7 +1005,7 @@ void XrApp::createActions() {
 
 #if ENABLE_META_OPENXR_FEATURES
     // Touch Pro
-    if (touchProControllersSupported_)
+    if (touchProControllersSupported())
     {
         XrPath oculusTouchProInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/facebook/touch_controller_pro", &oculusTouchProInteractionProfilePath);
@@ -1067,7 +1069,7 @@ void XrApp::createActions() {
     }
 #endif
 
-    if (htcViveFocus3ControllersSupported_)
+    if (htcViveFocus3ControllersSupported())
     {
         XrPath htcInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/htc/vive_focus3_controller", &htcInteractionProfilePath);
@@ -1118,7 +1120,7 @@ void XrApp::createActions() {
         XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
     }
 
-    if (byteDanceControllersSupported_)
+    if (byteDanceControllersSupported())
     {
         const bool is_pico_3 = ((headsetType_ == HeadsetType::PICO_NEO_3_) || (headsetType_ == HeadsetType::PICO_NEO_3_EYE_));
         const bool is_pico_4 = ((headsetType_ == HeadsetType::PICO_NEO_4_) || (headsetType_ == HeadsetType::PICO_NEO_4_EYE_));
@@ -1835,15 +1837,55 @@ bool XrApp::alphaBlendCompositionSupported() const noexcept {
   return false;
 }
 
+bool XrApp::compositionLayerSettingsSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::touchProControllersSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::touchControllerProximitySupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::bodyTrackingFBSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_BODY_TRACKING_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::metaFullBodyTrackingSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::metaBodyTrackingFidelitySupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::simultaneousHandsAndControllersSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::eyeTrackingSocialFBSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::htcViveFocus3ControllersSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME) != 0;
+}
+
+bool XrApp::byteDanceControllersSupported() const noexcept {
+  return supportedOptionalXrExtensions_.count(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME) != 0;
+}
+
 #if ENABLE_META_OPENXR_FEATURES
 
 bool XrApp::isSharpeningEnabled() const {
-  return compositionLayerSettingsSupported_ &&
+  return compositionLayerSettingsSupported() &&
   ((compositionLayerSettings_.layerFlags & XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB) != 0);
 }
 
 void XrApp::setSharpeningEnabled(const bool enabled) {
-  if (!compositionLayerSettingsSupported_ || (enabled == isSharpeningEnabled())) {
+  if (!compositionLayerSettingsSupported() || (enabled == isSharpeningEnabled())) {
     return;
   }
     if (enabled) {
@@ -1856,7 +1898,7 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
 }
 
 bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
-    if (!simultaneousHandsAndControllersSupported_ || (enabled == simultaneousHandsAndControllersEnabled_)) {
+    if (!simultaneousHandsAndControllersSupported() || (enabled == simultaneousHandsAndControllersEnabled_)) {
         return false;
     }
 
