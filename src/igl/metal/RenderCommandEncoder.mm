@@ -379,6 +379,27 @@ void RenderCommandEncoder::draw(PrimitiveType primitiveType,
 #endif // IGL_PLATFORM_IOS
 }
 
+void RenderCommandEncoder::draw(size_t vertexCount,
+                                uint32_t instanceCount,
+                                uint32_t firstVertex,
+                                uint32_t baseInstance) {
+  getCommandBuffer().incrementCurrentDrawCount();
+  IGL_ASSERT(encoder_);
+#if IGL_PLATFORM_IOS
+  if (@available(iOS 16, *)) {
+#endif // IGL_PLATFORM_IOS
+    [encoder_ drawPrimitives:metalPrimitive_
+                 vertexStart:firstVertex
+                 vertexCount:vertexCount
+               instanceCount:instanceCount
+                baseInstance:baseInstance];
+#if IGL_PLATFORM_IOS
+  } else {
+    [encoder_ drawPrimitives:metalPrimitive_ vertexStart:firstVertex vertexCount:vertexCount];
+  }
+#endif // IGL_PLATFORM_IOS
+}
+
 void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
                                        size_t indexCount,
                                        uint32_t instanceCount,
@@ -411,6 +432,43 @@ void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
 #if IGL_PLATFORM_IOS
   } else {
     [encoder_ drawIndexedPrimitives:metalPrimitive
+                         indexCount:indexCount
+                          indexType:indexType_
+                        indexBuffer:indexBuffer_
+                  indexBufferOffset:indexBufferOffset_ + indexOffsetBytes];
+  }
+#endif // IGL_PLATFORM_IOS
+}
+
+void RenderCommandEncoder::drawIndexed(size_t indexCount,
+                                       uint32_t instanceCount,
+                                       uint32_t firstIndex,
+                                       int32_t vertexOffset,
+                                       uint32_t baseInstance) {
+  getCommandBuffer().incrementCurrentDrawCount();
+  IGL_ASSERT(encoder_);
+  IGL_ASSERT_MSG(indexBuffer_, "No index buffer bound");
+  if (!IGL_VERIFY(encoder_ && indexBuffer_)) {
+    return;
+  }
+
+  const size_t indexOffsetBytes =
+      static_cast<size_t>(firstIndex) * (indexType_ == MTLIndexTypeUInt32 ? 4u : 2u);
+
+#if IGL_PLATFORM_IOS
+  if (@available(iOS 16, *)) {
+#endif // IGL_PLATFORM_IOS
+    [encoder_ drawIndexedPrimitives:metalPrimitive_
+                         indexCount:indexCount
+                          indexType:indexType_
+                        indexBuffer:indexBuffer_
+                  indexBufferOffset:indexBufferOffset_ + indexOffsetBytes
+                      instanceCount:instanceCount
+                         baseVertex:vertexOffset
+                       baseInstance:baseInstance];
+#if IGL_PLATFORM_IOS
+  } else {
+    [encoder_ drawIndexedPrimitives:metalPrimitive_
                          indexCount:indexCount
                           indexType:indexType_
                         indexBuffer:indexBuffer_
