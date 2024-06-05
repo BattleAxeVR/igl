@@ -1530,6 +1530,17 @@ void XrApp::endFrame(XrFrameState frameState) {
   const auto& appParams = renderSession_->appParams();
   for (const auto& layer : compositionLayers_) {
     if (layer->isValid()) {
+
+#if ENABLE_CLOUDXR
+        if (should_override_eye_poses_)
+        {
+            for (int view = LEFT; view < NUM_SIDES; view++)
+            {
+                viewStagePoses_[view] = override_eye_poses_[view];
+            }
+        }
+#endif
+
       layer->doComposition(
           appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
     }
