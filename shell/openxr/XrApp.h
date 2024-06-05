@@ -186,7 +186,6 @@ class XrApp {
 
   friend class igl::shell::OKCloudSession;
   XrTime get_predicted_display_time_ns();
-  //PFN_xrConvertTimespecTimeToTimeKHR xrConvertTimespecTimeToTimeKHR_ = nullptr;
 
  public:
   XrApp(std::unique_ptr<impl::XrAppImpl>&& impl, bool shouldPresent = true);
@@ -290,21 +289,20 @@ private:
   [[nodiscard]] inline bool instanceCreateInfoAndroidSupported() const noexcept;
   [[nodiscard]] inline bool alphaBlendCompositionSupported() const noexcept;
 
-  [[nodiscard]] inline bool compositionLayerSettingsSupported() const noexcept;
-  [[nodiscard]] inline bool touchProControllersSupported() const noexcept;
-  [[nodiscard]] inline bool touchControllerProximitySupported() const noexcept;
-  [[nodiscard]] inline bool bodyTrackingFBSupported() const noexcept;
-  [[nodiscard]] inline bool metaFullBodyTrackingSupported() const noexcept;
-  [[nodiscard]] inline bool metaBodyTrackingFidelitySupported() const noexcept;
-  [[nodiscard]] inline bool simultaneousHandsAndControllersSupported() const noexcept;
-  [[nodiscard]] inline bool eyeTrackingSocialFBSupported() const noexcept;
-  [[nodiscard]] inline bool htcViveFocus3ControllersSupported() const noexcept;
-  [[nodiscard]] inline bool byteDanceControllersSupported() const noexcept;
+  [[nodiscard]] bool compositionLayerSettingsSupported() const noexcept;
+  [[nodiscard]] bool touchProControllersSupported() const noexcept;
+  [[nodiscard]] bool touchControllerProximitySupported() const noexcept;
+  [[nodiscard]] bool bodyTrackingFBSupported() const noexcept;
+  [[nodiscard]] bool metaFullBodyTrackingSupported() const noexcept;
+  [[nodiscard]] bool metaBodyTrackingFidelitySupported() const noexcept;
+  [[nodiscard]] bool simultaneousHandsAndControllersSupported() const noexcept;
+  [[nodiscard]] bool eyeTrackingSocialFBSupported() const noexcept;
+  [[nodiscard]] bool htcViveFocus3ControllersSupported() const noexcept;
+  [[nodiscard]] bool byteDanceControllersSupported() const noexcept;
 
   void* nativeWindow_ = nullptr;
   bool resumed_ = false;
   bool sessionActive_ = false;
-
 
   std::vector<XrExtensionProperties> extensions_;
   std::vector<const char*> enabledExtensions_;
