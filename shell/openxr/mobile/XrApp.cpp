@@ -1448,6 +1448,10 @@ void XrApp::render() {
 
     shellParams_->xr_app_ptr_ = this;
 
+    if (!renderSession_->pre_update()){
+      return;
+    }
+
     if (useSinglePassStereo_) {
     for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
       auto surfaceTextures = swapchainProviders_[quadLayer]->getSurfaceTextures();
