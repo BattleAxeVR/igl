@@ -1066,7 +1066,9 @@ void XrApp::createActions() {
 
 #if ENABLE_META_OPENXR_FEATURES
     // Touch Pro
-    if (touchProControllersSupported())
+    const bool is_quest_pro = (headsetType_ == HeadsetType::META_QUEST_PRO_);
+
+    if (is_quest_pro && touchProControllersSupported())
     {
         XrPath oculusTouchProInteractionProfilePath;
         xrStringToPath(instance_, "/interaction_profiles/facebook/touch_controller_pro", &oculusTouchProInteractionProfilePath);
@@ -1731,14 +1733,16 @@ bool XrApp::passthroughEnabled() const noexcept {
 
 bool XrApp::handsTrackingSupported() const noexcept {
 #if IGL_PLATFORM_ANDROID
-  return supportedOptionalXrExtensions_.count(XR_EXT_HAND_TRACKING_EXTENSION_NAME) != 0;
+  //return supportedOptionalXrExtensions_.count(XR_EXT_HAND_TRACKING_EXTENSION_NAME) != 0;
+    return false;
 #endif // IGL_PLATFORM_ANDROID
   return false;
 }
 
 bool XrApp::handsTrackingMeshSupported() const noexcept {
 #if IGL_PLATFORM_ANDROID
-  return supportedOptionalXrExtensions_.count(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME) != 0;
+  //return supportedOptionalXrExtensions_.count(XR_FB_HAND_TRACKING_MESH_EXTENSION_NAME) != 0;
+    return false;
 #endif // IGL_PLATFORM_ANDROID
   return false;
 }
