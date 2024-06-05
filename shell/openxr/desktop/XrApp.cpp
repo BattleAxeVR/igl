@@ -874,66 +874,24 @@ void XrApp::update() {
 }
 
 void XrApp::pollActions(const bool mainThread) {
-    if (!initialized_ || !resumed_ || !sessionActive_) {
-        return;
-    }
+  if (!initialized_ || !resumed_ || !sessionActive_) {
+    return;
+  }
 
-    if (mainThread && !enableMainThreadPolling_) {
-        return;
-    }
-    else if (!mainThread && !enableAsyncPolling_) {
-        return;
-    }
+  if (mainThread && !enableMainThreadPolling_) {
+    return;
+  }
+  else if (!mainThread && !enableAsyncPolling_) {
+    return;
+  }
 
-    xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
+  xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
 
-    const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
-    XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
-    syncInfo.countActiveActionSets = 1;
-    syncInfo.activeActionSets = &activeActionSet;
-    XR_CHECK(xrSyncActions(session_, &syncInfo));
-
-    for (int controller_id = LEFT; controller_id < NUM_SIDES; controller_id++)
-    {
-        XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO};
-        getInfo.action = xr_inputs_.grabAction;
-        getInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-
-        XrActionStateFloat grabValue{XR_TYPE_ACTION_STATE_FLOAT};
-        XR_CHECK(xrGetActionStateFloat(session_, &getInfo, &grabValue));
-
-        if (grabValue.isActive == XR_TRUE)
-        {
-            xr_inputs_.handScale[controller_id] = 1.0f - 0.5f * grabValue.currentState;
-
-            if (grabValue.currentState > 0.9f)
-            {
-                XrHapticVibration vibration{XR_TYPE_HAPTIC_VIBRATION};
-                vibration.amplitude = 0.5;
-                vibration.duration = XR_MIN_HAPTIC_DURATION;
-                vibration.frequency = XR_FREQUENCY_UNSPECIFIED;
-
-                XrHapticActionInfo hapticActionInfo{XR_TYPE_HAPTIC_ACTION_INFO};
-                hapticActionInfo.action = xr_inputs_.vibrateAction;
-                hapticActionInfo.subactionPath = xr_inputs_.handSubactionPath[controller_id];
-                XR_CHECK(xrApplyHapticFeedback(session_, &hapticActionInfo, (XrHapticBaseHeader*)&vibration));
-            }
-        }
-
-        getInfo.action = xr_inputs_.gripPoseAction;
-        XrActionStatePose poseState{XR_TYPE_ACTION_STATE_POSE};
-        XR_CHECK(xrGetActionStatePose(session_, &getInfo, &poseState));
-        xr_inputs_.handActive[controller_id] = poseState.isActive;
-    }
-
-    XrActionStateGetInfo getInfo{XR_TYPE_ACTION_STATE_GET_INFO, nullptr, xr_inputs_.quitAction, XR_NULL_PATH};
-    XrActionStateBoolean quitValue{XR_TYPE_ACTION_STATE_BOOLEAN};
-    XR_CHECK(xrGetActionStateBoolean(session_, &getInfo, &quitValue));
-
-    if ((quitValue.isActive == XR_TRUE) && (quitValue.changedSinceLastSync == XR_TRUE) && (quitValue.currentState == XR_TRUE))
-    {
-        XR_CHECK(xrRequestExitSession(session_));
-    }
+  const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
+  XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+  syncInfo.countActiveActionSets = 1;
+  syncInfo.activeActionSets = &activeActionSet;
+  XR_CHECK(xrSyncActions(session_, &syncInfo));
 }
 
 } // namespace igl::shell::openxr

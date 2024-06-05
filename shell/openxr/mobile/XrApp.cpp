@@ -538,6 +538,8 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   enumerateBlendModes();
   updateSwapchainProviders();
   createSpaces();
+  createActions();
+
   if (passthroughSupported()) {
     passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
     if (!passthrough_->initialize()) {
@@ -1654,8 +1656,30 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
+  pollActions(true);
   render();
   endFrame(frameState);
+}
+
+void XrApp::pollActions(const bool mainThread) {
+    if (!initialized_ || !resumed_ || !sessionActive_) {
+        return;
+    }
+
+    if (mainThread && !enableMainThreadPolling_) {
+        return;
+    }
+    else if (!mainThread && !enableAsyncPolling_) {
+        return;
+    }
+
+    xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
+
+    const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
+    XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
+    syncInfo.countActiveActionSets = 1;
+    syncInfo.activeActionSets = &activeActionSet;
+    XR_CHECK(xrSyncActions(session_, &syncInfo));
 }
 
 float XrApp::getCurrentRefreshRate() {

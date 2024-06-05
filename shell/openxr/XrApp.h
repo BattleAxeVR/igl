@@ -410,7 +410,7 @@ private:
   bool touchControllersSupported_ = true;
 
 #if ENABLE_META_OPENXR_FEATURES
-  bool touchProControllersSupported_ = false;
+  bool touchProControllersSupported_ = true;
   bool touchControllerProximitySupported_ = false;
 
   bool bodyTrackingFBSupported_ = false;
