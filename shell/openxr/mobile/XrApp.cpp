@@ -175,6 +175,22 @@ bool XrApp::checkExtensions() {
 #endif // XR_FB_composition_layer_alpha_blend
       XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME};
 
+#if ENABLE_META_OPENXR_FEATURES
+  additionalOptionalExtensions.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
+
+  additionalOptionalExtensions.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
+
+  additionalOptionalExtensions.push_back(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
+#endif
+
+  additionalOptionalExtensions.push_back(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+
   optionalExtensionsImpl.insert(optionalExtensionsImpl.end(),
                                 std::begin(XrPassthrough::getExtensions()),
                                 std::end(XrPassthrough::getExtensions()));
