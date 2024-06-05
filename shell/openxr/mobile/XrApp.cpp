@@ -1483,11 +1483,13 @@ void XrApp::render() {
   }
 #endif
 
-	shellParams_->xr_app_ptr_ = this;
+#if ENABLE_CLOUDXR
+  shellParams_->xr_app_ptr_ = this;
 
-    if (!renderSession_->pre_update()){
-      return;
-    }
+  if (!renderSession_->pre_update()){
+    return;
+  }
+#endif
 
   for (size_t layerIndex = 0; layerIndex < compositionLayers_.size(); ++layerIndex) {
     if (!compositionLayers_[layerIndex]->isValid()) {
@@ -1510,8 +1512,11 @@ void XrApp::render() {
       compositionLayers_[layerIndex]->endRendering(i);
     }
   }
-}
 
+#if ENABLE_CLOUDXR
+  renderSession_->post_update();
+#endif
+}
 
 void XrApp::endFrame(XrFrameState frameState) {
 
