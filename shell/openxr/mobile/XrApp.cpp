@@ -1426,7 +1426,9 @@ void XrApp::render() {
     shellParams_->clearColorValue.reset();
   }
 
-  if (useSinglePassStereo_) {
+    shellParams_->xr_app_ptr_ = this;
+
+    if (useSinglePassStereo_) {
     for (size_t quadLayer = 0; quadLayer < numQuadLayersPerView_; quadLayer++) {
       auto surfaceTextures = swapchainProviders_[quadLayer]->getSurfaceTextures();
       for (size_t j = 0; j < shellParams_->viewParams.size(); j++) {
