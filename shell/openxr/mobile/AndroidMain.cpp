@@ -11,6 +11,28 @@
 #include <igl/Macros.h>
 
 #if IGL_PLATFORM_ANDROID
+
+
+#ifndef XR_USE_PLATFORM_ANDROID
+#define XR_USE_PLATFORM_ANDROID
+#endif
+
+#if defined(USE_OPENGL_BACKEND)
+#ifndef XR_USE_GRAPHICS_API_OPENGL_ES
+#define XR_USE_GRAPHICS_API_OPENGL_ES
+#endif
+
+#include <android/window.h>
+
+#include <EGL/egl.h>
+#define EGL_EGLEXT_PROTOTYPES
+#include <EGL/eglext.h>
+class _jobject;
+typedef _jobject* jobject;
+#include <openxr/openxr_platform.h>
+
+#endif
+
 #include <android_native_app_glue.h>
 #include <jni.h>
 #endif // IGL_PLATFORM_ANDROID
