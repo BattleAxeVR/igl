@@ -1477,6 +1477,10 @@ void XrApp::render() {
         const uint32_t quadLayerIndexPerView = swapChainIndex / kNumViews;
         renderSession_->setCurrentQuadLayer(quadLayerIndexPerView);
       }
+#if ENABLE_CLOUDXR
+      shellParams_->viewParams[0].cameraPosition = cameraPositions_[view];
+      shellParams_->current_view_id_ = view;
+#endif
       renderSession_->update(surfaceTextures);
       swapchainProviders_[swapChainIndex]->releaseSwapchainImages();
     }
@@ -1524,6 +1528,13 @@ void XrApp::setupProjectionAndDepth(std::vector<XrCompositionLayerProjectionView
       depthInfos[layer].maxDepth = appParams.depthParams.maxDepth;
       depthInfos[layer].nearZ = appParams.depthParams.nearZ;
       depthInfos[layer].farZ = appParams.depthParams.farZ;
+
+#if ENABLE_CLOUDXR
+      if (should_override_eye_poses_)
+      {
+        projectionViews[layer].pose = override_eye_poses_[layer];
+      }
+#endif
     }
   }
 }
