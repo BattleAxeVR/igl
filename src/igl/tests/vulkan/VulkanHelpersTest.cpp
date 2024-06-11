@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <igl/vulkan/Common.h>
+#include <vulkan/vulkan_core.h>
 
 #ifdef __ANDROID__
 #include <vulkan/vulkan_android.h>
@@ -205,6 +206,189 @@ TEST_F(SubpassDependencyTest, GetAttachmentDescription) {
   EXPECT_EQ(subpassDependency.dstStageMask, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT);
   EXPECT_EQ(subpassDependency.srcAccessMask, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   EXPECT_EQ(subpassDependency.dstAccessMask, VK_ACCESS_SHADER_READ_BIT);
+}
+
+// ivkGetRenderPassMultiviewCreateInfo ***************************************************
+
+class RenderPassMultiviewCreateInfoTest : public ::testing::Test {};
+
+TEST_F(RenderPassMultiviewCreateInfoTest, GetRenderPassMultiviewCreateInfo) {
+  constexpr uint32_t viewMask = 0;
+  constexpr uint32_t correlationMask = 0;
+
+  const auto renderPassMultiviewCreateInfo =
+      ivkGetRenderPassMultiviewCreateInfo(&viewMask, &correlationMask);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.sType,
+            VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.pNext, nullptr);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.subpassCount, 1);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.pViewMasks, &viewMask);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.dependencyCount, 0);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.pViewOffsets, nullptr);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.correlationMaskCount, 1);
+  EXPECT_EQ(renderPassMultiviewCreateInfo.pCorrelationMasks, &correlationMask);
+}
+
+// ivkGetClearColorValue ***************************************************
+
+class ClearColorValueTest
+  : public ::testing::TestWithParam<std::tuple<float, float, float, float>> {};
+
+TEST_P(ClearColorValueTest, GetClearColorValue) {
+  const float r = std::get<0>(GetParam());
+  const float g = std::get<1>(GetParam());
+  const float b = std::get<2>(GetParam());
+  const float a = std::get<3>(GetParam());
+
+  const auto clearValue = ivkGetClearColorValue(r, g, b, a);
+  EXPECT_EQ(clearValue.color.float32[0], r);
+  EXPECT_EQ(clearValue.color.float32[1], g);
+  EXPECT_EQ(clearValue.color.float32[2], b);
+  EXPECT_EQ(clearValue.color.float32[3], a);
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCombinations,
+                         ClearColorValueTest,
+                         ::testing::Combine(::testing::Values(0.f, 1.0f),
+                                            ::testing::Values(0.f, 1.0f),
+                                            ::testing::Values(0.f, 1.0f),
+                                            ::testing::Values(0.f, 1.0f)));
+
+// ivkGetClearDepthStencilValue ***************************************************
+
+class ClearDepthStencilValueTest : public ::testing::TestWithParam<std::tuple<float, uint32_t>> {};
+
+TEST_P(ClearDepthStencilValueTest, GetClearDepthStencilValue) {
+  const float depth = std::get<0>(GetParam());
+  const uint32_t stencil = std::get<1>(GetParam());
+
+  const auto clearValue = ivkGetClearDepthStencilValue(depth, stencil);
+  EXPECT_EQ(clearValue.depthStencil.depth, depth);
+  EXPECT_EQ(clearValue.depthStencil.stencil, stencil);
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCombinations,
+                         ClearDepthStencilValueTest,
+                         ::testing::Combine(::testing::Values(0.f, 1.0f), ::testing::Values(0, 1)));
+
+// ivkGetBufferCreateInfo ***************************************************
+
+class BufferCreateInfoTest
+  : public ::testing::TestWithParam<std::tuple<uint64_t, VkBufferUsageFlags>> {};
+
+TEST_P(BufferCreateInfoTest, GetBufferCreateInfo) {
+  const uint64_t size = std::get<0>(GetParam());
+  const VkBufferUsageFlags usage = std::get<1>(GetParam());
+
+  const auto bufferCreateInfo = ivkGetBufferCreateInfo(size, usage);
+  EXPECT_EQ(bufferCreateInfo.sType, VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO);
+  EXPECT_EQ(bufferCreateInfo.pNext, nullptr);
+  EXPECT_EQ(bufferCreateInfo.flags, 0);
+  EXPECT_EQ(bufferCreateInfo.size, size);
+  EXPECT_EQ(bufferCreateInfo.usage, usage);
+  EXPECT_EQ(bufferCreateInfo.sharingMode, VK_SHARING_MODE_EXCLUSIVE);
+  EXPECT_EQ(bufferCreateInfo.queueFamilyIndexCount, 0);
+  EXPECT_EQ(bufferCreateInfo.pQueueFamilyIndices, nullptr);
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCombinations,
+                         BufferCreateInfoTest,
+                         ::testing::Combine(::testing::Values(100, 1'000),
+                                            ::testing::Values(VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                              VK_BUFFER_USAGE_TRANSFER_DST_BIT)),
+                         [](const testing::TestParamInfo<BufferCreateInfoTest::ParamType>& info) {
+                           const std::string name =
+                               "size_" + std::to_string(std::get<0>(info.param)) + "__usageFlags_" +
+                               std::to_string(std::get<1>(info.param));
+                           return name;
+                         });
+
+// ivkGetImageCreateInfo ***************************************************
+
+class ImageCreateInfoTest : public ::testing::TestWithParam<std::tuple<VkImageType,
+                                                                       VkFormat,
+                                                                       VkImageTiling,
+                                                                       VkImageUsageFlags,
+                                                                       VkExtent3D,
+                                                                       uint32_t,
+                                                                       uint32_t,
+                                                                       VkImageCreateFlags,
+                                                                       VkSampleCountFlags>> {};
+
+TEST_P(ImageCreateInfoTest, GetImageCreateInfo) {
+  const VkImageType imageType = std::get<0>(GetParam());
+  const VkFormat format = std::get<1>(GetParam());
+  const VkImageTiling tiling = std::get<2>(GetParam());
+  const VkImageUsageFlags usage = std::get<3>(GetParam());
+  const VkExtent3D extent = std::get<4>(GetParam());
+  const uint32_t mipLevels = std::get<5>(GetParam());
+  const uint32_t arrayLayers = std::get<6>(GetParam());
+  const VkImageCreateFlags flags = std::get<7>(GetParam());
+  const VkSampleCountFlags samples = std::get<8>(GetParam());
+
+  const auto imageCreateInfo = ivkGetImageCreateInfo(
+      imageType, format, tiling, usage, extent, mipLevels, arrayLayers, flags, samples);
+  EXPECT_EQ(imageCreateInfo.sType, VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO);
+  EXPECT_EQ(imageCreateInfo.pNext, nullptr);
+  EXPECT_EQ(imageCreateInfo.flags, flags);
+  EXPECT_EQ(imageCreateInfo.imageType, imageType);
+  EXPECT_EQ(imageCreateInfo.format, format);
+  EXPECT_EQ(imageCreateInfo.extent.width, extent.width);
+  EXPECT_EQ(imageCreateInfo.extent.height, extent.height);
+  EXPECT_EQ(imageCreateInfo.extent.depth, extent.depth);
+  EXPECT_EQ(imageCreateInfo.mipLevels, mipLevels);
+  EXPECT_EQ(imageCreateInfo.arrayLayers, arrayLayers);
+  EXPECT_EQ(imageCreateInfo.samples, samples);
+  EXPECT_EQ(imageCreateInfo.tiling, tiling);
+  EXPECT_EQ(imageCreateInfo.sharingMode, VK_SHARING_MODE_EXCLUSIVE);
+  EXPECT_EQ(imageCreateInfo.queueFamilyIndexCount, 0);
+  EXPECT_EQ(imageCreateInfo.pQueueFamilyIndices, nullptr);
+  EXPECT_EQ(imageCreateInfo.initialLayout, VK_IMAGE_LAYOUT_UNDEFINED);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    ImageCreateInfoTest,
+    ::testing::Combine(::testing::Values(VK_IMAGE_TYPE_1D, VK_IMAGE_TYPE_2D),
+                       ::testing::Values(VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8A8_SRGB),
+                       ::testing::Values(VK_IMAGE_TILING_LINEAR, VK_IMAGE_TILING_OPTIMAL),
+                       ::testing::Values(VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_USAGE_STORAGE_BIT),
+                       ::testing::Values(VkExtent3D{50, 50, 1}, VkExtent3D{100, 100, 1}),
+                       ::testing::Values(1, 2),
+                       ::testing::Values(1, 2),
+                       ::testing::Values(0, VK_IMAGE_CREATE_SPARSE_BINDING_BIT),
+                       ::testing::Values(VK_SAMPLE_COUNT_1_BIT, VK_SAMPLE_COUNT_4_BIT)),
+    [](const testing::TestParamInfo<ImageCreateInfoTest::ParamType>& info) {
+      const std::string name = "imageType_" + std::to_string(std::get<0>(info.param)) +
+                               "__format_" + std::to_string(std::get<1>(info.param)) + "__tiling_" +
+                               std::to_string(std::get<2>(info.param)) + "__usage_" +
+                               std::to_string(std::get<3>(info.param)) + "__extent_" +
+                               std::to_string(std::get<4>(info.param).width) + "_" +
+                               std::to_string(std::get<4>(info.param).height) + "_" +
+                               std::to_string(std::get<4>(info.param).depth) + "__mipLevels_" +
+                               std::to_string(std::get<5>(info.param)) + "__arrayLayers_" +
+                               std::to_string(std::get<6>(info.param)) + "__flags_" +
+                               std::to_string(std::get<7>(info.param)) + "__sampleCount_" +
+                               std::to_string(std::get<8>(info.param));
+      return name;
+    });
+
+// ivkGetPipelineVertexInputStateCreateInfo_Empty ***********************************************
+
+class PipelineVertexInpusStateCreateInfoTest_Empty : public ::testing::Test {};
+
+TEST_F(PipelineVertexInpusStateCreateInfoTest_Empty, GetPipelineVertexInputStateCreateInfo_Empty) {
+  const VkPipelineVertexInputStateCreateInfo pipelineVertexInputCreateInfo =
+      ivkGetPipelineVertexInputStateCreateInfo_Empty();
+
+  EXPECT_EQ(pipelineVertexInputCreateInfo.sType,
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.pNext, nullptr);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.flags, 0);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.vertexBindingDescriptionCount, 0);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.pVertexBindingDescriptions, nullptr);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.vertexAttributeDescriptionCount, 0);
+  EXPECT_EQ(pipelineVertexInputCreateInfo.pVertexAttributeDescriptions, nullptr);
 }
 
 } // namespace igl::tests
