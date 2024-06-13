@@ -5,8 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <array>
 #include <gtest/gtest.h>
 #include <igl/vulkan/Common.h>
+#include <string>
 #include <vulkan/vulkan_core.h>
 
 #ifdef __ANDROID__
@@ -390,5 +392,102 @@ TEST_F(PipelineVertexInpusStateCreateInfoTest_Empty, GetPipelineVertexInputState
   EXPECT_EQ(pipelineVertexInputCreateInfo.vertexAttributeDescriptionCount, 0);
   EXPECT_EQ(pipelineVertexInputCreateInfo.pVertexAttributeDescriptions, nullptr);
 }
+
+// ivkGetPipelineInputAssemblyStateCreateInfo ***************************************************
+
+class PipelineInputAssemblyStateCreateInfoTest
+  : public ::testing::TestWithParam<std::tuple<VkPrimitiveTopology, VkBool32>> {};
+
+TEST_P(PipelineInputAssemblyStateCreateInfoTest, GetPipelineInputAssemblyStateCreateInfo) {
+  const VkPrimitiveTopology topology = std::get<0>(GetParam());
+  const VkBool32 primitiveRestart = std::get<1>(GetParam());
+
+  const auto pipelineInputAssemblyStateCreateInfo =
+      ivkGetPipelineInputAssemblyStateCreateInfo(topology, primitiveRestart);
+  EXPECT_EQ(pipelineInputAssemblyStateCreateInfo.sType,
+            VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO);
+  EXPECT_EQ(pipelineInputAssemblyStateCreateInfo.pNext, nullptr);
+  EXPECT_EQ(pipelineInputAssemblyStateCreateInfo.flags, 0);
+  EXPECT_EQ(pipelineInputAssemblyStateCreateInfo.topology, topology);
+  EXPECT_EQ(pipelineInputAssemblyStateCreateInfo.primitiveRestartEnable, primitiveRestart);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    PipelineInputAssemblyStateCreateInfoTest,
+    ::testing::Combine(::testing::Values(VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+                                         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST),
+                       ::testing::Values(VK_TRUE, VK_FALSE)),
+    [](const testing::TestParamInfo<PipelineInputAssemblyStateCreateInfoTest::ParamType>& info) {
+      const std::string name = "topology_" + std::to_string(std::get<0>(info.param)) +
+                               "__primitiveType_" + std::to_string(std::get<1>(info.param));
+      return name;
+    });
+
+// ivkGetPipelineDynamicStateCreateInfo ***************************************************
+
+class PipelineDynamicStateCreateInfoTest : public ::testing::TestWithParam<std::tuple<uint32_t>> {};
+
+TEST_P(PipelineDynamicStateCreateInfoTest, GetImageCreateInfo) {
+  const uint32_t dynamicStateCount = std::get<0>(GetParam());
+  EXPECT_LE(dynamicStateCount, 2);
+  const std::array<VkDynamicState, 2> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,
+                                                       VK_DYNAMIC_STATE_SCISSOR};
+
+  const auto pipelineDynamicStateCreateInfo =
+      ivkGetPipelineDynamicStateCreateInfo(dynamicStateCount, dynamicStates.data());
+  EXPECT_EQ(pipelineDynamicStateCreateInfo.sType,
+            VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO);
+  EXPECT_EQ(pipelineDynamicStateCreateInfo.pNext, nullptr);
+  EXPECT_EQ(pipelineDynamicStateCreateInfo.dynamicStateCount, dynamicStateCount);
+  EXPECT_EQ(pipelineDynamicStateCreateInfo.pDynamicStates, dynamicStates.data());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    PipelineDynamicStateCreateInfoTest,
+    ::testing::Combine(::testing::Values(1, 2)),
+    [](const testing::TestParamInfo<PipelineDynamicStateCreateInfoTest::ParamType>& info) {
+      const std::string name = "dynamicStateCount_" + std::to_string(std::get<0>(info.param));
+      return name;
+    });
+
+// ivkGetPipelineRasterizationStateCreateInfo ***************************************************
+
+class PipelineRasterizationStateCreateInfoTest
+  : public ::testing::TestWithParam<std::tuple<VkPolygonMode, VkCullModeFlags>> {};
+
+TEST_P(PipelineRasterizationStateCreateInfoTest, GetPipelineRasterizationStateCreateInfo) {
+  const VkPolygonMode polygonMode = std::get<0>(GetParam());
+  const VkCullModeFlags cullMode = std::get<1>(GetParam());
+
+  const auto pipelineRasterizationStateCreateInfo =
+      ivkGetPipelineRasterizationStateCreateInfo(polygonMode, cullMode);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.sType,
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.pNext, nullptr);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.flags, 0);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.depthClampEnable, VK_FALSE);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable, VK_FALSE);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.polygonMode, polygonMode);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.cullMode, cullMode);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.frontFace, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.depthBiasEnable, VK_FALSE);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.depthBiasConstantFactor, 0.0f);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.depthBiasClamp, 0.0f);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.depthBiasSlopeFactor, 0.0f);
+  EXPECT_EQ(pipelineRasterizationStateCreateInfo.lineWidth, 1.0f);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    PipelineRasterizationStateCreateInfoTest,
+    ::testing::Combine(::testing::Values(VK_POLYGON_MODE_FILL, VK_POLYGON_MODE_LINE),
+                       ::testing::Values(VK_CULL_MODE_FRONT_BIT, VK_CULL_MODE_BACK_BIT)),
+    [](const testing::TestParamInfo<PipelineRasterizationStateCreateInfoTest::ParamType>& info) {
+      const std::string name = "polygonMode_" + std::to_string(std::get<0>(info.param)) +
+                               "__cullMode_" + std::to_string(std::get<1>(info.param));
+      return name;
+    });
 
 } // namespace igl::tests

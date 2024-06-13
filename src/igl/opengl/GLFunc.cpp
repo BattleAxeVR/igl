@@ -160,6 +160,16 @@ IGL_EXTERN_BEGIN
 #else
 #define CAN_CALL_glGetStringi 0
 #endif
+#if defined(GL_VERSION_3_1) || defined(GL_ES_VERSION_3_0)
+#define CAN_CALL_glDrawElementsInstanced CAN_CALL
+#else
+#define CAN_CALL_glDrawElementsInstanced 0
+#endif
+#if defined(GL_VERSION_3_1) || defined(GL_ES_VERSION_3_0)
+#define CAN_CALL_glDrawArraysInstanced CAN_CALL
+#else
+#define CAN_CALL_glDrawArraysInstanced 0
+#endif
 #if defined(GL_VERSION_4_3) || defined(GL_ES_VERSION_3_2)
 #define CAN_CALL_glDebugMessageCallback CAN_CALL
 #define CAN_CALL_glDebugMessageInsert CAN_CALL
@@ -384,6 +394,31 @@ void iglVertexAttribDivisor(GLuint index, GLuint divisor) {
                           divisor);
 }
 
+void iglDrawElementsInstanced(GLenum mode,
+                              GLsizei count,
+                              GLenum type,
+                              const void* indices,
+                              GLsizei instancecount) {
+  GLEXTENSION_METHOD_BODY(CAN_CALL_glDrawElementsInstanced,
+                          glDrawElementsInstanced,
+                          PFNIGLDRAWELEMENTSINSTANCEDPROC,
+                          mode,
+                          count,
+                          type,
+                          indices,
+                          instancecount);
+}
+
+void iglDrawArraysInstanced(GLenum mode, GLint first, GLsizei count, GLsizei primcount) {
+  GLEXTENSION_METHOD_BODY(CAN_CALL_glDrawArraysInstanced,
+                          glDrawArraysInstanced,
+                          PFNIGLDRAWARRAYSINSTANCEDPROC,
+                          mode,
+                          first,
+                          count,
+                          primcount);
+}
+
 ///--------------------------------------
 /// MARK: - GL_APPLE_framebuffer_multisample
 
@@ -500,8 +535,10 @@ void iglDispatchCompute(GLuint num_groups_x, GLuint num_groups_y, GLuint num_gro
 
 #if defined(GL_VERSION_4_0) || defined(GL_ES_VERSION_3_1) || defined(GL_ARB_draw_indirect)
 #define CAN_CALL_glDrawElementsIndirect CAN_CALL
+#define CAN_CALL_glDrawArraysIndirect CAN_CALL
 #else
 #define CAN_CALL_glDrawElementsIndirect 0
+#define CAN_CALL_glDrawArraysIndirect 0
 #endif
 
 void iglDrawElementsIndirect(GLenum mode, GLenum type, const GLvoid* indirect) {
@@ -510,6 +547,14 @@ void iglDrawElementsIndirect(GLenum mode, GLenum type, const GLvoid* indirect) {
                           PFNIGLDRAWELEMENTSINDIRECTPROC,
                           mode,
                           type,
+                          indirect);
+}
+
+void iglDrawArraysIndirect(GLenum mode, const GLvoid* indirect) {
+  GLEXTENSION_METHOD_BODY(CAN_CALL_glDrawArraysIndirect,
+                          glDrawArraysIndirect,
+                          PFNIGLDRAWARRAYSINDIRECTPROC,
+                          mode,
                           indirect);
 }
 

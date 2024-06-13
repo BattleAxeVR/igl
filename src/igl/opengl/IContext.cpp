@@ -1506,6 +1506,32 @@ void IContext::drawArrays(GLenum mode, GLint first, GLsizei count) {
   APILOG_DEC_DRAW_COUNT();
 }
 
+void IContext::drawArraysIndirect(GLenum mode, const GLvoid* indirect) {
+  drawCallCount_++;
+
+  IGL_PROFILER_ZONE_GPU_COLOR_OGL("drawArraysIndirect()", IGL_PROFILER_COLOR_DRAW);
+
+  IGLCALL(DrawArraysIndirect)(mode, indirect);
+  APILOG("glDrawArraysIndirect(%s, %p)\n", GL_ENUM_TO_STRING(mode), indirect);
+  GLCHECK_ERRORS();
+  APILOG_DEC_DRAW_COUNT();
+}
+
+void IContext::drawArraysInstanced(GLenum mode, GLint first, GLsizei count, GLsizei instancecount) {
+  drawCallCount_++;
+
+  IGL_PROFILER_ZONE_GPU_OGL("drawArraysInstanced()");
+
+  IGLCALL(DrawArraysInstanced)(mode, first, count, instancecount);
+  APILOG("glDrawArraysInstanced(%s, %d, %u, %u)\n",
+         GL_ENUM_TO_STRING(mode),
+         first,
+         count,
+         instancecount);
+  GLCHECK_ERRORS();
+  APILOG_DEC_DRAW_COUNT();
+}
+
 void IContext::drawBuffers(GLsizei n, GLenum* buffers) {
   if (drawBuffersProc_ == nullptr) {
     if (deviceFeatureSet_.hasFeature(DeviceFeatures::MultipleRenderTargets)) {
@@ -1538,6 +1564,27 @@ void IContext::drawElements(GLenum mode, GLsizei count, GLenum type, const GLvoi
          count,
          GL_ENUM_TO_STRING(type),
          indices);
+  GLCHECK_ERRORS();
+  APILOG_DEC_DRAW_COUNT();
+}
+
+void IContext::drawElementsInstanced(GLenum mode,
+                                     GLsizei count,
+                                     GLenum type,
+                                     const GLvoid* indices,
+                                     GLsizei instancecount) {
+  drawCallCount_++;
+
+  IGL_PROFILER_ZONE_GPU_COLOR_OGL("drawElementsInstanced()", IGL_PROFILER_COLOR_DRAW);
+
+  IGLCALL(DrawElementsInstanced)(mode, count, type, indices, instancecount);
+
+  APILOG("glDrawElementsInstanced(%s, %u, %s, %p, %u)\n",
+         GL_ENUM_TO_STRING(mode),
+         count,
+         GL_ENUM_TO_STRING(type),
+         indices,
+         instancecount);
   GLCHECK_ERRORS();
   APILOG_DEC_DRAW_COUNT();
 }
