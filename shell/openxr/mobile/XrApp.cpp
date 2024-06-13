@@ -23,9 +23,7 @@
 
 #include <glm/gtc/type_ptr.hpp>
 
-//#ifndef EXTERNAL_XR_BUILD
 #include <xr_linear.h>
-//#endif
 
 #if IGL_PLATFORM_ANDROID
 #include <shell/shared/fileLoader/android/FileLoaderAndroid.h>
