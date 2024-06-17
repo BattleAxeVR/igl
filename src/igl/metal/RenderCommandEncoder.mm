@@ -356,29 +356,6 @@ void RenderCommandEncoder::bindSamplerState(size_t index,
   }
 }
 
-void RenderCommandEncoder::draw(PrimitiveType primitiveType,
-                                size_t vertexStart,
-                                size_t vertexCount,
-                                uint32_t instanceCount,
-                                uint32_t baseInstance) {
-  getCommandBuffer().incrementCurrentDrawCount();
-  IGL_ASSERT(encoder_);
-  MTLPrimitiveType metalPrimitive = convertPrimitiveType(primitiveType);
-#if IGL_PLATFORM_IOS
-  if (@available(iOS 16, *)) {
-#endif // IGL_PLATFORM_IOS
-    [encoder_ drawPrimitives:metalPrimitive
-                 vertexStart:vertexStart
-                 vertexCount:vertexCount
-               instanceCount:instanceCount
-                baseInstance:baseInstance];
-#if IGL_PLATFORM_IOS
-  } else {
-    [encoder_ drawPrimitives:metalPrimitive vertexStart:vertexStart vertexCount:vertexCount];
-  }
-#endif // IGL_PLATFORM_IOS
-}
-
 void RenderCommandEncoder::draw(size_t vertexCount,
                                 uint32_t instanceCount,
                                 uint32_t firstVertex,
@@ -396,46 +373,6 @@ void RenderCommandEncoder::draw(size_t vertexCount,
 #if IGL_PLATFORM_IOS
   } else {
     [encoder_ drawPrimitives:metalPrimitive_ vertexStart:firstVertex vertexCount:vertexCount];
-  }
-#endif // IGL_PLATFORM_IOS
-}
-
-void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
-                                       size_t indexCount,
-                                       uint32_t instanceCount,
-                                       uint32_t firstIndex,
-                                       int32_t vertexOffset,
-                                       uint32_t baseInstance) {
-  getCommandBuffer().incrementCurrentDrawCount();
-  IGL_ASSERT(encoder_);
-  IGL_ASSERT_MSG(indexBuffer_, "No index buffer bound");
-  if (!IGL_VERIFY(encoder_ && indexBuffer_)) {
-    return;
-  }
-
-  MTLPrimitiveType metalPrimitive = convertPrimitiveType(primitiveType);
-
-  const size_t indexOffsetBytes =
-      static_cast<size_t>(firstIndex) * (indexType_ == MTLIndexTypeUInt32 ? 4u : 2u);
-
-#if IGL_PLATFORM_IOS
-  if (@available(iOS 16, *)) {
-#endif // IGL_PLATFORM_IOS
-    [encoder_ drawIndexedPrimitives:metalPrimitive
-                         indexCount:indexCount
-                          indexType:indexType_
-                        indexBuffer:indexBuffer_
-                  indexBufferOffset:indexBufferOffset_ + indexOffsetBytes
-                      instanceCount:instanceCount
-                         baseVertex:vertexOffset
-                       baseInstance:baseInstance];
-#if IGL_PLATFORM_IOS
-  } else {
-    [encoder_ drawIndexedPrimitives:metalPrimitive
-                         indexCount:indexCount
-                          indexType:indexType_
-                        indexBuffer:indexBuffer_
-                  indexBufferOffset:indexBufferOffset_ + indexOffsetBytes];
   }
 #endif // IGL_PLATFORM_IOS
 }
