@@ -9,10 +9,6 @@
 
 #include <shell/openxr/XrApp.h>
 
-#ifndef XR_API_VERSION_1_0
-#define XR_API_VERSION_1_0 XR_MAKE_VERSION(1, 0, XR_VERSION_PATCH(XR_CURRENT_API_VERSION))
-#endif
-
 #include <algorithm>
 #include <array>
 #include <cassert>
