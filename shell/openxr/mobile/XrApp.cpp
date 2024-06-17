@@ -1546,7 +1546,7 @@ void XrApp::endFrame(XrFrameState frameState) {
                 viewStagePoseOverrides[view] = override_eye_poses_[view];
             }
 
-            layer->doComposition(appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
+            layer->doComposition(appParams.depthParams, views_, viewStagePoseOverrides, currentSpace_, compositionFlags, layers);
         }
         else
 
