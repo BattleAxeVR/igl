@@ -17,6 +17,23 @@
 
 namespace {
 
+VkPrimitiveTopology primitiveTypeToVkPrimitiveTopology(igl::PrimitiveType t) {
+  switch (t) {
+  case igl::PrimitiveType::Point:
+    return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+  case igl::PrimitiveType::Line:
+    return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+  case igl::PrimitiveType::LineStrip:
+    return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+  case igl::PrimitiveType::Triangle:
+    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+  case igl::PrimitiveType::TriangleStrip:
+    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+  }
+  IGL_ASSERT_MSG(false, "Implement PrimitiveType = %u", (uint32_t)t);
+  return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
+}
+
 VkPolygonMode polygonFillModeToVkPolygonMode(igl::PolygonFillMode mode) {
   switch (mode) {
   case igl::PolygonFillMode::Fill:
@@ -269,7 +286,10 @@ namespace vulkan {
 RenderPipelineState::RenderPipelineState(const igl::vulkan::Device& device,
                                          RenderPipelineDesc desc) :
   IRenderPipelineState(std::move(desc)),
-  PipelineState(device.getVulkanContext(), desc.shaderStages.get(), desc.debugName.c_str()),
+  PipelineState(device.getVulkanContext(),
+                desc.shaderStages.get(),
+                desc.immutableSamplers,
+                desc.debugName.c_str()),
   device_(device),
   reflection_(std::make_shared<RenderPipelineReflection>()) {
   // Iterate and cache vertex input bindings and attributes
@@ -426,7 +446,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
               VK_DYNAMIC_STATE_STENCIL_WRITE_MASK,
               VK_DYNAMIC_STATE_STENCIL_REFERENCE,
           })
-          .primitiveTopology(dynamicState.getTopology())
+          .primitiveTopology(primitiveTypeToVkPrimitiveTopology(desc_.topology))
           .depthBiasEnable(dynamicState.depthBiasEnable_)
           .depthCompareOp(dynamicState.getDepthCompareOp())
           .depthWriteEnable(dynamicState.depthWriteEnable_)
