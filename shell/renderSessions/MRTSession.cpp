@@ -19,6 +19,7 @@
 #include <igl/opengl/Device.h>
 #include <igl/opengl/GLIncludes.h>
 #include <shell/renderSessions/MRTSession.h>
+#include <shell/shared/renderSession/ShellParams.h>
 
 namespace igl {
 namespace shell {
@@ -397,13 +398,13 @@ void MRTSession::update(const igl::SurfaceTextures surfaceTextures) noexcept {
   commands->bindRenderPipelineState(pipelineStateMRT_);
   commands->bindTexture(textureUnit, BindTarget::kFragment, tex0_.get());
   commands->bindSamplerState(textureUnit, BindTarget::kFragment, samp0_.get());
-  commands->drawIndexed(PrimitiveType::Triangle, 6);
+  commands->drawIndexed(6);
   // clang-format on
 
   // Draw call 1
   // clang-format off
   commands->bindVertexBuffer(0, *vb1_);
-  commands->drawIndexed(PrimitiveType::Triangle, 6);
+  commands->drawIndexed(6);
   // clang-format on
 
   commands->endEncoding();
@@ -442,14 +443,17 @@ void MRTSession::update(const igl::SurfaceTextures surfaceTextures) noexcept {
   commands->bindSamplerState(textureUnit+1, BindTarget::kFragment, samp0_.get());
 
   commands->bindVertexBuffer(0,  *vb0_);
-  commands->drawIndexed(PrimitiveType::Triangle, 6);
+  commands->drawIndexed(6);
 
   commands->bindVertexBuffer(0, *vb1_);
-  commands->drawIndexed(PrimitiveType::Triangle, 6);
+  commands->drawIndexed(6);
 
   // clang-format on
   commands->endEncoding();
-  buffer->present(surfaceTextures.color);
+
+  if (shellParams().shouldPresent) {
+    buffer->present(surfaceTextures.color);
+  }
 
   commandQueue_->submit(*buffer); // Guarantees ordering between command buffers
 }

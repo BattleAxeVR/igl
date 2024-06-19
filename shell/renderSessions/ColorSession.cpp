@@ -13,6 +13,7 @@
 #include <igl/opengl/GLIncludes.h>
 #include <shell/renderSessions/ColorSession.h>
 #include <shell/shared/renderSession/RenderSession.h>
+#include <shell/shared/renderSession/ShellParams.h>
 
 namespace igl {
 namespace shell {
@@ -332,13 +333,16 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
     commands->bindTexture(_textureUnit, BindTarget::kFragment, tex0_.get());
     commands->bindSamplerState(_textureUnit, BindTarget::kFragment, samp0_.get());
     commands->bindIndexBuffer(*ib0_, IndexFormat::UInt16);
-    commands->drawIndexed(PrimitiveType::Triangle, 6);
+    commands->drawIndexed(6);
 
     commands->endEncoding();
   }
 
   IGL_ASSERT(buffer != nullptr);
-  buffer->present(drawableSurface);
+
+  if (shellParams().shouldPresent) {
+    buffer->present(drawableSurface);
+  }
 
   IGL_ASSERT(commandQueue_ != nullptr);
   commandQueue_->submit(*buffer);

@@ -356,31 +356,28 @@ void RenderCommandEncoder::bindSamplerState(size_t index,
   }
 }
 
-void RenderCommandEncoder::draw(PrimitiveType primitiveType,
-                                size_t vertexStart,
-                                size_t vertexCount,
+void RenderCommandEncoder::draw(size_t vertexCount,
                                 uint32_t instanceCount,
+                                uint32_t firstVertex,
                                 uint32_t baseInstance) {
   getCommandBuffer().incrementCurrentDrawCount();
   IGL_ASSERT(encoder_);
-  MTLPrimitiveType metalPrimitive = convertPrimitiveType(primitiveType);
 #if IGL_PLATFORM_IOS
   if (@available(iOS 16, *)) {
 #endif // IGL_PLATFORM_IOS
-    [encoder_ drawPrimitives:metalPrimitive
-                 vertexStart:vertexStart
+    [encoder_ drawPrimitives:metalPrimitive_
+                 vertexStart:firstVertex
                  vertexCount:vertexCount
                instanceCount:instanceCount
                 baseInstance:baseInstance];
 #if IGL_PLATFORM_IOS
   } else {
-    [encoder_ drawPrimitives:metalPrimitive vertexStart:vertexStart vertexCount:vertexCount];
+    [encoder_ drawPrimitives:metalPrimitive_ vertexStart:firstVertex vertexCount:vertexCount];
   }
 #endif // IGL_PLATFORM_IOS
 }
 
-void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
-                                       size_t indexCount,
+void RenderCommandEncoder::drawIndexed(size_t indexCount,
                                        uint32_t instanceCount,
                                        uint32_t firstIndex,
                                        int32_t vertexOffset,
@@ -392,15 +389,13 @@ void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
     return;
   }
 
-  MTLPrimitiveType metalPrimitive = convertPrimitiveType(primitiveType);
-
   const size_t indexOffsetBytes =
       static_cast<size_t>(firstIndex) * (indexType_ == MTLIndexTypeUInt32 ? 4u : 2u);
 
 #if IGL_PLATFORM_IOS
   if (@available(iOS 16, *)) {
 #endif // IGL_PLATFORM_IOS
-    [encoder_ drawIndexedPrimitives:metalPrimitive
+    [encoder_ drawIndexedPrimitives:metalPrimitive_
                          indexCount:indexCount
                           indexType:indexType_
                         indexBuffer:indexBuffer_
@@ -410,7 +405,7 @@ void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
                        baseInstance:baseInstance];
 #if IGL_PLATFORM_IOS
   } else {
-    [encoder_ drawIndexedPrimitives:metalPrimitive
+    [encoder_ drawIndexedPrimitives:metalPrimitive_
                          indexCount:indexCount
                           indexType:indexType_
                         indexBuffer:indexBuffer_

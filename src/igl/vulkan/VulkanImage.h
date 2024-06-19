@@ -245,6 +245,14 @@ class VulkanImage final {
   static bool isDepthFormat(VkFormat format);
   static bool isStencilFormat(VkFormat format);
 
+  bool isMappedPtrAccessible() const {
+    return (mappedPtr_ != nullptr) && ((tiling_ & VK_IMAGE_TILING_LINEAR) != 0);
+  }
+
+  bool isCoherentMemory() const {
+    return isCoherentMemory_;
+  }
+
  public:
   const VulkanContext* ctx_ = nullptr;
   VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
@@ -252,6 +260,7 @@ class VulkanImage final {
   VkImage vkImage_ = VK_NULL_HANDLE;
   VkImageUsageFlags usageFlags_ = 0;
   VkDeviceMemory vkMemory_ = VK_NULL_HANDLE;
+  VkDeviceMemory vkMemoryCbCr_ = VK_NULL_HANDLE;
   VmaAllocation vmaAllocation_ = VK_NULL_HANDLE;
   VkFormatProperties formatProperties_{};
   void* mappedPtr_ = nullptr;
@@ -277,6 +286,9 @@ class VulkanImage final {
 #endif
 
  private:
+  VkImageTiling tiling_ = VK_IMAGE_TILING_OPTIMAL;
+  bool isCoherentMemory_ = false;
+
 #if IGL_PLATFORM_WIN || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
   /**
    * @brief Constructs a `VulkanImage` object and a `VkImage` object. Except for the debug name, all

@@ -93,23 +93,6 @@ VkIndexType indexFormatToVkIndexType(igl::IndexFormat fmt) {
   return VK_INDEX_TYPE_NONE_KHR;
 }
 
-VkPrimitiveTopology primitiveTypeToVkPrimitiveTopology(igl::PrimitiveType t) {
-  switch (t) {
-  case igl::PrimitiveType::Point:
-    return VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-  case igl::PrimitiveType::Line:
-    return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-  case igl::PrimitiveType::LineStrip:
-    return VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-  case igl::PrimitiveType::Triangle:
-    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-  case igl::PrimitiveType::TriangleStrip:
-    return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-  }
-  IGL_ASSERT_MSG(false, "Implement PrimitiveType = %u", (uint32_t)t);
-  return VK_PRIMITIVE_TOPOLOGY_MAX_ENUM;
-}
-
 } // namespace
 
 namespace igl {
@@ -610,10 +593,9 @@ void RenderCommandEncoder::bindUniform(const UniformDesc& /*uniformDesc*/, const
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-void RenderCommandEncoder::draw(PrimitiveType primitiveType,
-                                size_t vertexStart,
-                                size_t vertexCount,
+void RenderCommandEncoder::draw(size_t vertexCount,
                                 uint32_t instanceCount,
+                                uint32_t firstVertex,
                                 uint32_t baseInstance) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DRAW);
   IGL_PROFILER_ZONE_GPU_COLOR_VK("draw()", ctx_.tracyCtx_, cmdBuffer_, IGL_PROFILER_COLOR_DRAW);
@@ -621,6 +603,8 @@ void RenderCommandEncoder::draw(PrimitiveType primitiveType,
   ctx_.drawCallCount_ += drawCallCountEnabled_;
 
   if (vertexCount == 0) {
+    // IGL/OpenGL tests rely on this behavior due to how state caching is organized over there.
+    // If we do not return here, Validation Layers will complain.
     return;
   }
 
@@ -628,7 +612,6 @@ void RenderCommandEncoder::draw(PrimitiveType primitiveType,
 
   ensureVertexBuffers();
 
-  dynamicState_.setTopology(primitiveTypeToVkPrimitiveTopology(primitiveType));
   flushDynamicState();
 
 #if IGL_VULKAN_PRINT_COMMANDS
@@ -636,16 +619,14 @@ void RenderCommandEncoder::draw(PrimitiveType primitiveType,
                cmdBuffer_,
                (uint32_t)vertexCount,
                instanceCount,
-               (uint32_t)vertexStart,
+               firstVertex,
                baseInstance);
 #endif // IGL_VULKAN_PRINT_COMMANDS
 
-  ctx_.vf_.vkCmdDraw(
-      cmdBuffer_, (uint32_t)vertexCount, instanceCount, (uint32_t)vertexStart, baseInstance);
+  ctx_.vf_.vkCmdDraw(cmdBuffer_, (uint32_t)vertexCount, instanceCount, firstVertex, baseInstance);
 }
 
-void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
-                                       size_t indexCount,
+void RenderCommandEncoder::drawIndexed(size_t indexCount,
                                        uint32_t instanceCount,
                                        uint32_t firstIndex,
                                        int32_t vertexOffset,
@@ -666,7 +647,6 @@ void RenderCommandEncoder::drawIndexed(PrimitiveType primitiveType,
 
   ensureVertexBuffers();
 
-  dynamicState_.setTopology(primitiveTypeToVkPrimitiveTopology(primitiveType));
   flushDynamicState();
 
 #if IGL_VULKAN_PRINT_COMMANDS
@@ -694,8 +674,6 @@ void RenderCommandEncoder::multiDrawIndirect(IBuffer& indirectBuffer,
 
   ensureVertexBuffers();
 
-  dynamicState_.setTopology(
-      primitiveTypeToVkPrimitiveTopology(rps_->getRenderPipelineDesc().topology));
   flushDynamicState();
 
   ctx_.drawCallCount_ += drawCallCountEnabled_;
@@ -721,8 +699,6 @@ void RenderCommandEncoder::multiDrawIndexedIndirect(IBuffer& indirectBuffer,
 
   ensureVertexBuffers();
 
-  dynamicState_.setTopology(
-      primitiveTypeToVkPrimitiveTopology(rps_->getRenderPipelineDesc().topology));
   flushDynamicState();
 
   ctx_.drawCallCount_ += drawCallCountEnabled_;

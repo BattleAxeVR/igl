@@ -12,6 +12,7 @@
 #include <igl/ShaderCreator.h>
 #include <igl/opengl/GLIncludes.h>
 #include <shell/renderSessions/TQSession.h>
+#include <shell/shared/renderSession/ShellParams.h>
 
 namespace igl {
 namespace shell {
@@ -321,13 +322,15 @@ void TQSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
     commands->bindTexture(_textureUnit, BindTarget::kFragment, _tex0.get());
     commands->bindSamplerState(_textureUnit, BindTarget::kFragment, _samp0.get());
     commands->bindIndexBuffer(*_ib0, IndexFormat::UInt16);
-    commands->drawIndexed(PrimitiveType::Triangle, 6);
+    commands->drawIndexed(6);
 
     commands->endEncoding();
   }
 
   IGL_ASSERT(buffer != nullptr);
-  buffer->present(drawableSurface);
+  if (shellParams().shouldPresent) {
+    buffer->present(drawableSurface);
+  }
 
   IGL_ASSERT(_commandQueue != nullptr);
   _commandQueue->submit(*buffer);

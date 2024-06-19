@@ -13,6 +13,7 @@
 #include <igl/ShaderCreator.h>
 #include <igl/opengl/GLIncludes.h>
 #include <shell/renderSessions/TQMultiRenderPassSession.h>
+#include <shell/shared/renderSession/ShellParams.h>
 
 namespace igl {
 namespace shell {
@@ -163,7 +164,7 @@ static void render(std::shared_ptr<ICommandBuffer>& buffer,
   commands->bindSamplerState(textureUnit_, BindTarget::kFragment, samplerState.get());
   commands->bindVertexBuffer(0, *vertexBuffer);
   commands->bindIndexBuffer(*ib, IndexFormat::UInt16);
-  commands->drawIndexed(PrimitiveType::Triangle, 6);
+  commands->drawIndexed(6);
   commands->endEncoding();
 }
 
@@ -340,7 +341,9 @@ void TQMultiRenderPassSession::update(igl::SurfaceTextures surfaceTextures) noex
          fragmentUniformDescriptors_,
          fragmentParameters_);
 
-  buffer->present(drawableSurface);
+  if (shellParams().shouldPresent) {
+    buffer->present(drawableSurface);
+  }
 
   commandQueue_->submit(*buffer);
 }

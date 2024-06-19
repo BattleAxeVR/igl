@@ -13,6 +13,7 @@
 #include <igl/opengl/Device.h>
 #include <igl/opengl/GLIncludes.h>
 #include <igl/opengl/RenderCommandEncoder.h>
+#include <shell/shared/renderSession/ShellParams.h>
 #if defined(IGL_PLATFORM_UWP)
 #include "Textured3DCubeSession.h"
 #define M_PI 3.14159265358979323846
@@ -418,11 +419,13 @@ void Textured3DCubeSession::update(igl::SurfaceTextures surfaceTextures) noexcep
   commands->bindRenderPipelineState(pipelineState_);
 
   commands->bindIndexBuffer(*ib0_, IndexFormat::UInt16);
-  commands->drawIndexed(PrimitiveType::Triangle, 3u * 6u * 2u);
+  commands->drawIndexed(3u * 6u * 2u);
 
   commands->endEncoding();
 
-  buffer->present(framebuffer_->getColorAttachment(0));
+  if (shellParams().shouldPresent) {
+    buffer->present(framebuffer_->getColorAttachment(0));
+  }
 
   commandQueue_->submit(*buffer); // Guarantees ordering between command buffers
 }

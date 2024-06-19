@@ -23,6 +23,8 @@
 #define VOLK_IMPLEMENTATION
 #endif // IGL_CMAKE_BUILD
 
+#include <igl/glslang/GlslCompiler.h>
+
 #include <igl/vulkan/Buffer.h>
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/EnhancedShaderDebuggingStore.h>
@@ -361,7 +363,7 @@ VulkanContext::VulkanContext(const VulkanContextConfig& config,
 
   vulkan::functions::initialize(*tableImpl_);
 
-  glslang_initialize_process();
+  glslang::initializeCompiler();
 
   createInstance(numExtraInstanceExtensions, extraInstanceExtensions);
 
@@ -431,6 +433,9 @@ VulkanContext::~VulkanContext() {
     if (pimpl_->dpBindless_ != VK_NULL_HANDLE) {
       vf_.vkDestroyDescriptorPool(device, pimpl_->dpBindless_, nullptr);
     }
+    if (ycbcrConversionInfo_.conversion != VK_NULL_HANDLE) {
+      vf_.vkDestroySamplerYcbcrConversion(device, ycbcrConversionInfo_.conversion, nullptr);
+    }
     pimpl_->arenaCombinedImageSamplers_.clear();
     pimpl_->arenaBuffersUniform_.clear();
     pimpl_->arenaBuffersStorage_.clear();
@@ -448,11 +453,15 @@ VulkanContext::~VulkanContext() {
 
   device_.reset(nullptr); // Device has to be destroyed prior to Instance
 #if defined(VK_EXT_debug_utils) && !IGL_PLATFORM_ANDROID
-  vf_.vkDestroyDebugUtilsMessengerEXT(vkInstance_, vkDebugUtilsMessenger_, nullptr);
+  if (vf_.vkDestroyDebugUtilsMessengerEXT != nullptr) {
+    vf_.vkDestroyDebugUtilsMessengerEXT(vkInstance_, vkDebugUtilsMessenger_, nullptr);
+  }
 #endif // defined(VK_EXT_debug_utils) && !IGL_PLATFORM_ANDROID
-  vf_.vkDestroyInstance(vkInstance_, nullptr);
+  if (vf_.vkDestroyInstance != nullptr) {
+    vf_.vkDestroyInstance(vkInstance_, nullptr);
+  }
 
-  glslang_finalize_process();
+  glslang::finalizeCompiler();
 
 #if IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS)
   if (config_.enableExtraLogs) {
@@ -528,6 +537,11 @@ igl::Result VulkanContext::queryDevices(const HWDeviceQueryDesc& desc,
 
   // Physical devices
   uint32_t deviceCount = 0;
+
+  if (vf_.vkEnumeratePhysicalDevices == nullptr) {
+    return Result(Result::Code::Unsupported, "Vulkan functions are not loaded");
+  }
+
   VK_ASSERT_RETURN(vf_.vkEnumeratePhysicalDevices(vkInstance_, &deviceCount, nullptr));
   std::vector<VkPhysicalDevice> vkDevices(deviceCount);
   VK_ASSERT_RETURN(vf_.vkEnumeratePhysicalDevices(vkInstance_, &deviceCount, vkDevices.data()));
@@ -819,6 +833,7 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
                                                               VK_SAMPLER_ADDRESS_MODE_REPEAT,
                                                               0.0f,
                                                               0.0f),
+                                      false,
                                       "Sampler: default"));
   IGL_ASSERT(samplers_.numObjects() == 1);
 
@@ -864,6 +879,55 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
   // enables/disables enhanced shader debugging
   if (config_.enhancedShaderDebugging) {
     enhancedShaderDebuggingStore_ = std::make_unique<EnhancedShaderDebuggingStore>();
+  }
+  if (vkPhysicalDeviceSamplerYcbcrConversionFeatures_.samplerYcbcrConversion) {
+    const VkFormat format = VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+
+    VkFormatProperties props;
+    vkGetPhysicalDeviceFormatProperties(getVkPhysicalDevice(), format, &props);
+
+    const bool cosited =
+        (props.optimalTilingFeatures & VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT) != 0;
+    const bool midpoint =
+        (props.optimalTilingFeatures & VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT) != 0;
+
+    if (!IGL_VERIFY(cosited || midpoint)) {
+      IGL_ASSERT_MSG(cosited || midpoint, "Unsupported Ycbcr feature");
+      return Result(Result::Code::InvalidOperation, "Unsupported Ycbcr feature");
+    }
+
+    VkSamplerYcbcrConversionCreateInfo ciYcbcr = ivkGetSamplerYcbcrCreateInfo(format);
+
+    if (midpoint) {
+      ciYcbcr.xChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+      ciYcbcr.yChromaOffset = VK_CHROMA_LOCATION_MIDPOINT;
+    } else {
+      ciYcbcr.xChromaOffset = VK_CHROMA_LOCATION_COSITED_EVEN;
+      ciYcbcr.yChromaOffset = VK_CHROMA_LOCATION_COSITED_EVEN;
+    }
+
+    vf_.vkCreateSamplerYcbcrConversion(
+        getVkDevice(), &ciYcbcr, nullptr, &ycbcrConversionInfo_.conversion);
+
+    // check properties
+
+    VkSamplerYcbcrConversionImageFormatProperties samplerYcbcrConversionImageFormatProps = {
+        VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES, nullptr, 0};
+    VkImageFormatProperties2 imageFormatProps = {
+        VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2, &samplerYcbcrConversionImageFormatProps, {}};
+    const VkPhysicalDeviceImageFormatInfo2 imageFormatInfo = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+        nullptr,
+        format,
+        VK_IMAGE_TYPE_2D,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_IMAGE_CREATE_DISJOINT_BIT,
+    };
+    vkGetPhysicalDeviceImageFormatProperties2(
+        getVkPhysicalDevice(), &imageFormatInfo, &imageFormatProps);
+
+    IGL_ASSERT(samplerYcbcrConversionImageFormatProps.combinedImageSamplerDescriptorCount <= 2);
   }
 
   return Result();
@@ -1306,12 +1370,13 @@ std::shared_ptr<VulkanTexture> VulkanContext::createTextureFromVkImage(
 }
 
 std::shared_ptr<VulkanSampler> VulkanContext::createSampler(const VkSamplerCreateInfo& ci,
+                                                            bool isYUV_NV12,
                                                             igl::Result* outResult,
                                                             const char* debugName) const {
   IGL_PROFILER_FUNCTION();
 
   const SamplerHandle handle = samplers_.create(
-      std::make_shared<VulkanSampler>(*this, device_->getVkDevice(), ci, debugName));
+      std::make_shared<VulkanSampler>(*this, device_->getVkDevice(), ci, isYUV_NV12, debugName));
 
   auto sampler = *samplers_.get(handle);
 
