@@ -10,9 +10,7 @@
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/VulkanContext.h>
 
-namespace igl {
-
-namespace vulkan {
+namespace igl::vulkan {
 
 VulkanImageView::VulkanImageView(const VulkanContext& ctx,
                                  VkImage image,
@@ -36,8 +34,11 @@ VulkanImageView::VulkanImageView(const VulkanContext& ctx,
       format,
       VkImageSubresourceRange{aspectMask, baseLevel, numLevels, baseLayer, numLayers});
 
-  if (format == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
-    ci.pNext = &ctx.ycbcrConversionInfo_;
+  VkSamplerYcbcrConversionInfo info{};
+
+  if (igl::vulkan::getNumImagePlanes(format) > 1) {
+    info = ctx.getOrCreateYcbcrConversionInfo(format);
+    ci.pNext = &info;
   }
 
   VK_ASSERT(ctx_->vf_.vkCreateImageView(device, &ci, nullptr, &vkImageView_));
@@ -47,7 +48,7 @@ VulkanImageView::VulkanImageView(const VulkanContext& ctx,
 }
 
 VulkanImageView::VulkanImageView(const VulkanContext& ctx,
-                                 VkDevice device,
+                                 VkDevice /*device*/,
                                  VkImage image,
                                  const VulkanImageViewCreateInfo& createInfo,
                                  const char* debugName) :
@@ -92,6 +93,4 @@ void VulkanImageView::destroy() {
   }
 }
 
-} // namespace vulkan
-
-} // namespace igl
+} // namespace igl::vulkan

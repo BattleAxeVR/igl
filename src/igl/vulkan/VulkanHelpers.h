@@ -188,6 +188,17 @@ VkResult ivkAllocateMemory2(const struct VulkanFunctionTable* vt,
                             bool enableBufferDeviceAddress,
                             VkDeviceMemory* outMemory);
 
+VkImagePlaneMemoryRequirementsInfo ivkGetImagePlaneMemoryRequirementsInfo(
+    VkImageAspectFlagBits plane);
+
+VkImageMemoryRequirementsInfo2 ivkGetImageMemoryRequirementsInfo2(
+    const VkImagePlaneMemoryRequirementsInfo* next,
+    VkImage image);
+
+VkBindImageMemoryInfo ivkGetBindImageMemoryInfo(const VkBindImagePlaneMemoryInfo* next,
+                                                VkImage image,
+                                                VkDeviceMemory memory);
+
 bool ivkIsHostVisibleSingleHeapMemory(const struct VulkanFunctionTable* vt,
                                       VkPhysicalDevice physDev);
 
@@ -417,16 +428,16 @@ VkPipelineShaderStageCreateInfo ivkGetPipelineShaderStageCreateInfo(VkShaderStag
 
 VkImageCopy ivkGetImageCopy2D(VkOffset2D srcDstOffset,
                               VkImageSubresourceLayers srcDstImageSubresource,
-                              const VkExtent2D imageRegion);
+                              VkExtent2D imageRegion);
 
 VkBufferImageCopy ivkGetBufferImageCopy2D(uint32_t bufferOffset,
                                           uint32_t bufferRowLength,
-                                          const VkRect2D imageRegion,
+                                          VkRect2D imageRegion,
                                           VkImageSubresourceLayers imageSubresource);
 VkBufferImageCopy ivkGetBufferImageCopy3D(uint32_t bufferOffset,
                                           uint32_t bufferRowLength,
-                                          const VkOffset3D offset,
-                                          const VkExtent3D extent,
+                                          VkOffset3D offset,
+                                          VkExtent3D extent,
                                           VkImageSubresourceLayers imageSubresource);
 
 void ivkImageMemoryBarrier(const struct VulkanFunctionTable* vt,

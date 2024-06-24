@@ -16,8 +16,7 @@
 #include <igl/vulkan/VulkanStagingDevice.h>
 #include <igl/vulkan/VulkanTexture.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 Texture::Texture(const igl::vulkan::Device& device, TextureFormat format) :
   ITexture(format), device_(device) {}
@@ -153,7 +152,8 @@ Result Texture::create(const TextureDesc& desc) {
                                    ? VK_IMAGE_TILING_OPTIMAL
                                    : VK_IMAGE_TILING_LINEAR;
 
-  if (desc.format == TextureFormat::YUV_NV12) {
+  if (getProperties().numPlanes > 1) {
+    // some constraints for multiplanar image formats
     IGL_ASSERT(imageType == VK_IMAGE_TYPE_2D);
     IGL_ASSERT(samples == VK_SAMPLE_COUNT_1_BIT);
     IGL_ASSERT(tiling == VK_IMAGE_TILING_OPTIMAL);
@@ -368,5 +368,4 @@ void Texture::clearColorTexture(const igl::Color& rgba) {
   img.ctx_->immediate_->submit(wrapper);
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan
