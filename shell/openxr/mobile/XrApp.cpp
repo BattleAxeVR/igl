@@ -75,8 +75,9 @@ XrApp::XrApp(std::unique_ptr<impl::XrAppImpl>&& impl, bool shouldPresent) :
 }
 
 XrApp::~XrApp() {
-  if (!initialized_)
+  if (!initialized_) {
     return;
+  }
 
   renderSession_.reset();
   compositionLayers_.clear();
@@ -126,7 +127,7 @@ bool XrApp::checkExtensions() {
   extensions_.resize(numExtensions, {XR_TYPE_EXTENSION_PROPERTIES});
 
   XR_CHECK(xrEnumerateInstanceExtensionProperties(
-      NULL, numExtensions, &numExtensions, extensions_.data()));
+      nullptr, numExtensions, &numExtensions, extensions_.data()));
   for (uint32_t i = 0; i < numExtensions; i++) {
     IGL_LOG_INFO("Extension #%d = '%s'.\n", i, extensions_[i].extensionName);
   }
@@ -231,7 +232,7 @@ bool XrApp::createInstance() {
   appInfo.engineVersion = 0;
   appInfo.apiVersion = XR_MAKE_VERSION(1, 0, 34);
 
-  XrInstanceCreateInfo instanceCreateInfo = {
+  const XrInstanceCreateInfo instanceCreateInfo = {
       .type = XR_TYPE_INSTANCE_CREATE_INFO,
 #if IGL_PLATFORM_ANDROID
       .next = instanceCreateInfoAndroidSupported() ? &instanceCreateInfoAndroid_ : nullptr,
@@ -294,7 +295,7 @@ bool XrApp::createInstance() {
 } // namespace igl::shell::openxr
 
 bool XrApp::createSystem() {
-  XrSystemGetInfo systemGetInfo = {
+  const XrSystemGetInfo systemGetInfo = {
       .type = XR_TYPE_SYSTEM_GET_INFO,
       .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY,
   };
@@ -1315,7 +1316,7 @@ void XrApp::handleXrEvents() {
 
   // Poll for events
   for (;;) {
-    XrEventDataBaseHeader* baseEventHeader = (XrEventDataBaseHeader*)(&eventDataBuffer);
+    auto* baseEventHeader = (XrEventDataBaseHeader*)(&eventDataBuffer);
     baseEventHeader->type = XR_TYPE_EVENT_DATA_BUFFER;
     baseEventHeader->next = nullptr;
     XrResult res;
@@ -1392,7 +1393,7 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
 #endif // IGL_CMAKE_BUILD
     assert(sessionActive_ == false);
 
-    XrSessionBeginInfo sessionBeginInfo{
+    const XrSessionBeginInfo sessionBeginInfo{
         XR_TYPE_SESSION_BEGIN_INFO,
         nullptr,
         viewConfigProps_.viewConfigurationType,
@@ -1420,13 +1421,13 @@ XrFrameState XrApp::beginFrame() {
     updateQuadComposition();
   }
 
-  XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
+  const XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
   XrFrameState frameState = {XR_TYPE_FRAME_STATE};
 
   XR_CHECK(xrWaitFrame(session_, &waitFrameInfo, &frameState));
 
-  XrFrameBeginInfo beginFrameInfo = {XR_TYPE_FRAME_BEGIN_INFO};
+  const XrFrameBeginInfo beginFrameInfo = {XR_TYPE_FRAME_BEGIN_INFO};
 
   XR_CHECK(xrBeginFrame(session_, &beginFrameInfo));
 
@@ -1434,11 +1435,11 @@ XrFrameState XrApp::beginFrame() {
       loc.type = XR_TYPE_SPACE_LOCATION,
   };
   XR_CHECK(xrLocateSpace(headSpace_, currentSpace_, frameState.predictedDisplayTime, &loc));
-  XrPosef headPose = loc.pose;
+  const XrPosef headPose = loc.pose;
 
   XrViewState viewState = {XR_TYPE_VIEW_STATE};
 
-  XrViewLocateInfo projectionInfo = {
+  const XrViewLocateInfo projectionInfo = {
       XR_TYPE_VIEW_LOCATE_INFO,
       nullptr,
       viewConfigProps_.viewConfigurationType,
@@ -1452,7 +1453,7 @@ XrFrameState XrApp::beginFrame() {
       session_, &projectionInfo, &viewState, views_.size(), &numViews, views_.data()));
 
   for (size_t i = 0; i < XrComposition::kNumViews; i++) {
-    XrPosef eyePose = views_[i].pose;
+    const XrPosef eyePose = views_[i].pose;
     XrPosef_Multiply(&viewStagePoses_[i], &headPose, &eyePose);
     XrPosef viewTransformXrPosef{};
     XrPosef_Invert(&viewTransformXrPosef, &viewStagePoses_[i]);
