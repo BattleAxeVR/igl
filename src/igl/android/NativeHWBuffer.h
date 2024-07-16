@@ -11,6 +11,10 @@
 
 #if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
+#if !defined(AHARDWAREBUFFER_FORMAT_YCbCr_420_SP_VENUS)
+#define AHARDWAREBUFFER_FORMAT_YCbCr_420_SP_VENUS 0x7FA30C06
+#endif
+
 #include <igl/Texture.h>
 #include <igl/TextureFormat.h>
 
@@ -44,19 +48,22 @@ class INativeHWTextureBuffer {
   Result attachHWBuffer(AHardwareBuffer* buffer);
   Result createHWBuffer(const TextureDesc& desc, bool hasStorageAlready, bool surfaceComposite);
 
-  LockGuard lockHWBuffer(std::byte* IGL_NULLABLE* IGL_NONNULL dst,
-                         RangeDesc& outRange,
-                         Result* outResult) const;
+  [[nodiscard]] LockGuard lockHWBuffer(std::byte* IGL_NULLABLE* IGL_NONNULL dst,
+                                       RangeDesc& outRange,
+                                       Result* outResult) const;
 
   Result lockHWBuffer(std::byte* IGL_NULLABLE* IGL_NONNULL dst, RangeDesc& outRange) const;
   Result unlockHWBuffer() const;
 
-  AHardwareBuffer* getHardwareBuffer();
+  [[nodiscard]] AHardwareBuffer* getHardwareBuffer() const;
+
+  [[nodiscard]] TextureDesc getTextureDesc() const;
 
  protected:
   virtual Result createTextureInternal(const TextureDesc& desc, AHardwareBuffer* buffer) = 0;
 
   AHardwareBuffer* hwBuffer_ = nullptr;
+  TextureDesc textureDesc_;
 };
 
 // utils

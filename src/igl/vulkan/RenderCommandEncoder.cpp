@@ -439,14 +439,12 @@ void RenderCommandEncoder::bindDepthStencilState(
       // do not update anything if we don't have an actual state
       return;
     }
-    dynamicState_.setStencilStateOps(faceMask != 0u,
+    dynamicState_.setStencilStateOps(faceMask == VK_STENCIL_FACE_FRONT_BIT,
                                      stencilOperationToVkStencilOp(desc.stencilFailureOperation),
                                      stencilOperationToVkStencilOp(desc.depthStencilPassOperation),
                                      stencilOperationToVkStencilOp(desc.depthFailureOperation),
                                      compareFunctionToVkCompareOp(desc.stencilCompareFunction));
-    // this is what the IGL/OGL backend does with masks
-    ctx_.vf_.vkCmdSetStencilReference(cmdBuffer_, faceMask, desc.readMask);
-    ctx_.vf_.vkCmdSetStencilCompareMask(cmdBuffer_, faceMask, 0xFF);
+    ctx_.vf_.vkCmdSetStencilCompareMask(cmdBuffer_, faceMask, desc.readMask);
     ctx_.vf_.vkCmdSetStencilWriteMask(cmdBuffer_, faceMask, desc.writeMask);
   };
 
@@ -939,6 +937,38 @@ void RenderCommandEncoder::processDependencies(const Dependencies& dependencies)
                          dstStageFlags);
       }
       deps = deps->next;
+    }
+  }
+}
+
+void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
+  const BindGroupTextureDesc* desc = ctx_.bindGroupTexturesPool_.get(handle);
+
+  for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
+    if (desc->textures[i]) {
+      IGL_ASSERT(desc->samplers[i]);
+      bindTexture(i, BindTarget::kAllGraphics, desc->textures[i].get());
+      bindSamplerState(i, BindTarget::kAllGraphics, desc->samplers[i].get());
+    }
+  }
+}
+
+void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
+  const BindGroupBufferDesc* desc = ctx_.bindGroupBuffersPool_.get(handle);
+
+  for (uint32_t i = 0; i != IGL_UNIFORM_BLOCKS_BINDING_MAX; i++) {
+    if (desc->buffers[i]) {
+      bindBuffer(i, desc->buffers[i], desc->offset[i], desc->size[i]);
     }
   }
 }
