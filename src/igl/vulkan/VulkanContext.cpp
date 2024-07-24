@@ -208,7 +208,24 @@ class DescriptorPoolsArena final {
                        const char* debugName) :
     ctx_(ctx),
     device_(ctx.getVkDevice()),
-    type_(type),
+    numTypes_(1),
+    types_{type},
+    numDescriptorsPerDSet_(numDescriptorsPerDSet),
+    dsl_(dsl) {
+    IGL_ASSERT(debugName);
+    dpDebugName_ = IGL_FORMAT("Descriptor Pool: {}", debugName ? debugName : "");
+    switchToNewDescriptorPool(*ctx.immediate_, {});
+  }
+  DescriptorPoolsArena(const VulkanContext& ctx,
+                       VkDescriptorType type0,
+                       VkDescriptorType type1,
+                       VkDescriptorSetLayout dsl,
+                       uint32_t numDescriptorsPerDSet,
+                       const char* debugName) :
+    ctx_(ctx),
+    device_(ctx.getVkDevice()),
+    numTypes_(2),
+    types_{type0, type1},
     numDescriptorsPerDSet_(numDescriptorsPerDSet),
     dsl_(dsl) {
     IGL_ASSERT(debugName);
@@ -257,14 +274,18 @@ class DescriptorPoolsArena final {
         return;
       }
     }
-    const VkDescriptorPoolSize poolSize = VkDescriptorPoolSize{
-        type_, numDescriptorsPerDSet_ ? kNumDSetsPerPool_ * numDescriptorsPerDSet_ : 1u};
+    // @fb-only
+    VkDescriptorPoolSize poolSizes[IGL_ARRAY_NUM_ELEMENTS(types_)];
+    for (uint32_t i = 0; i != numTypes_; i++) {
+      poolSizes[i] = VkDescriptorPoolSize{
+          types_[i], numDescriptorsPerDSet_ ? kNumDSetsPerPool_ * numDescriptorsPerDSet_ : 1u};
+    }
     VK_ASSERT(ivkCreateDescriptorPool(&ctx_.vf_,
                                       device_,
                                       VkDescriptorPoolCreateFlags{},
                                       kNumDSetsPerPool_,
-                                      1,
-                                      &poolSize,
+                                      numTypes_,
+                                      poolSizes,
                                       &pool_));
     VK_ASSERT(ivkSetDebugObjectName(
         &ctx_.vf_, device_, VK_OBJECT_TYPE_DESCRIPTOR_POOL, (uint64_t)pool_, dpDebugName_.c_str()));
@@ -276,7 +297,8 @@ class DescriptorPoolsArena final {
   const VulkanContext& ctx_;
   VkDevice device_ = VK_NULL_HANDLE;
   VkDescriptorPool pool_ = VK_NULL_HANDLE;
-  const VkDescriptorType type_ = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+  const uint32_t numTypes_ = 0;
+  VkDescriptorType types_[2] = {VK_DESCRIPTOR_TYPE_MAX_ENUM, VK_DESCRIPTOR_TYPE_MAX_ENUM};
   const uint32_t numDescriptorsPerDSet_ = 0;
   uint32_t numRemainingDSetsInPool_ = 0;
   std::string dpDebugName_;
@@ -298,15 +320,16 @@ struct VulkanContextImpl final {
   std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
       arenaCombinedImageSamplers_;
   std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
-      arenaBuffersUniform_;
-  std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
-      arenaBuffersStorage_;
+      arenaBuffers_;
   std::unique_ptr<igl::vulkan::VulkanDescriptorSetLayout> dslBindless_; // everything
   VkDescriptorPool dpBindless_ = VK_NULL_HANDLE;
   VkDescriptorSet dsBindless_ = VK_NULL_HANDLE;
   VulkanImmediateCommands::SubmitHandle lastSubmitHandle_ = {};
   uint32_t currentMaxBindlessTextures_ = 8;
   uint32_t currentMaxBindlessSamplers_ = 8;
+
+  Pool<BindGroupBufferTag, BindGroupBufferDesc> bindGroupBuffersPool_;
+  Pool<BindGroupTextureTag, BindGroupTextureDesc> bindGroupTexturesPool_;
 
   igl::vulkan::DescriptorPoolsArena& getOrCreateArena_CombinedImageSamplers(
       const VulkanContext& ctx,
@@ -324,35 +347,28 @@ struct VulkanContextImpl final {
                                                "arenaCombinedImageSamplers_");
     return *arenaCombinedImageSamplers_[dsl].get();
   }
-  igl::vulkan::DescriptorPoolsArena& getOrCreateArena_UniformBuffers(const VulkanContext& ctx,
-                                                                     VkDescriptorSetLayout dsl,
-                                                                     uint32_t numBindings) {
-    auto it = arenaBuffersUniform_.find(dsl);
-    if (it != arenaBuffersUniform_.end()) {
+  igl::vulkan::DescriptorPoolsArena& getOrCreateArena_Buffers(const VulkanContext& ctx,
+                                                              VkDescriptorSetLayout dsl,
+                                                              uint32_t numBindings) {
+    auto it = arenaBuffers_.find(dsl);
+    if (it != arenaBuffers_.end()) {
       return *it->second;
     }
-    arenaBuffersUniform_[dsl] = std::make_unique<DescriptorPoolsArena>(
-        ctx, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, dsl, numBindings, "arenaBuffersUniform_");
-    return *arenaBuffersUniform_[dsl].get();
-  }
-  igl::vulkan::DescriptorPoolsArena& getOrCreateArena_StorageBuffers(const VulkanContext& ctx,
-                                                                     VkDescriptorSetLayout dsl,
-                                                                     uint32_t numBindings) {
-    auto it = arenaBuffersStorage_.find(dsl);
-    if (it != arenaBuffersStorage_.end()) {
-      return *it->second;
-    }
-    arenaBuffersStorage_[dsl] = std::make_unique<DescriptorPoolsArena>(
-        ctx, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, dsl, numBindings, "arenaBuffersStorage_");
-    return *arenaBuffersStorage_[dsl].get();
+    arenaBuffers_[dsl] = std::make_unique<DescriptorPoolsArena>(ctx,
+                                                                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                                                VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                                                dsl,
+                                                                numBindings,
+                                                                "arenaBuffers_");
+    return *arenaBuffers_[dsl].get();
   }
 };
 
 VulkanContext::VulkanContext(VulkanContextConfig config,
-                             void* window,
+                             void* IGL_NULLABLE window,
                              size_t numExtraInstanceExtensions,
-                             const char** extraInstanceExtensions,
-                             void* display) :
+                             const char** IGL_NULLABLE extraInstanceExtensions,
+                             void* IGL_NULLABLE display) :
   tableImpl_(std::make_unique<VulkanFunctionTable>()),
   vf_(*tableImpl_),
   config_(std::move(config)) {
@@ -446,8 +462,7 @@ VulkanContext::~VulkanContext() {
       }
     }
     pimpl_->arenaCombinedImageSamplers_.clear();
-    pimpl_->arenaBuffersUniform_.clear();
-    pimpl_->arenaBuffersStorage_.clear();
+    pimpl_->arenaBuffers_.clear();
     vf_.vkDestroyPipelineCache(device, pipelineCache_, nullptr);
   }
 
@@ -482,7 +497,8 @@ VulkanContext::~VulkanContext() {
 #endif // IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS)
 }
 
-void VulkanContext::createInstance(const size_t numExtraExtensions, const char** extraExtensions) {
+void VulkanContext::createInstance(const size_t numExtraExtensions,
+                                   const char** IGL_NULLABLE extraExtensions) {
   // Enumerate all instance extensions
   extensions_.enumerate(vf_);
   extensions_.enableCommonExtensions(VulkanExtensions::ExtensionType::Instance, config_);
@@ -532,7 +548,7 @@ void VulkanContext::createInstance(const size_t numExtraExtensions, const char**
 #endif
 }
 
-void VulkanContext::createSurface(void* window, void* display) {
+void VulkanContext::createSurface(void* window, void* IGL_NULLABLE display) {
   [[maybe_unused]] void* layer = nullptr;
 #if IGL_PLATFORM_APPLE
   layer = igl::vulkan::getCAMetalLayer(window);
@@ -600,7 +616,7 @@ igl::Result VulkanContext::queryDevices(const HWDeviceQueryDesc& desc,
 
 igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
                                        size_t numExtraDeviceExtensions,
-                                       const char** extraDeviceExtensions) {
+                                       const char** IGL_NULLABLE extraDeviceExtensions) {
   if (desc.guid == 0UL) {
     IGL_LOG_ERROR("Invalid hardwareGuid(%lu)", desc.guid);
     return Result(Result::Code::Unsupported, "Vulkan is not supported");
@@ -1068,8 +1084,9 @@ Result VulkanContext::present() const {
 std::unique_ptr<VulkanBuffer> VulkanContext::createBuffer(VkDeviceSize bufferSize,
                                                           VkBufferUsageFlags usageFlags,
                                                           VkMemoryPropertyFlags memFlags,
-                                                          igl::Result* outResult,
-                                                          const char* debugName) const {
+                                                          igl::Result* IGL_NULLABLE outResult,
+                                                          const char* IGL_NULLABLE
+                                                              debugName) const {
   IGL_PROFILER_FUNCTION();
 
 #define ENSURE_BUFFER_SIZE(flag, maxSize)                                                      \
@@ -1104,8 +1121,8 @@ VulkanImage VulkanContext::createImage(VkImageType imageType,
                                        VkMemoryPropertyFlags memFlags,
                                        VkImageCreateFlags flags,
                                        VkSampleCountFlagBits samples,
-                                       igl::Result* outResult,
-                                       const char* debugName) const {
+                                       igl::Result* IGL_NULLABLE outResult,
+                                       const char* IGL_NULLABLE debugName) const {
   IGL_PROFILER_FUNCTION();
 
   if (!validateImageLimits(
@@ -1140,8 +1157,8 @@ std::unique_ptr<VulkanImage> VulkanContext::createImageFromFileDescriptor(
     VkImageUsageFlags usageFlags,
     VkImageCreateFlags flags,
     VkSampleCountFlagBits samples,
-    igl::Result* outResult,
-    const char* debugName) const {
+    igl::Result* IGL_NULLABLE outResult,
+    const char* IGL_NULLABLE debugName) const {
   if (!validateImageLimits(
           imageType, samples, extent, getVkPhysicalDeviceProperties().limits, outResult)) {
     return nullptr;
@@ -1315,7 +1332,7 @@ void VulkanContext::checkAndUpdateDescriptorSets() {
 std::shared_ptr<VulkanTexture> VulkanContext::createTexture(
     VulkanImage&& image,
     VulkanImageView&& imageView,
-    [[maybe_unused]] const char* debugName) const {
+    [[maybe_unused]] const char* IGL_NULLABLE debugName) const {
   IGL_PROFILER_FUNCTION();
 
   const TextureHandle handle =
@@ -1338,7 +1355,7 @@ std::shared_ptr<VulkanTexture> VulkanContext::createTextureFromVkImage(
     VkImage vkImage,
     VulkanImageCreateInfo imageCreateInfo,
     VulkanImageViewCreateInfo imageViewCreateInfo,
-    const char* debugName) const {
+    const char* IGL_NULLABLE debugName) const {
   auto iglImage = VulkanImage(*this, device_->getVkDevice(), vkImage, imageCreateInfo, debugName);
   auto imageView = iglImage.createImageView(imageViewCreateInfo, debugName);
   return createTexture(std::move(iglImage), std::move(imageView), debugName);
@@ -1346,8 +1363,9 @@ std::shared_ptr<VulkanTexture> VulkanContext::createTextureFromVkImage(
 
 std::shared_ptr<VulkanSampler> VulkanContext::createSampler(const VkSamplerCreateInfo& ci,
                                                             VkFormat yuvVkFormat,
-                                                            igl::Result* outResult,
-                                                            const char* debugName) const {
+                                                            igl::Result* IGL_NULLABLE outResult,
+                                                            const char* IGL_NULLABLE
+                                                                debugName) const {
   IGL_PROFILER_FUNCTION();
 
   const SamplerHandle handle = samplers_.create(
@@ -1546,37 +1564,36 @@ void VulkanContext::updateBindingsTextures(VkCommandBuffer cmdBuf,
   }
 }
 
-void VulkanContext::updateBindingsUniformBuffers(VkCommandBuffer cmdBuf,
-                                                 VkPipelineLayout layout,
-                                                 VkPipelineBindPoint bindPoint,
-                                                 BindingsBuffers& data,
-                                                 const VulkanDescriptorSetLayout& dsl,
-                                                 const util::SpvModuleInfo& info) const {
+void VulkanContext::updateBindingsBuffers(VkCommandBuffer cmdBuf,
+                                          VkPipelineLayout layout,
+                                          VkPipelineBindPoint bindPoint,
+                                          BindingsBuffers& data,
+                                          const VulkanDescriptorSetLayout& dsl,
+                                          const util::SpvModuleInfo& info) const {
   IGL_PROFILER_FUNCTION();
 
-  DescriptorPoolsArena& arena = pimpl_->getOrCreateArena_UniformBuffers(
-      *this, dsl.getVkDescriptorSetLayout(), dsl.numBindings_);
+  DescriptorPoolsArena& arena =
+      pimpl_->getOrCreateArena_Buffers(*this, dsl.getVkDescriptorSetLayout(), dsl.numBindings_);
 
-  VkDescriptorSet dsetBufUniform =
-      arena.getNextDescriptorSet(*immediate_, pimpl_->lastSubmitHandle_);
+  VkDescriptorSet dset = arena.getNextDescriptorSet(*immediate_, pimpl_->lastSubmitHandle_);
 
   // @fb-only
   VkWriteDescriptorSet writes[IGL_UNIFORM_BLOCKS_BINDING_MAX]; // uninitialized
   uint32_t numWrites = 0;
 
-  for (const util::BufferDescription& b : info.uniformBuffers) {
-    IGL_ASSERT(b.descriptorSet == kBindPoint_BuffersUniform);
+  for (const util::BufferDescription& b : info.buffers) {
+    IGL_ASSERT(b.descriptorSet == kBindPoint_Buffers);
     IGL_ASSERT_MSG(
         data.buffers[b.bindingLocation].buffer != VK_NULL_HANDLE,
-        IGL_FORMAT(
-            "Did you forget to call bindBuffer() for a uniform buffer at the binding location {}?",
-            b.bindingLocation)
+        IGL_FORMAT("Did you forget to call bindBuffer() for a buffer at the binding location {}?",
+                   b.bindingLocation)
             .c_str());
-    writes[numWrites++] = ivkGetWriteDescriptorSet_BufferInfo(dsetBufUniform,
-                                                              b.bindingLocation,
-                                                              VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                                              1,
-                                                              &data.buffers[b.bindingLocation]);
+    writes[numWrites++] = ivkGetWriteDescriptorSet_BufferInfo(
+        dset,
+        b.bindingLocation,
+        b.isStorage ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        1,
+        &data.buffers[b.bindingLocation]);
   }
 
   if (numWrites) {
@@ -1585,56 +1602,10 @@ void VulkanContext::updateBindingsUniformBuffers(VkCommandBuffer cmdBuf,
     IGL_PROFILER_ZONE_END();
 
 #if IGL_VULKAN_PRINT_COMMANDS
-    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - uniform buffers\n", cmdBuf, bindPoint);
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - buffers\n", cmdBuf, bindPoint);
 #endif // IGL_VULKAN_PRINT_COMMANDS
     vf_.vkCmdBindDescriptorSets(
-        cmdBuf, bindPoint, layout, kBindPoint_BuffersUniform, 1, &dsetBufUniform, 0, nullptr);
-  }
-}
-
-void VulkanContext::updateBindingsStorageBuffers(VkCommandBuffer cmdBuf,
-                                                 VkPipelineLayout layout,
-                                                 VkPipelineBindPoint bindPoint,
-                                                 BindingsBuffers& data,
-                                                 const VulkanDescriptorSetLayout& dsl,
-                                                 const util::SpvModuleInfo& info) const {
-  IGL_PROFILER_FUNCTION();
-
-  DescriptorPoolsArena& arena = pimpl_->getOrCreateArena_StorageBuffers(
-      *this, dsl.getVkDescriptorSetLayout(), dsl.numBindings_);
-
-  VkDescriptorSet dsetBufStorage =
-      arena.getNextDescriptorSet(*immediate_, pimpl_->lastSubmitHandle_);
-
-  // @fb-only
-  VkWriteDescriptorSet writes[IGL_UNIFORM_BLOCKS_BINDING_MAX]; // uninitialized
-  uint32_t numWrites = 0;
-
-  for (const util::BufferDescription& b : info.storageBuffers) {
-    IGL_ASSERT(b.descriptorSet == kBindPoint_BuffersStorage);
-    IGL_ASSERT_MSG(
-        data.buffers[b.bindingLocation].buffer != VK_NULL_HANDLE,
-        IGL_FORMAT(
-            "Did you forget to call bindBuffer() for a storage buffer at the binding location {}?",
-            b.bindingLocation)
-            .c_str());
-    writes[numWrites++] = ivkGetWriteDescriptorSet_BufferInfo(dsetBufStorage,
-                                                              b.bindingLocation,
-                                                              VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                                              1,
-                                                              &data.buffers[b.bindingLocation]);
-  }
-
-  if (numWrites) {
-    IGL_PROFILER_ZONE("vkUpdateDescriptorSets()", IGL_PROFILER_COLOR_UPDATE);
-    vf_.vkUpdateDescriptorSets(device_->getVkDevice(), numWrites, writes, 0, nullptr);
-    IGL_PROFILER_ZONE_END();
-
-#if IGL_VULKAN_PRINT_COMMANDS
-    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - storage buffers\n", cmdBuf, bindPoint);
-#endif // IGL_VULKAN_PRINT_COMMANDS
-    vf_.vkCmdBindDescriptorSets(
-        cmdBuf, bindPoint, layout, kBindPoint_BuffersStorage, 1, &dsetBufStorage, 0, nullptr);
+        cmdBuf, bindPoint, layout, kBindPoint_Buffers, 1, &dset, 0, nullptr);
   }
 }
 
@@ -1654,7 +1625,7 @@ bool VulkanContext::areValidationLayersEnabled() const {
   return config_.enableValidation;
 }
 
-void* VulkanContext::getVmaAllocator() const {
+void* IGL_NULLABLE VulkanContext::getVmaAllocator() const {
   return pimpl_->vma_;
 }
 
@@ -1760,9 +1731,60 @@ VkSamplerYcbcrConversionInfo VulkanContext::getOrCreateYcbcrConversionInfo(VkFor
 }
 
 void VulkanContext::freeResourcesForDescriptorSetLayout(VkDescriptorSetLayout dsl) const {
-  pimpl_->arenaBuffersStorage_.erase(dsl);
-  pimpl_->arenaBuffersUniform_.erase(dsl);
+  pimpl_->arenaBuffers_.erase(dsl);
   pimpl_->arenaCombinedImageSamplers_.erase(dsl);
+}
+
+igl::BindGroupTextureHandle VulkanContext::createBindGroup(const BindGroupTextureDesc& desc,
+                                                           Result* outResult) {
+  BindGroupTextureDesc description(desc);
+
+  const auto handle = pimpl_->bindGroupTexturesPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return handle;
+}
+
+igl::BindGroupBufferHandle VulkanContext::createBindGroup(const BindGroupBufferDesc& desc,
+                                                          Result* outResult) {
+  BindGroupBufferDesc description(desc);
+
+  const auto handle = pimpl_->bindGroupBuffersPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return handle;
+}
+
+void VulkanContext::destroy(igl::BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  pimpl_->bindGroupTexturesPool_.destroy(handle);
+}
+
+void VulkanContext::destroy(igl::BindGroupBufferHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  pimpl_->bindGroupBuffersPool_.destroy(handle);
+}
+
+const BindGroupTextureDesc* VulkanContext::getBindGroupDesc(
+    igl::BindGroupTextureHandle handle) const {
+  return pimpl_->bindGroupTexturesPool_.get(handle);
+}
+
+const BindGroupBufferDesc* VulkanContext::getBindGroupDesc(
+    igl::BindGroupBufferHandle handle) const {
+  return pimpl_->bindGroupBuffersPool_.get(handle);
 }
 
 } // namespace igl::vulkan

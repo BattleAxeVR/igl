@@ -478,16 +478,11 @@ void RenderCommandEncoder::bindBuffer(uint32_t index,
   if (!IGL_VERIFY(isUniformOrStorageBuffer)) {
     return;
   }
-  if (isUniformBuffer) {
-    binder_.bindUniformBuffer(index, buf, bufferOffset, bufferSize);
+  if (ctx_.enhancedShaderDebuggingStore_) {
+    IGL_ASSERT_MSG(index < (IGL_UNIFORM_BLOCKS_BINDING_MAX - 1),
+                   "The last buffer index is reserved for enhanced debugging features");
   }
-  if (isStorageBuffer) {
-    if (ctx_.enhancedShaderDebuggingStore_) {
-      IGL_ASSERT_MSG(index < (IGL_UNIFORM_BLOCKS_BINDING_MAX - 1),
-                     "The last buffer index is reserved for enhanced debugging features");
-    }
-    binder_.bindStorageBuffer(index, buf, bufferOffset, bufferSize);
-  }
+  binder_.bindBuffer(index, buf, bufferOffset, bufferSize);
 }
 
 void RenderCommandEncoder::bindVertexBuffer(uint32_t index, IBuffer& buffer, size_t bufferOffset) {
@@ -947,7 +942,7 @@ void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
   }
 
   // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
-  const BindGroupTextureDesc* desc = ctx_.bindGroupTexturesPool_.get(handle);
+  const BindGroupTextureDesc* desc = ctx_.getBindGroupDesc(handle);
 
   for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
     if (desc->textures[i]) {
@@ -966,7 +961,7 @@ void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
   }
 
   // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
-  const BindGroupBufferDesc* desc = ctx_.bindGroupBuffersPool_.get(handle);
+  const BindGroupBufferDesc* desc = ctx_.getBindGroupDesc(handle);
 
   uint32_t dynamicOffset = 0;
 
