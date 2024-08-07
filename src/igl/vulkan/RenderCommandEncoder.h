@@ -152,6 +152,10 @@ class RenderCommandEncoder : public IRenderCommandEncoder {
   Dependencies dependencies_ = {};
 
   const igl::vulkan::RenderPipelineState* rps_ = nullptr;
+  igl::BindGroupTextureHandle pendingBindGroupTexture_ = {};
+  igl::BindGroupBufferHandle pendingBindGroupBuffer_ = {};
+  uint32_t numDynamicOffsets_ = 0;
+  uint32_t dynamicOffsets_[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
 };
 
 } // namespace igl::vulkan

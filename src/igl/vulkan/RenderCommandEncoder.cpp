@@ -28,6 +28,8 @@
 #include <igl/vulkan/VulkanSwapchain.h>
 #include <igl/vulkan/util/SpvReflection.h>
 
+#include <igl/IGLSafeC.h>
+
 namespace {
 
 VkAttachmentLoadOp loadActionToVkAttachmentLoadOp(igl::LoadAction a) {
@@ -577,6 +579,10 @@ void RenderCommandEncoder::bindSamplerState(size_t index,
 void RenderCommandEncoder::bindTexture(size_t index, uint8_t target, ITexture* texture) {
   IGL_PROFILER_FUNCTION();
 
+  IGL_ASSERT_MSG(pendingBindGroupTexture_.empty(),
+                 "A texture BindGroup was already bound to this command encoder. You can bind "
+                 "individual textures again only after a draw call.");
+
 #if IGL_VULKAN_PRINT_COMMANDS
   IGL_LOG_INFO("%p  bindTexture(%u, %u)\n", cmdBuffer_, (uint32_t)index, (uint32_t)target);
 #endif // IGL_VULKAN_PRINT_COMMANDS
@@ -751,7 +757,72 @@ bool RenderCommandEncoder::setDrawCallCountEnabled(bool value) {
 }
 
 void RenderCommandEncoder::flushDynamicState() {
+  IGL_PROFILER_FUNCTION();
+
   binder_.bindPipeline(rps_->getVkPipeline(dynamicState_), &rps_->getSpvModuleInfo());
+
+  const VkPipelineBindPoint bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+  if (!pendingBindGroupTexture_.empty()) {
+    VkDescriptorSet dset = ctx_.getBindGroupDescriptorSet(pendingBindGroupTexture_);
+    VkPipelineLayout layout = rps_->getVkPipelineLayout();
+
+    const uint32_t usageMaskPipeline = rps_->getSpvModuleInfo().usageMaskTextures;
+    const uint32_t usageMaskBindGroup = ctx_.getBindGroupUsageMask(pendingBindGroupTexture_);
+
+    if (!IGL_VERIFY(usageMaskPipeline == usageMaskBindGroup)) {
+      IGL_LOG_ERROR(
+          "Texture bind group is not compatible with the current IRenderPipelineState '%s'\n",
+          rps_->getRenderPipelineDesc().debugName.c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Bind group textures mask: {:b}\n", usageMaskBindGroup).c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Pipeline expects        : {:b}\n", usageMaskPipeline).c_str());
+      return;
+    }
+
+#if IGL_VULKAN_PRINT_COMMANDS
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - textures bind group\n", cmdBuffer_);
+#endif // IGL_VULKAN_PRINT_COMMANDS
+    ctx_.vf_.vkCmdBindDescriptorSets(
+        cmdBuffer_, bindPoint, layout, kBindPoint_CombinedImageSamplers, 1, &dset, 0, nullptr);
+    // This is necessary to support a mix of BindGroups and bindTexture() calls in the same command
+    // encoder. A typical use case for that is running ImGui rendering etc.
+    binder_.isDirtyFlags_ &= ~igl::vulkan::ResourcesBinder::DirtyFlagBits_Textures;
+    pendingBindGroupTexture_ = {}; // reset
+  }
+
+  if (!pendingBindGroupBuffer_.empty()) {
+    VkDescriptorSet dset = ctx_.getBindGroupDescriptorSet(pendingBindGroupBuffer_);
+    VkPipelineLayout layout = rps_->getVkPipelineLayout();
+
+    const uint32_t usageMaskPipeline = rps_->getSpvModuleInfo().usageMaskBuffers;
+    const uint32_t usageMaskBindGroup = ctx_.getBindGroupUsageMask(pendingBindGroupBuffer_);
+
+    if (!IGL_VERIFY(usageMaskPipeline == usageMaskBindGroup)) {
+      IGL_LOG_ERROR(
+          "Buffer bind group is not compatible with the current IRenderPipelineState '%s'\n",
+          rps_->getRenderPipelineDesc().debugName.c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Bind group buffers mask: {:b}\n", usageMaskBindGroup).c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Pipeline expects       : {:b}\n", usageMaskPipeline).c_str());
+      return;
+    }
+
+#if IGL_VULKAN_PRINT_COMMANDS
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - buffers bind group\n", cmdBuffer_);
+#endif // IGL_VULKAN_PRINT_COMMANDS
+    ctx_.vf_.vkCmdBindDescriptorSets(cmdBuffer_,
+                                     bindPoint,
+                                     layout,
+                                     kBindPoint_Buffers,
+                                     1,
+                                     &dset,
+                                     numDynamicOffsets_,
+                                     dynamicOffsets_);
+    // This is necessary to support a mix of BindGroups and bindBuffer() calls in the same command
+    // encoder.
+    binder_.isDirtyFlags_ &= ~igl::vulkan::ResourcesBinder::DirtyFlagBits_Buffers;
+    pendingBindGroupBuffer_ = {}; // reset
+  }
+
   binder_.updateBindings(rps_->getVkPipelineLayout(), *rps_);
 
   if (ctx_.config_.enableDescriptorIndexing) {
@@ -937,50 +1008,28 @@ void RenderCommandEncoder::processDependencies(const Dependencies& dependencies)
 }
 
 void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
-  if (handle.empty()) {
-    return;
-  }
+  IGL_ASSERT(!handle.empty());
 
-  // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
-  const BindGroupTextureDesc* desc = ctx_.getBindGroupDesc(handle);
-
-  for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
-    if (desc->textures[i]) {
-      IGL_ASSERT(desc->samplers[i]);
-      bindTexture(i, BindTarget::kAllGraphics, desc->textures[i].get());
-      bindSamplerState(i, BindTarget::kAllGraphics, desc->samplers[i].get());
-    }
-  }
+  pendingBindGroupTexture_ = handle;
 }
 
 void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
                                          uint32_t numDynamicOffsets,
                                          const uint32_t* dynamicOffsets) {
-  if (handle.empty()) {
-    return;
+  IGL_ASSERT(!handle.empty());
+
+  pendingBindGroupBuffer_ = handle;
+  numDynamicOffsets_ = numDynamicOffsets;
+
+  if (numDynamicOffsets) {
+    IGL_ASSERT(dynamicOffsets);
+    IGL_ASSERT(numDynamicOffsets <= IGL_UNIFORM_BLOCKS_BINDING_MAX);
+
+    checked_memcpy(dynamicOffsets_,
+                   sizeof(dynamicOffsets_),
+                   dynamicOffsets,
+                   numDynamicOffsets * sizeof(uint32_t));
   }
-
-  // this is a dummy placeholder code to be replaced with actual Vulkan descriptors management
-  const BindGroupBufferDesc* desc = ctx_.getBindGroupDesc(handle);
-
-  uint32_t dynamicOffset = 0;
-
-  for (uint32_t i = 0; i != IGL_UNIFORM_BLOCKS_BINDING_MAX; i++) {
-    if (desc->buffers[i]) {
-      if (desc->isDynamicBufferMask & (1 << i)) {
-        IGL_ASSERT_MSG(dynamicOffsets, "No dynamic offsets provided");
-        IGL_ASSERT_MSG(dynamicOffset < numDynamicOffsets, "Not enough dynamic offsets provided");
-        bindBuffer(i,
-                   desc->buffers[i].get(),
-                   desc->offset[i] + dynamicOffsets[dynamicOffset++],
-                   desc->size[i]);
-      } else {
-        bindBuffer(i, desc->buffers[i].get(), desc->offset[i], desc->size[i]);
-      }
-    }
-  }
-
-  IGL_ASSERT_MSG(dynamicOffset == numDynamicOffsets, "Not all dynamic offsets were consumed");
 }
 
 } // namespace igl::vulkan
