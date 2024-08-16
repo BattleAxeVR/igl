@@ -236,7 +236,12 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
   bindViewport(viewport);
   bindScissorRect(scissor);
 
-  ctx_.checkAndUpdateDescriptorSets();
+  VkResult const vkResult = ctx_.checkAndUpdateDescriptorSets();
+  if (vkResult != VK_SUCCESS) {
+    IGL_LOG_ERROR("checkAndUpdateDescriptorSets returned a non-successful result: %d", vkResult);
+    Result::setResult(outResult, Result::Code::RuntimeError, "Failed to update descriptor sets");
+    return;
+  }
 
   ctx_.vf_.vkCmdBeginRenderPass(cmdBuffer_, &bi, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -414,10 +419,6 @@ void RenderCommandEncoder::bindDepthStencilState(
   dynamicState_.setDepthCompareOp(compareFunctionToVkCompareOp(desc.compareFunction));
 
   auto setStencilState = [this](VkStencilFaceFlagBits faceMask, const igl::StencilStateDesc& desc) {
-    if (desc == igl::StencilStateDesc()) {
-      // do not update anything if we don't have an actual state
-      return;
-    }
     dynamicState_.setStencilStateOps(faceMask == VK_STENCIL_FACE_FRONT_BIT,
                                      stencilOperationToVkStencilOp(desc.stencilFailureOperation),
                                      stencilOperationToVkStencilOp(desc.depthStencilPassOperation),
@@ -852,17 +853,17 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                                           const igl::TextureRangeDesc& destRange) {
   const VkImageSubresourceRange srcResourceRange = {
       srcImage.getImageAspectFlags(),
-      static_cast<uint32_t>(srcRange.mipLevel),
-      static_cast<uint32_t>(srcRange.numMipLevels),
-      static_cast<uint32_t>(srcRange.layer),
-      static_cast<uint32_t>(srcRange.numLayers),
+      srcRange.mipLevel,
+      srcRange.numMipLevels,
+      srcRange.layer,
+      srcRange.numLayers,
   };
   const VkImageSubresourceRange destSubresourceRange = {
       destImage.getImageAspectFlags(),
-      static_cast<uint32_t>(destRange.mipLevel),
-      static_cast<uint32_t>(destRange.numMipLevels),
-      static_cast<uint32_t>(destRange.layer),
-      static_cast<uint32_t>(destRange.numLayers),
+      destRange.mipLevel,
+      destRange.numMipLevels,
+      destRange.layer,
+      destRange.numLayers,
   };
   srcImage.transitionLayout(cmdBuffer_,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -894,8 +895,7 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   srcOffsets.data(),
                   dstOffsets.data(),
-                  VkImageSubresourceLayers{
-                      VK_IMAGE_ASPECT_COLOR_BIT, static_cast<uint32_t>(srcRange.mipLevel), 0, 1},
+                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, srcRange.mipLevel, 0, 1},
                   VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
                   VK_FILTER_LINEAR);
 

@@ -711,7 +711,7 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 
     const VkImageMemoryRequirementsInfo2 imageMemoryRequirementInfo = {
         VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-        &imagePlaneMemoryRequirementsInfo,
+        numPlanes > 1 ? &imagePlaneMemoryRequirementsInfo : nullptr,
         vkImage_};
 
     VkMemoryRequirements2 memoryRequirements = {VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2, nullptr};
@@ -738,7 +738,8 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
         VkBindImagePlaneMemoryInfo{VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO,
                                    nullptr,
                                    (VkImageAspectFlagBits)(VK_IMAGE_ASPECT_PLANE_0_BIT << p)};
-    bindInfo[p] = ivkGetBindImageMemoryInfo(&bindImagePlaneMemoryInfo[p], vkImage_, vkMemory_[p]);
+    bindInfo[p] = ivkGetBindImageMemoryInfo(
+        numPlanes > 1 ? &bindImagePlaneMemoryInfo[p] : nullptr, vkImage_, vkMemory_[p]);
   }
   VK_ASSERT(ctx_->vf_.vkBindImageMemory2(device_, numPlanes, bindInfo.data()));
 
@@ -774,7 +775,7 @@ void VulkanImage::destroy() {
 
   if (!isExternallyManaged_) {
     if (vkMemory_[1] == VK_NULL_HANDLE) {
-      if (IGL_VULKAN_USE_VMA && !isImported_ && !isExported_) {
+      if (vmaAllocation_) {
         if (mappedPtr_) {
           vmaUnmapMemory((VmaAllocator)ctx_->getVmaAllocator(), vmaAllocation_);
         }
@@ -1258,7 +1259,7 @@ void VulkanImage::flushMappedMemory() const {
     return;
   }
 
-  if (IGL_VULKAN_USE_VMA) {
+  if (vmaAllocation_) {
     vmaFlushAllocation((VmaAllocator)ctx_->getVmaAllocator(), vmaAllocation_, 0, VK_WHOLE_SIZE);
   } else {
     const VkMappedMemoryRange memoryRange{

@@ -166,7 +166,7 @@ bool validateImageLimits(VkImageType imageType,
                          VkSampleCountFlagBits samples,
                          const VkExtent3D& extent,
                          const VkPhysicalDeviceLimits& limits,
-                         igl::Result* outResult) {
+                         igl::Result* IGL_NULLABLE outResult) {
   using igl::Result;
 
   if (samples != VK_SAMPLE_COUNT_1_BIT && !IGL_VERIFY(imageType == VK_IMAGE_TYPE_2D)) {
@@ -211,7 +211,7 @@ class DescriptorPoolsArena final {
                        VkDescriptorType type,
                        VkDescriptorSetLayout dsl,
                        uint32_t numDescriptorsPerDSet,
-                       const char* debugName) :
+                       const char* IGL_NULLABLE debugName) :
     ctx_(ctx),
     device_(ctx.getVkDevice()),
     numTypes_(1),
@@ -220,7 +220,7 @@ class DescriptorPoolsArena final {
     dsl_(dsl) {
     IGL_ASSERT(debugName);
     dpDebugName_ = IGL_FORMAT("Descriptor Pool: {}", debugName ? debugName : "");
-    switchToNewDescriptorPool(*ctx.immediate_, {});
+    switchToNewDescriptorPool(*ctx.immediate_, ctx.immediate_->getLastSubmitHandle());
   }
   DescriptorPoolsArena(const VulkanContext& ctx,
                        VkDescriptorType type0,
@@ -236,7 +236,7 @@ class DescriptorPoolsArena final {
     dsl_(dsl) {
     IGL_ASSERT(debugName);
     dpDebugName_ = IGL_FORMAT("Descriptor Pool: {}", debugName ? debugName : "");
-    switchToNewDescriptorPool(*ctx.immediate_, {});
+    switchToNewDescriptorPool(*ctx.immediate_, ctx.immediate_->getLastSubmitHandle());
   }
   ~DescriptorPoolsArena() {
     extinct_.push_back({pool_, {}});
@@ -273,7 +273,7 @@ class DescriptorPoolsArena final {
     // first, let's try to reuse the oldest extinct pool
     if (extinct_.size() > 1) {
       const ExtinctDescriptorPool p = extinct_.front();
-      if (ic.isRecycled(p.handle_)) {
+      if (ic.isReady(p.handle_)) {
         pool_ = p.pool_;
         extinct_.pop_front();
         VK_ASSERT(ctx_.vf_.vkResetDescriptorPool(device_, pool_, VkDescriptorPoolResetFlags{}));
@@ -595,7 +595,7 @@ void VulkanContext::createInstance(const size_t numExtraExtensions,
 #endif
 }
 
-void VulkanContext::createSurface(void* window, void* IGL_NULLABLE display) {
+void VulkanContext::createSurface(void* IGL_NULLABLE window, void* IGL_NULLABLE display) {
   [[maybe_unused]] void* layer = nullptr;
 #if IGL_PLATFORM_APPLE
   layer = igl::vulkan::getCAMetalLayer(window);
@@ -1228,10 +1228,10 @@ std::unique_ptr<VulkanImage> VulkanContext::createImageFromFileDescriptor(
                                        debugName);
 }
 
-void VulkanContext::checkAndUpdateDescriptorSets() {
+VkResult VulkanContext::checkAndUpdateDescriptorSets() {
   if (!awaitingCreation_) {
     // nothing to update here
-    return;
+    return VK_SUCCESS;
   }
 
   // newly created resources can be used immediately - make sure they are put into descriptor sets
@@ -1265,7 +1265,7 @@ void VulkanContext::checkAndUpdateDescriptorSets() {
 
   // update Vulkan bindless descriptor sets here
   if (!config_.enableDescriptorIndexing) {
-    return;
+    return VK_SUCCESS;
   }
 
   uint32_t newMaxTextures = pimpl_->currentMaxBindlessTextures_;
@@ -1369,12 +1369,20 @@ void VulkanContext::checkAndUpdateDescriptorSets() {
 #if IGL_VULKAN_PRINT_COMMANDS
     IGL_LOG_INFO("Updating descriptor set dsBindless_\n");
 #endif // IGL_VULKAN_PRINT_COMMANDS
-    immediate_->wait(std::exchange(pimpl_->lastSubmitHandle_, immediate_->getLastSubmitHandle()));
+    const VkResult vkResult = immediate_->wait(
+        std::exchange(pimpl_->lastSubmitHandle_, immediate_->getLastSubmitHandle()),
+        config_.fenceTimeoutNanoseconds);
+    if (vkResult != VK_SUCCESS) {
+      IGL_LOG_ERROR("wait command failed with result %i", int(vkResult));
+      return vkResult;
+    }
+
     vf_.vkUpdateDescriptorSets(
         device_->getVkDevice(), static_cast<uint32_t>(write.size()), write.data(), 0, nullptr);
   }
 
   awaitingCreation_ = false;
+  return VK_SUCCESS;
 }
 
 std::shared_ptr<VulkanTexture> VulkanContext::createTexture(
@@ -1546,7 +1554,7 @@ uint64_t VulkanContext::getFrameNumber() const {
   return swapchain_ ? swapchain_->getFrameNumber() : 0u;
 }
 
-void VulkanContext::updateBindingsTextures(VkCommandBuffer cmdBuf,
+void VulkanContext::updateBindingsTextures(VkCommandBuffer IGL_NONNULL cmdBuf,
                                            VkPipelineLayout layout,
                                            VkPipelineBindPoint bindPoint,
                                            const BindingsTextures& data,
@@ -1612,7 +1620,7 @@ void VulkanContext::updateBindingsTextures(VkCommandBuffer cmdBuf,
   }
 }
 
-void VulkanContext::updateBindingsBuffers(VkCommandBuffer cmdBuf,
+void VulkanContext::updateBindingsBuffers(VkCommandBuffer IGL_NONNULL cmdBuf,
                                           VkPipelineLayout layout,
                                           VkPipelineBindPoint bindPoint,
                                           BindingsBuffers& data,
@@ -1697,7 +1705,7 @@ void VulkanContext::waitDeferredTasks() {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_WAIT);
 
   for (auto& task : deferredTasks_) {
-    immediate_->wait(task.handle_);
+    immediate_->wait(task.handle_, config_.fenceTimeoutNanoseconds);
     task.task_();
   }
   deferredTasks_.clear();
@@ -1783,10 +1791,10 @@ void VulkanContext::freeResourcesForDescriptorSetLayout(VkDescriptorSetLayout ds
   pimpl_->arenaCombinedImageSamplers_.erase(dsl);
 }
 
-igl::BindGroupTextureHandle VulkanContext::createBindGroup(
-    const BindGroupTextureDesc& desc,
-    const IRenderPipelineState* compatiblePipeline,
-    Result* outResult) {
+igl::BindGroupTextureHandle VulkanContext::createBindGroup(const BindGroupTextureDesc& desc,
+                                                           const IRenderPipelineState* IGL_NULLABLE
+                                                               compatiblePipeline,
+                                                           Result* IGL_NULLABLE outResult) {
   VkDevice device = getVkDevice();
 
   BindGroupMetadataTextures metadata{desc};
