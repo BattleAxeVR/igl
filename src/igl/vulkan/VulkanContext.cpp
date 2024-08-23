@@ -398,6 +398,7 @@ VulkanContext::VulkanContext(VulkanContextConfig config,
                              const char* IGL_NULLABLE* IGL_NULLABLE extraInstanceExtensions,
                              void* IGL_NULLABLE display) :
   tableImpl_(std::make_unique<VulkanFunctionTable>()),
+  features_(VK_API_VERSION_1_1, config),
   vf_(*tableImpl_),
   config_(std::move(config)) {
   IGL_PROFILER_THREAD("MainThread");
@@ -1691,7 +1692,7 @@ void VulkanContext::processDeferredTasks() const {
   const uint64_t frameId = getFrameNumber();
   constexpr uint64_t kNumWaitFrames = 3u;
 
-  while (!deferredTasks_.empty() && immediate_->isRecycled(deferredTasks_.front().handle_)) {
+  while (!deferredTasks_.empty() && immediate_->isReady(deferredTasks_.front().handle_)) {
     if (frameId && frameId <= deferredTasks_.front().frameId_ + kNumWaitFrames) {
       // do not check anything if it is not yet older than kNumWaitFrames
       break;
@@ -1727,7 +1728,8 @@ VkSamplerYcbcrConversionInfo VulkanContext::getOrCreateYcbcrConversionInfo(VkFor
     return it->second;
   }
 
-  if (!IGL_VERIFY(vkPhysicalDeviceSamplerYcbcrConversionFeatures_.samplerYcbcrConversion)) {
+  if (!IGL_VERIFY(
+          features_.VkPhysicalDeviceSamplerYcbcrConversionFeatures_.samplerYcbcrConversion)) {
     IGL_ASSERT_MSG(false, "Ycbcr samplers are not supported");
     return {};
   }
@@ -2100,6 +2102,10 @@ VkDescriptorSet VulkanContext::getBindGroupDescriptorSet(igl::BindGroupBufferHan
 
 uint32_t VulkanContext::getBindGroupUsageMask(igl::BindGroupBufferHandle handle) const {
   return handle.valid() ? pimpl_->bindGroupBuffersPool_.get(handle)->usageMask : 0;
+}
+
+const VulkanFeatures& VulkanContext::features() const noexcept {
+  return features_;
 }
 
 } // namespace igl::vulkan
