@@ -881,4 +881,340 @@ INSTANTIATE_TEST_SUITE_P(AllCombinations,
                                             ::testing::Values(100.f, 500.f),
                                             ::testing::Values(100.f, 500.f)));
 
+// ivkGetRect2D *******************************
+class GetRect2DTest
+  : public ::testing::TestWithParam<std::tuple<uint32_t, uint32_t, uint32_t, uint32_t>> {};
+
+TEST_P(GetRect2DTest, GetRect2D) {
+  const uint32_t x = std::get<0>(GetParam());
+  const uint32_t y = std::get<1>(GetParam());
+  const uint32_t width = std::get<2>(GetParam());
+  const uint32_t height = std::get<3>(GetParam());
+
+  const VkRect2D rect = ivkGetRect2D(x, y, width, height);
+
+  EXPECT_EQ(rect.offset.x, x);
+  EXPECT_EQ(rect.offset.y, y);
+  EXPECT_EQ(rect.extent.width, width);
+  EXPECT_EQ(rect.extent.height, height);
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCombinations,
+                         GetRect2DTest,
+                         ::testing::Combine(::testing::Values(0, 50),
+                                            ::testing::Values(0, 50),
+                                            ::testing::Values(100, 500),
+                                            ::testing::Values(100, 500)),
+                         [](const testing::TestParamInfo<GetRect2DTest::ParamType>& info) {
+                           const std::string name =
+                               "_x_" + std::to_string(std::get<0>(info.param)) + "__y_" +
+                               std::to_string(std::get<1>(info.param)) + "__width_" +
+                               std::to_string(std::get<2>(info.param)) + "__height_" +
+                               std::to_string(std::get<3>(info.param));
+                           return name;
+                         });
+
+// ivkGetPipelineShaderStageCreateInfo *******************************
+class GetPipelineShaderStageCreateInfoTest
+  : public ::testing::TestWithParam<std::tuple<VkShaderStageFlagBits, bool>> {};
+
+TEST_P(GetPipelineShaderStageCreateInfoTest, GetPipelineShaderStageCreateInfo) {
+  const VkShaderStageFlagBits stage = std::get<0>(GetParam());
+  const VkShaderModule shaderModule = VK_NULL_HANDLE;
+  const bool addEntryPoint = std::get<1>(GetParam());
+  const char* entryPoint = "main";
+
+  const VkPipelineShaderStageCreateInfo pipelineShaderStageCreateInfo =
+      ivkGetPipelineShaderStageCreateInfo(
+          stage, shaderModule, addEntryPoint ? entryPoint : nullptr);
+
+  EXPECT_EQ(pipelineShaderStageCreateInfo.sType,
+            VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO);
+  EXPECT_EQ(pipelineShaderStageCreateInfo.flags, 0);
+  EXPECT_EQ(pipelineShaderStageCreateInfo.stage, stage);
+  EXPECT_EQ(pipelineShaderStageCreateInfo.module, shaderModule);
+  EXPECT_EQ(strcmp(pipelineShaderStageCreateInfo.pName, entryPoint), 0);
+  EXPECT_EQ(pipelineShaderStageCreateInfo.pSpecializationInfo, nullptr);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    GetPipelineShaderStageCreateInfoTest,
+    ::testing::Combine(::testing::Values(VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_FRAGMENT_BIT),
+                       ::testing::Bool()),
+    [](const testing::TestParamInfo<GetPipelineShaderStageCreateInfoTest::ParamType>& info) {
+      const std::string name = "_stage_" + std::to_string(std::get<0>(info.param)) +
+                               "__addEntryPoint_" + std::to_string(std::get<1>(info.param));
+      return name;
+    });
+
+// ivkGetImageCopy2D *******************************
+class GetImageCopy2DTest : public ::testing::TestWithParam<std::tuple<uint32_t,
+                                                                      uint32_t,
+                                                                      VkImageAspectFlags,
+                                                                      uint32_t,
+                                                                      uint32_t,
+                                                                      uint32_t,
+                                                                      uint32_t,
+                                                                      uint32_t>> {};
+
+TEST_P(GetImageCopy2DTest, GetImageCopy2D) {
+  const auto x = std::get<0>(GetParam());
+  const auto y = std::get<1>(GetParam());
+  const auto aspectMask = std::get<2>(GetParam());
+  const auto mipLevel = std::get<3>(GetParam());
+  const auto baseArrayLayer = std::get<4>(GetParam());
+  const auto layerCount = std::get<5>(GetParam());
+  const auto width = std::get<6>(GetParam());
+  const auto height = std::get<7>(GetParam());
+
+  const VkOffset2D srcDstOffset = {static_cast<int32_t>(x), static_cast<int32_t>(y)};
+  const VkExtent2D imageRegion = {width, height};
+  const VkImageSubresourceLayers srcDstImageSubresource = {
+      aspectMask, mipLevel, baseArrayLayer, layerCount};
+
+  const VkImageCopy imageCopy =
+      ivkGetImageCopy2D(srcDstOffset, srcDstImageSubresource, imageRegion);
+
+  EXPECT_EQ(imageCopy.srcSubresource.aspectMask, aspectMask);
+  EXPECT_EQ(imageCopy.srcSubresource.mipLevel, mipLevel);
+  EXPECT_EQ(imageCopy.srcSubresource.baseArrayLayer, baseArrayLayer);
+  EXPECT_EQ(imageCopy.srcSubresource.layerCount, layerCount);
+  EXPECT_EQ(imageCopy.dstSubresource.aspectMask, aspectMask);
+  EXPECT_EQ(imageCopy.dstSubresource.mipLevel, mipLevel);
+  EXPECT_EQ(imageCopy.dstSubresource.baseArrayLayer, baseArrayLayer);
+  EXPECT_EQ(imageCopy.dstSubresource.layerCount, layerCount);
+  EXPECT_EQ(imageCopy.srcOffset.x, x);
+  EXPECT_EQ(imageCopy.srcOffset.y, y);
+  EXPECT_EQ(imageCopy.srcOffset.z, 0);
+  EXPECT_EQ(imageCopy.dstOffset.x, x);
+  EXPECT_EQ(imageCopy.dstOffset.y, y);
+  EXPECT_EQ(imageCopy.dstOffset.z, 0);
+  EXPECT_EQ(imageCopy.extent.width, width);
+  EXPECT_EQ(imageCopy.extent.height, height);
+  EXPECT_EQ(imageCopy.extent.depth, 1);
+}
+
+INSTANTIATE_TEST_SUITE_P(AllCombinations,
+                         GetImageCopy2DTest,
+                         ::testing::Combine(::testing::Values(0, 50),
+                                            ::testing::Values(0, 50),
+                                            ::testing::Values(VK_IMAGE_ASPECT_COLOR_BIT,
+                                                              VK_IMAGE_ASPECT_DEPTH_BIT),
+                                            ::testing::Values(0, 5),
+                                            ::testing::Values(0, 3),
+                                            ::testing::Values(1, 5),
+                                            ::testing::Values(100, 500),
+                                            ::testing::Values(100, 500)),
+                         [](const testing::TestParamInfo<GetImageCopy2DTest::ParamType>& info) {
+                           const std::string name =
+                               "_x_" + std::to_string(std::get<0>(info.param)) + "__y_" +
+                               std::to_string(std::get<1>(info.param)) + "__aspectMask_" +
+                               std::to_string(std::get<2>(info.param)) + "__mipLevel_" +
+                               std::to_string(std::get<3>(info.param)) + "__baseArrayLayer_" +
+                               std::to_string(std::get<4>(info.param)) + "__layerCount_" +
+                               std::to_string(std::get<5>(info.param)) + "__width_" +
+                               std::to_string(std::get<6>(info.param)) + "__height_" +
+                               std::to_string(std::get<7>(info.param));
+                           return name;
+                         });
+
+// ivkGetBufferImageCopy2D *******************************
+class GetBufferImageCopy2DTest : public ::testing::TestWithParam<std::tuple<uint32_t,
+                                                                            uint32_t,
+                                                                            VkImageAspectFlags,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t>> {};
+
+TEST_P(GetBufferImageCopy2DTest, GetBufferImageCopy2D) {
+  const auto x = 0;
+  const auto y = 0;
+  const auto aspectMask = std::get<0>(GetParam());
+  const auto mipLevel = std::get<1>(GetParam());
+  const auto baseArrayLayer = std::get<2>(GetParam());
+  const auto layerCount = std::get<3>(GetParam());
+  const auto width = std::get<4>(GetParam());
+  const auto height = std::get<5>(GetParam());
+  const auto bufferOffset = std::get<6>(GetParam());
+  const auto bufferRowLength = std::get<7>(GetParam());
+
+  const VkOffset2D srcDstOffset = {static_cast<int32_t>(x), static_cast<int32_t>(y)};
+  const VkExtent2D imageRegion = {width, height};
+  const VkRect2D bufferImageCopyRegion = {srcDstOffset, imageRegion};
+  const VkImageSubresourceLayers imageSubresource = {
+      aspectMask, mipLevel, baseArrayLayer, layerCount};
+
+  const VkBufferImageCopy bufferCopy = ivkGetBufferImageCopy2D(
+      bufferOffset, bufferRowLength, bufferImageCopyRegion, imageSubresource);
+
+  EXPECT_EQ(bufferCopy.imageSubresource.aspectMask, aspectMask);
+  EXPECT_EQ(bufferCopy.imageSubresource.mipLevel, mipLevel);
+  EXPECT_EQ(bufferCopy.imageSubresource.baseArrayLayer, baseArrayLayer);
+  EXPECT_EQ(bufferCopy.imageSubresource.layerCount, layerCount);
+  EXPECT_EQ(bufferCopy.imageOffset.x, x);
+  EXPECT_EQ(bufferCopy.imageOffset.y, y);
+  EXPECT_EQ(bufferCopy.imageOffset.z, 0);
+  EXPECT_EQ(bufferCopy.imageExtent.width, width);
+  EXPECT_EQ(bufferCopy.imageExtent.height, height);
+  EXPECT_EQ(bufferCopy.imageExtent.depth, 1);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    GetBufferImageCopy2DTest,
+    ::testing::Combine(::testing::Values(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_ASPECT_DEPTH_BIT),
+                       ::testing::Values(0, 5),
+                       ::testing::Values(0, 3),
+                       ::testing::Values(1, 5),
+                       ::testing::Values(100, 500),
+                       ::testing::Values(100, 500),
+                       ::testing::Values(0, 50),
+                       ::testing::Values(1000, 2000)),
+    [](const testing::TestParamInfo<GetBufferImageCopy2DTest::ParamType>& info) {
+      const std::string name = "_aspectMask_" + std::to_string(std::get<0>(info.param)) +
+                               "__mipLevel_" + std::to_string(std::get<1>(info.param)) +
+                               "__baseArrayLayer_" + std::to_string(std::get<2>(info.param)) +
+                               "__layerCount_" + std::to_string(std::get<3>(info.param)) +
+                               "__width_" + std::to_string(std::get<4>(info.param)) + "__height_" +
+                               std::to_string(std::get<5>(info.param)) + "__bufferOffset_" +
+                               std::to_string(std::get<6>(info.param)) + "__bufferRowLength_" +
+                               std::to_string(std::get<7>(info.param));
+      return name;
+    });
+
+// ivkGetBufferImageCopy3D *******************************
+class GetBufferImageCopy3DTest : public ::testing::TestWithParam<std::tuple<uint32_t,
+                                                                            uint32_t,
+                                                                            VkImageAspectFlags,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t,
+                                                                            uint32_t>> {};
+
+TEST_P(GetBufferImageCopy3DTest, GetBufferImageCopy3D) {
+  const auto x = 0u;
+  const auto y = 0u;
+  const auto z = 0u;
+  const auto aspectMask = std::get<0>(GetParam());
+  const auto mipLevel = std::get<1>(GetParam());
+  const auto baseArrayLayer = std::get<2>(GetParam());
+  const auto layerCount = std::get<3>(GetParam());
+  const auto width = std::get<4>(GetParam());
+  const auto height = std::get<5>(GetParam());
+  const auto depth = std::get<5>(GetParam()); // duplicate height as depth
+  const auto bufferOffset = std::get<6>(GetParam());
+  const auto bufferRowLength = std::get<7>(GetParam());
+
+  const VkOffset3D offset = {static_cast<int32_t>(x), static_cast<int32_t>(y), z};
+  const VkExtent3D extent = {width, height, depth};
+  const VkImageSubresourceLayers imageSubresource = {
+      aspectMask, mipLevel, baseArrayLayer, layerCount};
+
+  const VkBufferImageCopy bufferCopy =
+      ivkGetBufferImageCopy3D(bufferOffset, bufferRowLength, offset, extent, imageSubresource);
+
+  EXPECT_EQ(bufferCopy.imageSubresource.aspectMask, aspectMask);
+  EXPECT_EQ(bufferCopy.imageSubresource.mipLevel, mipLevel);
+  EXPECT_EQ(bufferCopy.imageSubresource.baseArrayLayer, baseArrayLayer);
+  EXPECT_EQ(bufferCopy.imageSubresource.layerCount, layerCount);
+  EXPECT_EQ(bufferCopy.imageOffset.x, x);
+  EXPECT_EQ(bufferCopy.imageOffset.y, y);
+  EXPECT_EQ(bufferCopy.imageOffset.z, z);
+  EXPECT_EQ(bufferCopy.imageExtent.width, width);
+  EXPECT_EQ(bufferCopy.imageExtent.height, height);
+  EXPECT_EQ(bufferCopy.imageExtent.depth, depth);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    GetBufferImageCopy3DTest,
+    ::testing::Combine(::testing::Values(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_ASPECT_DEPTH_BIT),
+                       ::testing::Values(0, 5),
+                       ::testing::Values(0, 3),
+                       ::testing::Values(1, 5),
+                       ::testing::Values(100, 500),
+                       ::testing::Values(100, 500),
+                       ::testing::Values(0, 50),
+                       ::testing::Values(1000, 2000)),
+    [](const testing::TestParamInfo<GetBufferImageCopy3DTest::ParamType>& info) {
+      const std::string name = "_aspectMask_" + std::to_string(std::get<0>(info.param)) +
+                               "__mipLevel_" + std::to_string(std::get<1>(info.param)) +
+                               "__baseArrayLayer_" + std::to_string(std::get<2>(info.param)) +
+                               "__layerCount_" + std::to_string(std::get<3>(info.param)) +
+                               "__width_" + std::to_string(std::get<4>(info.param)) + "__height_" +
+                               std::to_string(std::get<5>(info.param)) + "__bufferOffset_" +
+                               std::to_string(std::get<6>(info.param)) + "__bufferRowLength_" +
+                               std::to_string(std::get<7>(info.param));
+      return name;
+    });
+
+// ivkGetVertexInputBindingDescription *******************************
+class GetVertexInputBindingDescriptionTest
+  : public ::testing::TestWithParam<std::tuple<uint32_t, uint32_t, VkVertexInputRate>> {};
+
+TEST_P(GetVertexInputBindingDescriptionTest, GetVertexInputBindingDescription) {
+  const auto binding = std::get<0>(GetParam());
+  const auto stride = std::get<1>(GetParam());
+  const auto inputRate = std::get<2>(GetParam());
+
+  const VkVertexInputBindingDescription vtxInputBindingDesc =
+      ivkGetVertexInputBindingDescription(binding, stride, inputRate);
+
+  EXPECT_EQ(vtxInputBindingDesc.binding, binding);
+  EXPECT_EQ(vtxInputBindingDesc.stride, stride);
+  EXPECT_EQ(vtxInputBindingDesc.inputRate, inputRate);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    GetVertexInputBindingDescriptionTest,
+    ::testing::Combine(::testing::Values(0, 1),
+                       ::testing::Values(0, 16),
+                       ::testing::Values(VK_VERTEX_INPUT_RATE_VERTEX,
+                                         VK_VERTEX_INPUT_RATE_INSTANCE)),
+    [](const testing::TestParamInfo<GetVertexInputBindingDescriptionTest::ParamType>& info) {
+      const std::string name = "_binding_" + std::to_string(std::get<0>(info.param)) + "__stride_" +
+                               std::to_string(std::get<1>(info.param)) + "__inputRate_" +
+                               std::to_string(std::get<2>(info.param));
+      return name;
+    });
+
+// ivkGetVertexInputAttributeDescription *******************************
+class GetVertexInputAttributeDescriptionTest
+  : public ::testing::TestWithParam<std::tuple<uint32_t, uint32_t, VkFormat, uint32_t>> {};
+
+TEST_P(GetVertexInputAttributeDescriptionTest, GetVertexInputAttributeDescription) {
+  const auto location = std::get<0>(GetParam());
+  const auto binding = std::get<1>(GetParam());
+  const auto format = std::get<2>(GetParam());
+  const auto offset = std::get<3>(GetParam());
+
+  const VkVertexInputAttributeDescription vtxInputAttrDesc =
+      ivkGetVertexInputAttributeDescription(location, binding, format, offset);
+
+  EXPECT_EQ(vtxInputAttrDesc.location, location);
+  EXPECT_EQ(vtxInputAttrDesc.binding, binding);
+  EXPECT_EQ(vtxInputAttrDesc.format, format);
+  EXPECT_EQ(vtxInputAttrDesc.offset, offset);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    GetVertexInputAttributeDescriptionTest,
+    ::testing::Combine(::testing::Values(0, 1),
+                       ::testing::Values(0, 1),
+                       ::testing::Values(VK_FORMAT_R8G8B8_UNORM, VK_FORMAT_R8G8B8_SNORM),
+                       ::testing::Values(0, 16)),
+    [](const testing::TestParamInfo<GetVertexInputAttributeDescriptionTest::ParamType>& info) {
+      const std::string name = "_location_" + std::to_string(std::get<0>(info.param)) +
+                               "__binding_" + std::to_string(std::get<1>(info.param)) +
+                               "__format_" + std::to_string(std::get<2>(info.param)) + "__offset_" +
+                               std::to_string(std::get<3>(info.param));
+      return name;
+    });
+
 } // namespace igl::tests

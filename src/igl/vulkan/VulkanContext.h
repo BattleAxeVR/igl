@@ -92,7 +92,8 @@ class VulkanContext final {
   igl::Result queryDevices(const HWDeviceQueryDesc& desc, std::vector<HWDeviceDesc>& outDevices);
   igl::Result initContext(const HWDeviceDesc& desc,
                           size_t numExtraDeviceExtensions = 0,
-                          const char* IGL_NULLABLE* IGL_NULLABLE extraDeviceExtensions = nullptr);
+                          const char* IGL_NULLABLE* IGL_NULLABLE extraDeviceExtensions = nullptr,
+                          const VulkanFeatures* IGL_NULLABLE requestedFeatures = nullptr);
 
   igl::Result initSwapchain(uint32_t width, uint32_t height);
   VkExtent2D getSwapchainExtent() const;
@@ -141,6 +142,8 @@ class VulkanContext final {
                                                VkFormat yuvVkFormat,
                                                igl::Result* IGL_NULLABLE outResult,
                                                const char* IGL_NULLABLE debugName = nullptr) const;
+
+  void createSurface(void* IGL_NULLABLE window, void* IGL_NULLABLE display);
 
   bool hasSwapchain() const noexcept {
     return swapchain_ != nullptr;
@@ -209,7 +212,6 @@ class VulkanContext final {
  private:
   void createInstance(size_t numExtraExtensions,
                       const char* IGL_NULLABLE* IGL_NULLABLE extraExtensions);
-  void createSurface(void* IGL_NULLABLE window, void* IGL_NULLABLE display);
   VkResult checkAndUpdateDescriptorSets();
   void querySurfaceCapabilities();
   void processDeferredTasks() const;
@@ -338,16 +340,17 @@ class VulkanContext final {
   void updateBindingsTextures(VkCommandBuffer IGL_NONNULL cmdBuf,
                               VkPipelineLayout layout,
                               VkPipelineBindPoint bindPoint,
+                              VulkanImmediateCommands::SubmitHandle nextSubmitHandle,
                               const BindingsTextures& data,
                               const VulkanDescriptorSetLayout& dsl,
                               const util::SpvModuleInfo& info) const;
   void updateBindingsBuffers(VkCommandBuffer IGL_NONNULL cmdBuf,
                              VkPipelineLayout layout,
                              VkPipelineBindPoint bindPoint,
+                             VulkanImmediateCommands::SubmitHandle nextSubmitHandle,
                              BindingsBuffers& data,
                              const VulkanDescriptorSetLayout& dsl,
                              const util::SpvModuleInfo& info) const;
-  void markSubmitted(const SubmitHandle& handle) const;
 
   struct DeferredTask {
     DeferredTask(std::packaged_task<void()>&& task, SubmitHandle handle) :
