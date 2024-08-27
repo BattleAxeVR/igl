@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 project(IGLLibrary CXX C)
 
@@ -15,6 +15,13 @@ file(GLOB HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DI
 if(WIN32)
   list(APPEND SRC_FILES win/LogDefault.cpp)
   list(APPEND HEADER_FILES win/LogDefault.h)
+endif()
+
+if(ANDROID)
+  list(APPEND SRC_FILES android/LogDefault.cpp)
+  list(APPEND HEADER_FILES android/LogDefault.h)
+  list(APPEND SRC_FILES android/NativeHWBuffer.cpp)
+  list(APPEND HEADER_FILES android/NativeHWBuffer.h)
 endif()
 
 add_library(IGLLibrary ${SRC_FILES} ${HEADER_FILES})

@@ -16,8 +16,7 @@
 #include <igl/vulkan/VulkanHelpers.h>
 #include <igl/vulkan/VulkanSwapchain.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 CommandQueue::CommandQueue(Device& device, const CommandQueueDesc& desc) :
   device_(device), desc_(desc) {
@@ -25,7 +24,7 @@ CommandQueue::CommandQueue(Device& device, const CommandQueueDesc& desc) :
 }
 
 std::shared_ptr<ICommandBuffer> CommandQueue::createCommandBuffer(const CommandBufferDesc& desc,
-                                                                  Result* outResult) {
+                                                                  Result* /*outResult*/) {
   IGL_PROFILER_FUNCTION();
 
   // for now, we want only 1 command buffer
@@ -71,7 +70,7 @@ SubmitHandle CommandQueue::endCommandBuffer(const igl::vulkan::VulkanContext& ct
   const bool shouldPresent = isGraphicsQueue && ctx.hasSwapchain() &&
                              cmdBuffer->isFromSwapchain() && present;
   if (shouldPresent) {
-    ctx.immediate_->waitSemaphore(ctx.swapchain_->acquireSemaphore_->vkSemaphore_);
+    ctx.immediate_->waitSemaphore(ctx.swapchain_->getSemaphore());
   }
 
   cmdBuffer->lastSubmitHandle_ = ctx.immediate_->submit(cmdBuffer->wrapper_);
@@ -79,7 +78,6 @@ SubmitHandle CommandQueue::endCommandBuffer(const igl::vulkan::VulkanContext& ct
   if (shouldPresent) {
     ctx.present();
   }
-  ctx.markSubmitted(cmdBuffer->lastSubmitHandle_);
   ctx.syncManager_->markSubmitted(cmdBuffer->lastSubmitHandle_);
   ctx.processDeferredTasks();
   ctx.stagingDevice_->mergeRegionsAndFreeBuffers();
@@ -93,7 +91,7 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
                                                const igl::vulkan::CommandBuffer* cmdBuffer) {
   IGL_PROFILER_FUNCTION();
 
-  auto& debugger = ctx.enhancedShaderDebuggingStore_;
+  const auto& debugger = ctx.enhancedShaderDebuggingStore_;
 
   if (!cmdBuffer->getFramebuffer()) {
     return;
@@ -108,7 +106,7 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
   const auto min = std::min_element(indices.begin(), indices.end());
 
   const auto resolveAttachment = cmdBuffer->getFramebuffer()->getResolveColorAttachment(*min);
-  std::shared_ptr<igl::IFramebuffer> framebuffer =
+  const std::shared_ptr<igl::IFramebuffer>& framebuffer =
       resolveAttachment ? debugger->framebuffer(device_, resolveAttachment)
                         : cmdBuffer->getFramebuffer();
 
@@ -129,8 +127,8 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
 
   {
     // Bind the line buffer
-    auto vkEncoder = static_cast<RenderCommandEncoder*>(cmdEncoder.get());
-    vkEncoder->binder().bindStorageBuffer(
+    auto* vkEncoder = static_cast<RenderCommandEncoder*>(cmdEncoder.get());
+    vkEncoder->binder().bindBuffer(
         EnhancedShaderDebuggingStore::kBufferIndex,
         static_cast<igl::vulkan::Buffer*>(debugger->vertexBuffer().get()),
         sizeof(EnhancedShaderDebuggingStore::Header),
@@ -150,8 +148,8 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
   cmdEncoder->popDebugGroupLabel();
   cmdEncoder->endEncoding();
 
-  auto resetCmdBuffer = static_cast<CommandBuffer*>(lineDrawingCmdBuffer.get());
-  const auto vkResetCmdBuffer = resetCmdBuffer->getVkCommandBuffer();
+  auto* resetCmdBuffer = static_cast<CommandBuffer*>(lineDrawingCmdBuffer.get());
+  auto* const vkResetCmdBuffer = resetCmdBuffer->getVkCommandBuffer();
 
   // End the render pass by transitioning the surface that was presented by the application
   if (cmdBuffer->getPresentedSurface()) {
@@ -159,7 +157,7 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
   }
 
   // Barrier to ensure we have finished rendering the lines before we clear the buffer
-  auto lineBuffer = static_cast<vulkan::Buffer*>(debugger->vertexBuffer().get());
+  auto* lineBuffer = static_cast<vulkan::Buffer*>(debugger->vertexBuffer().get());
   ivkBufferMemoryBarrier(&ctx.vf_,
                          vkResetCmdBuffer,
                          lineBuffer->getVkBuffer(),
@@ -181,5 +179,4 @@ void CommandQueue::enhancedShaderDebuggingPass(const igl::vulkan::VulkanContext&
   endCommandBuffer(ctx, resetCmdBuffer, true);
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

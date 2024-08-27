@@ -28,6 +28,8 @@
 #include <igl/vulkan/VulkanSwapchain.h>
 #include <igl/vulkan/util/SpvReflection.h>
 
+#include <igl/IGLSafeC.h>
+
 namespace {
 
 VkAttachmentLoadOp loadActionToVkAttachmentLoadOp(igl::LoadAction a) {
@@ -59,29 +61,6 @@ VkAttachmentStoreOp storeActionToVkAttachmentStoreOp(igl::StoreAction a) {
   return VK_ATTACHMENT_STORE_OP_DONT_CARE;
 }
 
-VkStencilOp stencilOperationToVkStencilOp(igl::StencilOperation op) {
-  switch (op) {
-  case igl::StencilOperation::Keep:
-    return VK_STENCIL_OP_KEEP;
-  case igl::StencilOperation::Zero:
-    return VK_STENCIL_OP_ZERO;
-  case igl::StencilOperation::Replace:
-    return VK_STENCIL_OP_REPLACE;
-  case igl::StencilOperation::IncrementClamp:
-    return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
-  case igl::StencilOperation::DecrementClamp:
-    return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
-  case igl::StencilOperation::Invert:
-    return VK_STENCIL_OP_INVERT;
-  case igl::StencilOperation::IncrementWrap:
-    return VK_STENCIL_OP_INCREMENT_AND_WRAP;
-  case igl::StencilOperation::DecrementWrap:
-    return VK_STENCIL_OP_DECREMENT_AND_WRAP;
-  }
-  IGL_ASSERT(false);
-  return VK_STENCIL_OP_KEEP;
-}
-
 VkIndexType indexFormatToVkIndexType(igl::IndexFormat fmt) {
   switch (fmt) {
   case igl::IndexFormat::UInt16:
@@ -95,15 +74,14 @@ VkIndexType indexFormatToVkIndexType(igl::IndexFormat fmt) {
 
 } // namespace
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 RenderCommandEncoder::RenderCommandEncoder(const std::shared_ptr<CommandBuffer>& commandBuffer,
                                            VulkanContext& ctx) :
   IRenderCommandEncoder::IRenderCommandEncoder(commandBuffer),
   ctx_(ctx),
   cmdBuffer_(commandBuffer ? commandBuffer->getVkCommandBuffer() : VK_NULL_HANDLE),
-  binder_(commandBuffer, ctx, VK_PIPELINE_BIND_POINT_GRAPHICS) {
+  binder_(commandBuffer.get(), ctx, VK_PIPELINE_BIND_POINT_GRAPHICS) {
   IGL_PROFILER_FUNCTION();
   IGL_ASSERT(commandBuffer);
   IGL_ASSERT(cmdBuffer_ != VK_NULL_HANDLE);
@@ -114,6 +92,11 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
                                       const Dependencies& dependencies,
                                       Result* outResult) {
   IGL_PROFILER_FUNCTION();
+
+  if (!IGL_VERIFY(cmdBuffer_)) {
+    Result::setResult(outResult, Result::Code::ArgumentNull);
+    return;
+  }
 
   processDependencies(dependencies);
 
@@ -236,8 +219,19 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
   dynamicState_.renderPassIndex_ = renderPassHandle.index;
   dynamicState_.depthBiasEnable_ = false;
 
-  const VkRenderPassBeginInfo bi = fb.getRenderPassBeginInfo(
+  VkRenderPassBeginInfo bi = fb.getRenderPassBeginInfo(
       renderPassHandle.pass, mipLevel, layer, (uint32_t)clearValues.size(), clearValues.data());
+
+  // clang-format off
+  // @fb-only
+      // @fb-only
+      // @fb-only
+      // @fb-only
+  // @fb-only
+  // clang-format on
+  // @fb-only
+    // @fb-only
+  // @fb-only
 
   const uint32_t width = std::max(fb.getWidth() >> mipLevel, 1u);
   const uint32_t height = std::max(fb.getHeight() >> mipLevel, 1u);
@@ -247,7 +241,12 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
   bindViewport(viewport);
   bindScissorRect(scissor);
 
-  ctx_.checkAndUpdateDescriptorSets();
+  VkResult const vkResult = ctx_.checkAndUpdateDescriptorSets();
+  if (vkResult != VK_SUCCESS) {
+    IGL_LOG_ERROR("checkAndUpdateDescriptorSets returned a non-successful result: %d", vkResult);
+    Result::setResult(outResult, Result::Code::RuntimeError, "Failed to update descriptor sets");
+    return;
+  }
 
   ctx_.vf_.vkCmdBeginRenderPass(cmdBuffer_, &bi, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -425,18 +424,12 @@ void RenderCommandEncoder::bindDepthStencilState(
   dynamicState_.setDepthCompareOp(compareFunctionToVkCompareOp(desc.compareFunction));
 
   auto setStencilState = [this](VkStencilFaceFlagBits faceMask, const igl::StencilStateDesc& desc) {
-    if (desc == igl::StencilStateDesc()) {
-      // do not update anything if we don't have an actual state
-      return;
-    }
-    dynamicState_.setStencilStateOps(faceMask,
+    dynamicState_.setStencilStateOps(faceMask == VK_STENCIL_FACE_FRONT_BIT,
                                      stencilOperationToVkStencilOp(desc.stencilFailureOperation),
                                      stencilOperationToVkStencilOp(desc.depthStencilPassOperation),
                                      stencilOperationToVkStencilOp(desc.depthFailureOperation),
                                      compareFunctionToVkCompareOp(desc.stencilCompareFunction));
-    // this is what the IGL/OGL backend does with masks
-    ctx_.vf_.vkCmdSetStencilReference(cmdBuffer_, faceMask, desc.readMask);
-    ctx_.vf_.vkCmdSetStencilCompareMask(cmdBuffer_, faceMask, 0xFF);
+    ctx_.vf_.vkCmdSetStencilCompareMask(cmdBuffer_, faceMask, desc.readMask);
     ctx_.vf_.vkCmdSetStencilWriteMask(cmdBuffer_, faceMask, desc.writeMask);
   };
 
@@ -444,22 +437,22 @@ void RenderCommandEncoder::bindDepthStencilState(
   setStencilState(VK_STENCIL_FACE_BACK_BIT, desc.backFaceStencil);
 }
 
-void RenderCommandEncoder::bindBuffer(int index,
-                                      const std::shared_ptr<IBuffer>& buffer,
+void RenderCommandEncoder::bindBuffer(uint32_t index,
+                                      IBuffer* buffer,
                                       size_t bufferOffset,
                                       size_t bufferSize) {
   IGL_PROFILER_FUNCTION();
   IGL_PROFILER_ZONE_GPU_VK("bindBuffer()", ctx_.tracyCtx_, cmdBuffer_);
 
 #if IGL_VULKAN_PRINT_COMMANDS
-  IGL_LOG_INFO("%p  bindBuffer(%i, %u)\n", cmdBuffer_, index, (uint32_t)bufferOffset);
+  IGL_LOG_INFO("%p  bindBuffer(%u, %u)\n", cmdBuffer_, index, (uint32_t)bufferOffset);
 #endif // IGL_VULKAN_PRINT_COMMANDS
 
   if (!IGL_VERIFY(buffer != nullptr)) {
     return;
   }
 
-  auto* buf = static_cast<igl::vulkan::Buffer*>(buffer.get());
+  auto* buf = static_cast<igl::vulkan::Buffer*>(buffer);
 
   const bool isUniformBuffer = (buf->getBufferType() & BufferDesc::BufferTypeBits::Uniform) > 0;
   const bool isStorageBuffer = (buf->getBufferType() & BufferDesc::BufferTypeBits::Storage) > 0;
@@ -470,16 +463,11 @@ void RenderCommandEncoder::bindBuffer(int index,
   if (!IGL_VERIFY(isUniformOrStorageBuffer)) {
     return;
   }
-  if (isUniformBuffer) {
-    binder_.bindUniformBuffer(index, buf, bufferOffset, bufferSize);
+  if (ctx_.enhancedShaderDebuggingStore_) {
+    IGL_ASSERT_MSG(index < (IGL_UNIFORM_BLOCKS_BINDING_MAX - 1),
+                   "The last buffer index is reserved for enhanced debugging features");
   }
-  if (isStorageBuffer) {
-    if (ctx_.enhancedShaderDebuggingStore_) {
-      IGL_ASSERT_MSG(index < (IGL_UNIFORM_BLOCKS_BINDING_MAX - 1),
-                     "The last buffer index is reserved for enhanced debugging features");
-    }
-    binder_.bindStorageBuffer(index, buf, bufferOffset, bufferSize);
-  }
+  binder_.bindBuffer(index, buf, bufferOffset, bufferSize);
 }
 
 void RenderCommandEncoder::bindVertexBuffer(uint32_t index, IBuffer& buffer, size_t bufferOffset) {
@@ -573,6 +561,10 @@ void RenderCommandEncoder::bindSamplerState(size_t index,
 
 void RenderCommandEncoder::bindTexture(size_t index, uint8_t target, ITexture* texture) {
   IGL_PROFILER_FUNCTION();
+
+  IGL_ASSERT_MSG(pendingBindGroupTexture_.empty(),
+                 "A texture BindGroup was already bound to this command encoder. You can bind "
+                 "individual textures again only after a draw call.");
 
 #if IGL_VULKAN_PRINT_COMMANDS
   IGL_LOG_INFO("%p  bindTexture(%u, %u)\n", cmdBuffer_, (uint32_t)index, (uint32_t)target);
@@ -715,14 +707,8 @@ void RenderCommandEncoder::multiDrawIndexedIndirect(IBuffer& indirectBuffer,
 void RenderCommandEncoder::setStencilReferenceValue(uint32_t value) {
   IGL_PROFILER_FUNCTION();
 
-  setStencilReferenceValues(value, value);
-}
-
-void RenderCommandEncoder::setStencilReferenceValues(uint32_t frontValue, uint32_t backValue) {
-  IGL_PROFILER_FUNCTION();
-
-  ctx_.vf_.vkCmdSetStencilReference(cmdBuffer_, VK_STENCIL_FACE_FRONT_BIT, frontValue);
-  ctx_.vf_.vkCmdSetStencilReference(cmdBuffer_, VK_STENCIL_FACE_BACK_BIT, backValue);
+  ctx_.vf_.vkCmdSetStencilReference(
+      cmdBuffer_, VK_STENCIL_FACE_FRONT_BIT | VK_STENCIL_FACE_BACK_BIT, value);
 }
 
 void RenderCommandEncoder::setBlendColor(Color color) {
@@ -742,12 +728,77 @@ bool RenderCommandEncoder::setDrawCallCountEnabled(bool value) {
   IGL_PROFILER_FUNCTION();
 
   const auto returnVal = drawCallCountEnabled_ > 0;
-  drawCallCountEnabled_ = value;
+  drawCallCountEnabled_ = static_cast<uint32_t>(value);
   return returnVal;
 }
 
 void RenderCommandEncoder::flushDynamicState() {
+  IGL_PROFILER_FUNCTION();
+
   binder_.bindPipeline(rps_->getVkPipeline(dynamicState_), &rps_->getSpvModuleInfo());
+
+  const VkPipelineBindPoint bindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+  if (!pendingBindGroupTexture_.empty()) {
+    VkDescriptorSet dset = ctx_.getBindGroupDescriptorSet(pendingBindGroupTexture_);
+    VkPipelineLayout layout = rps_->getVkPipelineLayout();
+
+    const uint32_t usageMaskPipeline = rps_->getSpvModuleInfo().usageMaskTextures;
+    const uint32_t usageMaskBindGroup = ctx_.getBindGroupUsageMask(pendingBindGroupTexture_);
+
+    if (!IGL_VERIFY(usageMaskPipeline == usageMaskBindGroup)) {
+      IGL_LOG_ERROR(
+          "Texture bind group is not compatible with the current IRenderPipelineState '%s'\n",
+          rps_->getRenderPipelineDesc().debugName.c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Bind group textures mask: {:b}\n", usageMaskBindGroup).c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Pipeline expects        : {:b}\n", usageMaskPipeline).c_str());
+      return;
+    }
+
+#if IGL_VULKAN_PRINT_COMMANDS
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - textures bind group\n", cmdBuffer_);
+#endif // IGL_VULKAN_PRINT_COMMANDS
+    ctx_.vf_.vkCmdBindDescriptorSets(
+        cmdBuffer_, bindPoint, layout, kBindPoint_CombinedImageSamplers, 1, &dset, 0, nullptr);
+    // This is necessary to support a mix of BindGroups and bindTexture() calls in the same command
+    // encoder. A typical use case for that is running ImGui rendering etc.
+    binder_.isDirtyFlags_ &= ~igl::vulkan::ResourcesBinder::DirtyFlagBits_Textures;
+    pendingBindGroupTexture_ = {}; // reset
+  }
+
+  if (!pendingBindGroupBuffer_.empty()) {
+    VkDescriptorSet dset = ctx_.getBindGroupDescriptorSet(pendingBindGroupBuffer_);
+    VkPipelineLayout layout = rps_->getVkPipelineLayout();
+
+    const uint32_t usageMaskPipeline = rps_->getSpvModuleInfo().usageMaskBuffers;
+    const uint32_t usageMaskBindGroup = ctx_.getBindGroupUsageMask(pendingBindGroupBuffer_);
+
+    if (!IGL_VERIFY(usageMaskPipeline == usageMaskBindGroup)) {
+      IGL_LOG_ERROR(
+          "Buffer bind group is not compatible with the current IRenderPipelineState '%s'\n",
+          rps_->getRenderPipelineDesc().debugName.c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Bind group buffers mask: {:b}\n", usageMaskBindGroup).c_str());
+      IGL_LOG_INFO(IGL_FORMAT("Pipeline expects       : {:b}\n", usageMaskPipeline).c_str());
+      return;
+    }
+
+#if IGL_VULKAN_PRINT_COMMANDS
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - buffers bind group\n", cmdBuffer_);
+#endif // IGL_VULKAN_PRINT_COMMANDS
+    ctx_.vf_.vkCmdBindDescriptorSets(cmdBuffer_,
+                                     bindPoint,
+                                     layout,
+                                     kBindPoint_Buffers,
+                                     1,
+                                     &dset,
+                                     numDynamicOffsets_,
+                                     dynamicOffsets_);
+    // This is necessary to support a mix of BindGroups and bindBuffer() calls in the same command
+    // encoder.
+    binder_.isDirtyFlags_ &= ~igl::vulkan::ResourcesBinder::DirtyFlagBits_Buffers;
+    pendingBindGroupBuffer_ = {}; // reset
+  }
+
   binder_.updateBindings(rps_->getVkPipelineLayout(), *rps_);
 
   if (ctx_.config_.enableDescriptorIndexing) {
@@ -805,28 +856,27 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                                           const igl::vulkan::VulkanImage& destImage,
                                           const igl::TextureRangeDesc& srcRange,
                                           const igl::TextureRangeDesc& destRange) {
-  const auto& wrapper = ctx_.immediate_->acquire();
   const VkImageSubresourceRange srcResourceRange = {
       srcImage.getImageAspectFlags(),
-      static_cast<uint32_t>(srcRange.mipLevel),
-      static_cast<uint32_t>(srcRange.numMipLevels),
-      static_cast<uint32_t>(srcRange.layer),
-      static_cast<uint32_t>(srcRange.numLayers),
+      srcRange.mipLevel,
+      srcRange.numMipLevels,
+      srcRange.layer,
+      srcRange.numLayers,
   };
   const VkImageSubresourceRange destSubresourceRange = {
       destImage.getImageAspectFlags(),
-      static_cast<uint32_t>(destRange.mipLevel),
-      static_cast<uint32_t>(destRange.numMipLevels),
-      static_cast<uint32_t>(destRange.layer),
-      static_cast<uint32_t>(destRange.numLayers),
+      destRange.mipLevel,
+      destRange.numMipLevels,
+      destRange.layer,
+      destRange.numLayers,
   };
-  srcImage.transitionLayout(wrapper.cmdBuf_,
+  srcImage.transitionLayout(cmdBuffer_,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                             VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                             VK_PIPELINE_STAGE_TRANSFER_BIT,
                             srcResourceRange);
 
-  destImage.transitionLayout(wrapper.cmdBuf_,
+  destImage.transitionLayout(cmdBuffer_,
                              VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                              VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                              VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -843,15 +893,14 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
         static_cast<int32_t>(destRange.height + destRange.y),
         1}}};
   ivkCmdBlitImage(&ctx_.vf_,
-                  wrapper.cmdBuf_,
+                  cmdBuffer_,
                   srcImage.getVkImage(),
                   destImage.getVkImage(),
                   VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   srcOffsets.data(),
                   dstOffsets.data(),
-                  VkImageSubresourceLayers{
-                      VK_IMAGE_ASPECT_COLOR_BIT, static_cast<uint32_t>(srcRange.mipLevel), 0, 1},
+                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, srcRange.mipLevel, 0, 1},
                   VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
                   VK_FILTER_LINEAR);
 
@@ -875,7 +924,7 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
   IGL_ASSERT_MSG(targetLayout != VK_IMAGE_LAYOUT_UNDEFINED, "Missing usage flags");
 
   // 3. Transition TRANSFER_DST_OPTIMAL into `targetLayout`
-  destImage.transitionLayout(wrapper.cmdBuf_,
+  destImage.transitionLayout(cmdBuffer_,
                              targetLayout,
                              VK_PIPELINE_STAGE_TRANSFER_BIT,
                              VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -933,5 +982,29 @@ void RenderCommandEncoder::processDependencies(const Dependencies& dependencies)
   }
 }
 
-} // namespace vulkan
-} // namespace igl
+void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
+  IGL_ASSERT(!handle.empty());
+
+  pendingBindGroupTexture_ = handle;
+}
+
+void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
+                                         uint32_t numDynamicOffsets,
+                                         const uint32_t* dynamicOffsets) {
+  IGL_ASSERT(!handle.empty());
+
+  pendingBindGroupBuffer_ = handle;
+  numDynamicOffsets_ = numDynamicOffsets;
+
+  if (numDynamicOffsets) {
+    IGL_ASSERT(dynamicOffsets);
+    IGL_ASSERT(numDynamicOffsets <= IGL_UNIFORM_BLOCKS_BINDING_MAX);
+
+    checked_memcpy(dynamicOffsets_,
+                   sizeof(dynamicOffsets_),
+                   dynamicOffsets,
+                   numDynamicOffsets * sizeof(uint32_t));
+  }
+}
+
+} // namespace igl::vulkan

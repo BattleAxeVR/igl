@@ -9,8 +9,7 @@
 
 #include <igl/opengl/Errors.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
 TextureType TextureBufferBase::getType() const {
   // TODO: Handle compressed texture type
@@ -172,15 +171,13 @@ bool TextureBufferBase::isRequiredGenerateMipmap() const {
 
 bool TextureBufferBase::isValidForTexImage(const TextureRangeDesc& range) const {
   const auto dimensions = getDimensions();
-  static constexpr size_t one = 1;
-  const auto levelWidth = std::max(dimensions.width >> range.mipLevel, one);
-  const auto levelHeight = std::max(dimensions.height >> range.mipLevel, one);
-  const auto levelDepth = std::max(dimensions.depth >> range.mipLevel, one);
+  const auto levelWidth = std::max(dimensions.width >> range.mipLevel, 1u);
+  const auto levelHeight = std::max(dimensions.height >> range.mipLevel, 1u);
+  const auto levelDepth = std::max(dimensions.depth >> range.mipLevel, 1u);
 
   return (range.x == 0 && range.y == 0 && range.z == 0 && range.layer == 0 &&
           range.width == levelWidth && range.height == levelHeight && range.depth == levelDepth &&
           range.numLayers == getNumLayers());
 }
 
-} // namespace opengl
-} // namespace igl
+} // namespace igl::opengl

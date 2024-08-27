@@ -24,8 +24,7 @@
 #include <sstream>
 #include <unordered_set>
 
-namespace igl {
-namespace metal {
+namespace igl::metal {
 
 // https://developer.apple.com/documentation/quartzcore/cametallayer/2938720-maximumdrawablecount?language=objc
 // Max number of Metal drawables in the resource pool managed by Core Animation is 3.
@@ -43,7 +42,7 @@ std::shared_ptr<ICommandQueue> Device::createCommandQueue(const CommandQueueDesc
                                                           Result* outResult) {
   id<MTLCommandQueue> metalObject = [device_ newCommandQueue];
   auto resource =
-      std::make_shared<CommandQueue>(metalObject, bufferSyncManager_, deviceStatistics_);
+      std::make_shared<CommandQueue>(*this, metalObject, bufferSyncManager_, deviceStatistics_);
   Result::setOk(outResult);
   return resource;
 }
@@ -71,8 +70,8 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
   if (desc.hint & BufferDesc::BufferAPIHintBits::NoCopy) {
     return createBufferNoCopy(desc, outResult);
   }
-  MTLStorageMode storage = toMTLStorageMode(desc.storage);
-  MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
+  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
 
   id<MTLBuffer> metalObject = createMetalBuffer(device_, desc, options);
   std::unique_ptr<IBuffer> resource = std::make_unique<Buffer>(
@@ -86,8 +85,8 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
 
 std::unique_ptr<IBuffer> Device::createRingBuffer(const BufferDesc& desc,
                                                   Result* outResult) const noexcept {
-  MTLStorageMode storage = toMTLStorageMode(desc.storage);
-  MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
+  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
 
   // Create a ring of buffers
   std::vector<id<MTLBuffer>> bufferRing;
@@ -107,11 +106,11 @@ std::unique_ptr<IBuffer> Device::createRingBuffer(const BufferDesc& desc,
 
 std::unique_ptr<IBuffer> Device::createBufferNoCopy(const BufferDesc& desc,
                                                     Result* outResult) const {
-  MTLStorageMode storage = toMTLStorageMode(desc.storage);
+  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
 
   typedef void (^Deallocator)(void* pointer, NSUInteger length);
-  Deallocator deallocator = nil;
-  MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+  const Deallocator deallocator = nil;
+  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
   id<MTLBuffer> metalObject = [device_ newBufferWithBytesNoCopy:const_cast<void*>(desc.data)
                                                          length:desc.length
                                                         options:options
@@ -238,7 +237,7 @@ std::shared_ptr<igl::IVertexInputState> Device::createVertexInputState(
       return nullptr;
     }
 
-    int attribLocation = desc.attributes[i].location;
+    const int attribLocation = desc.attributes[i].location;
     if (attribLocation < 0 || attribLocation >= IGL_VERTEX_ATTRIBUTES_MAX) {
       Result::setResult(
           outResult, Result::Code::ArgumentOutOfRange, "attribute location out of range");
@@ -282,8 +281,8 @@ std::shared_ptr<igl::IVertexInputState> Device::createVertexInputState(
 
   // Validation completed. Populate the metal vertex descriptor.
   for (int i = 0; i < desc.numAttributes; ++i) {
-    size_t bufferIndex = desc.attributes[i].bufferIndex;
-    size_t dstAttribIndex = desc.attributes[i].location;
+    const size_t bufferIndex = desc.attributes[i].bufferIndex;
+    const size_t dstAttribIndex = desc.attributes[i].location;
 
     metalDesc.attributes[dstAttribIndex].format =
         VertexInputState::convertAttributeFormat(desc.attributes[i].format);
@@ -397,7 +396,7 @@ std::shared_ptr<igl::IRenderPipelineState> Device::createRenderPipeline(
     return nullptr;
   }
 
-  auto vertexFunc = static_cast<ShaderModule*>(vertexModule.get());
+  auto* vertexFunc = static_cast<ShaderModule*>(vertexModule.get());
   metalDesc.vertexFunction = vertexFunc->get();
 
   if (!IGL_VERIFY(metalDesc.vertexFunction)) {
@@ -409,13 +408,13 @@ std::shared_ptr<igl::IRenderPipelineState> Device::createRenderPipeline(
   // Fragment shader is optional
   auto fragmentModule = desc.shaderStages->getFragmentModule();
   if (fragmentModule) {
-    auto fragmentFunc = static_cast<ShaderModule*>(fragmentModule.get());
+    auto* fragmentFunc = static_cast<ShaderModule*>(fragmentModule.get());
     metalDesc.fragmentFunction = fragmentFunc->get();
   }
 
   // Framebuffer
   for (uint32_t i = 0; i < desc.targetDesc.colorAttachments.size(); ++i) {
-    auto& src = desc.targetDesc.colorAttachments[i];
+    const auto& src = desc.targetDesc.colorAttachments[i];
     MTLRenderPipelineColorAttachmentDescriptor* dst = metalDesc.colorAttachments[i];
     dst.pixelFormat = Texture::textureFormatToMTLPixelFormat(src.textureFormat);
     dst.writeMask = RenderPipelineState::convertColorWriteMask(src.colorWriteMask);
@@ -544,7 +543,7 @@ std::shared_ptr<IShaderModule> Device::createShaderModule(const ShaderModuleDesc
 
 std::unique_ptr<IShaderStages> Device::createShaderStages(const ShaderStagesDesc& desc,
                                                           Result* outResult) const {
-  Result result;
+  const Result result;
   auto stages = std::make_unique<ShaderStages>(desc);
   if (auto resourceTracker = getResourceTracker()) {
     stages->initResourceTracker(resourceTracker);
@@ -672,5 +671,53 @@ MTLResourceOptions Device::toMTLResourceStorageMode(ResourceStorage storage) {
 #endif
   }
 }
-} // namespace metal
-} // namespace igl
+
+Holder<igl::BindGroupTextureHandle> Device::createBindGroup(
+    const BindGroupTextureDesc& desc,
+    const IRenderPipelineState* IGL_NULLABLE /*compatiblePipeline*/,
+    Result* IGL_NULLABLE outResult) {
+  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+
+  BindGroupTextureDesc description(desc);
+
+  const auto handle = bindGroupTexturesPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return {this, handle};
+}
+
+Holder<igl::BindGroupBufferHandle> Device::createBindGroup(const BindGroupBufferDesc& desc,
+                                                           Result* IGL_NULLABLE outResult) {
+  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+
+  BindGroupBufferDesc description(desc);
+
+  const auto handle = bindGroupBuffersPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return {this, handle};
+}
+
+void Device::destroy(igl::BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  bindGroupTexturesPool_.destroy(handle);
+}
+
+void Device::destroy(igl::BindGroupBufferHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  bindGroupBuffersPool_.destroy(handle);
+}
+
+} // namespace igl::metal

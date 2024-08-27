@@ -48,10 +48,10 @@ TEST_F(TextureTest, Passthrough) {
   //-------------------------------------
   // Create input texture and upload data
   //-------------------------------------
-  TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
-                                           kOffscreenTexWidth,
-                                           kOffscreenTexHeight,
-                                           TextureDesc::TextureUsageBits::Sampled);
+  const TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
+                                                 kOffscreenTexWidth,
+                                                 kOffscreenTexHeight,
+                                                 TextureDesc::TextureUsageBits::Sampled);
   inputTexture_ = iglDev_->createTexture(texDesc, &ret);
   ASSERT_EQ(ret.code, Result::Code::Ok);
   ASSERT_TRUE(inputTexture_ != nullptr);
@@ -113,10 +113,10 @@ TEST_F(TextureTest, PassthroughSubTexture) {
   //------------------------------------------------------
   // Create input texture and sub-texture, and upload data
   //------------------------------------------------------
-  TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
-                                           kOffscreenTexWidth,
-                                           kOffscreenTexHeight,
-                                           TextureDesc::TextureUsageBits::Sampled);
+  const TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
+                                                 kOffscreenTexWidth,
+                                                 kOffscreenTexHeight,
+                                                 TextureDesc::TextureUsageBits::Sampled);
   inputTexture_ = iglDev_->createTexture(texDesc, &ret);
   ASSERT_EQ(ret.code, Result::Code::Ok);
   ASSERT_TRUE(inputTexture_ != nullptr);
@@ -200,14 +200,14 @@ TEST_F(TextureTest, FBCopy) {
                                            TextureDesc::TextureUsageBits::Sampled);
   texDesc.debugName = "Texture: TextureTest::FBCopy::dstTexture";
   dstTexture = iglDev_->createTexture(texDesc, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
   ASSERT_TRUE(dstTexture != nullptr);
 
   //----------------
   // Create Pipeline
   //----------------
   pipelineState = iglDev_->createRenderPipeline(renderPipelineDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
   ASSERT_TRUE(pipelineState != nullptr);
 
   //---------------------------------
@@ -216,7 +216,7 @@ TEST_F(TextureTest, FBCopy) {
   renderPass_.colorAttachments[0].clearColor = {0.501f, 0.501f, 0.501f, 0.501f};
 
   cmdBuf_ = cmdQueue_->createCommandBuffer(cbDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
 
   auto cmds = cmdBuf_->createRenderCommandEncoder(renderPass_, framebuffer_);
   cmds->bindVertexBuffer(data::shader::simplePosIndex, *vb_);
@@ -249,7 +249,7 @@ TEST_F(TextureTest, FBCopy) {
   renderPass_.colorAttachments[0].clearColor = {0, 0, 0, 0};
 
   cmdBuf_ = cmdQueue_->createCommandBuffer(cbDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
 
   cmds = cmdBuf_->createRenderCommandEncoder(renderPass_, framebuffer_);
   cmds->bindVertexBuffer(data::shader::simplePosIndex, *vb_);
@@ -273,7 +273,7 @@ TEST_F(TextureTest, FBCopy) {
   // Copy dstTexture to FB so we can read it back
   //---------------------------------------------
   cmdBuf_ = cmdQueue_->createCommandBuffer(cbDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
 
   cmds = cmdBuf_->createRenderCommandEncoder(renderPass_, framebuffer_);
   cmds->bindVertexBuffer(data::shader::simplePosIndex, *vb_);

@@ -14,10 +14,10 @@
 #include <igl/metal/RenderCommandEncoder.h>
 #include <igl/metal/Texture.h>
 
-namespace igl {
-namespace metal {
+namespace igl::metal {
 
-CommandBuffer::CommandBuffer(id<MTLCommandBuffer> value) : value_(value) {}
+CommandBuffer::CommandBuffer(igl::metal::Device& device, id<MTLCommandBuffer> value) :
+  device_(device), value_(value) {}
 
 std::unique_ptr<IComputeCommandEncoder> CommandBuffer::createComputeCommandEncoder() {
   return std::make_unique<ComputeCommandEncoder>(value_);
@@ -25,13 +25,13 @@ std::unique_ptr<IComputeCommandEncoder> CommandBuffer::createComputeCommandEncod
 
 std::unique_ptr<IRenderCommandEncoder> CommandBuffer::createRenderCommandEncoder(
     const RenderPassDesc& renderPass,
-    std::shared_ptr<IFramebuffer> framebuffer,
+    const std::shared_ptr<IFramebuffer>& framebuffer,
     const Dependencies& /*dependencies*/,
     Result* outResult) {
   return RenderCommandEncoder::create(shared_from_this(), renderPass, framebuffer, outResult);
 }
 
-void CommandBuffer::present(std::shared_ptr<ITexture> surface) const {
+void CommandBuffer::present(const std::shared_ptr<ITexture>& surface) const {
   IGL_ASSERT(surface);
   if (!surface) {
     return;
@@ -59,5 +59,4 @@ void CommandBuffer::waitUntilCompleted() {
   [value_ waitUntilCompleted];
 }
 
-} // namespace metal
-} // namespace igl
+} // namespace igl::metal

@@ -10,11 +10,11 @@
 #include <igl/Common.h>
 #include <igl/Macros.h>
 
-#if IGL_PLATFORM_WIN || IGL_PLATFORM_ANDROID || IGL_PLATFORM_MACOS || IGL_PLATFORM_LINUX
+#if IGL_PLATFORM_WIN || IGL_PLATFORM_ANDROID || IGL_PLATFORM_MACOS || IGL_PLATFORM_IOS || \
+    IGL_PLATFORM_LINUX
 #include <igl/vulkan/HWDevice.h>
 #include <igl/vulkan/VulkanContext.h>
-#else
-#error "Unsupported testing platform"
+#include <igl/vulkan/VulkanFeatures.h>
 #endif
 
 #if IGL_PLATFORM_MACOS
@@ -59,12 +59,15 @@ std::shared_ptr<::igl::IDevice> createTestDevice(bool enableValidation) {
 
   auto ctx = igl::vulkan::HWDevice::createContext(config, nullptr);
 
-  std::vector<HWDeviceDesc> devices = igl::vulkan::HWDevice::queryDevices(
-      *ctx.get(), HWDeviceQueryDesc(HWDeviceType::Unknown), &ret);
+  std::vector<HWDeviceDesc> devices =
+      igl::vulkan::HWDevice::queryDevices(*ctx, HWDeviceQueryDesc(HWDeviceType::Unknown), &ret);
 
   if (ret.isOk()) {
     std::vector<const char*> extraDeviceExtensions;
     extraDeviceExtensions.emplace_back(VK_KHR_MULTIVIEW_EXTENSION_NAME);
+
+    igl::vulkan::VulkanFeatures features(VK_MAKE_VERSION(1, 1, 0), config);
+    features.populateWithAvailablePhysicalDeviceFeatures(*ctx, (VkPhysicalDevice)devices[0].guid);
 
     iglDev = igl::vulkan::HWDevice::create(std::move(ctx),
                                            devices[0],
@@ -72,6 +75,7 @@ std::shared_ptr<::igl::IDevice> createTestDevice(bool enableValidation) {
                                            0, // height,
                                            extraDeviceExtensions.size(),
                                            extraDeviceExtensions.data(),
+                                           &features,
                                            &ret);
 
     if (!ret.isOk()) {

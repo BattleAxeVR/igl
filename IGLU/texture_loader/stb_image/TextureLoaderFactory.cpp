@@ -51,7 +51,11 @@ class TextureLoader : public ITextureLoader {
   using Super = ITextureLoader;
 
  public:
-  explicit TextureLoader(DataReader reader, int width, int height, bool isFloatFormat) noexcept;
+  explicit TextureLoader(DataReader reader,
+                         int width,
+                         int height,
+                         bool isFloatFormat,
+                         igl::TextureFormat preferredFormat) noexcept;
 
   [[nodiscard]] bool canUploadSourceData() const noexcept final;
   [[nodiscard]] bool shouldGenerateMipmaps() const noexcept final;
@@ -62,11 +66,17 @@ class TextureLoader : public ITextureLoader {
   bool isFloatFormat_;
 };
 
-TextureLoader::TextureLoader(DataReader reader, int width, int height, bool isFloatFormat) noexcept
-  :
+TextureLoader::TextureLoader(DataReader reader,
+                             int width,
+                             int height,
+                             bool isFloatFormat,
+                             igl::TextureFormat preferredFormat) noexcept :
   Super(reader), isFloatFormat_(isFloatFormat) {
   auto& desc = mutableDescriptor();
-  desc.format = isFloatFormat ? igl::TextureFormat::RGBA_F32 : igl::TextureFormat::RGBA_UNorm8;
+  desc.format =
+      preferredFormat != igl::TextureFormat::Invalid
+          ? preferredFormat
+          : (isFloatFormat ? igl::TextureFormat::RGBA_F32 : igl::TextureFormat::RGBA_UNorm8);
   desc.numLayers = 1;
   desc.width = static_cast<size_t>(width);
   desc.height = static_cast<size_t>(height);
@@ -89,8 +99,8 @@ bool TextureLoader::shouldGenerateMipmaps() const noexcept {
 std::unique_ptr<IData> TextureLoader::loadInternal(
     igl::Result* IGL_NULLABLE outResult) const noexcept {
   const auto r = reader();
-  int length = r.length() > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max()
-                                                            : static_cast<int>(r.length());
+  const int length = r.length() > std::numeric_limits<int>::max() ? std::numeric_limits<int>::max()
+                                                                  : static_cast<int>(r.length());
 
   int x, y, comp;
   void* data = nullptr;
@@ -124,10 +134,11 @@ bool TextureLoaderFactory::canCreateInternal(DataReader headerReader,
 
 std::unique_ptr<ITextureLoader> TextureLoaderFactory::tryCreateInternal(
     DataReader reader,
+    igl::TextureFormat preferredFormat,
     igl::Result* IGL_NULLABLE outResult) const noexcept {
-  int length = reader.length() > std::numeric_limits<int>::max()
-                   ? std::numeric_limits<int>::max()
-                   : static_cast<int>(reader.length());
+  const int length = reader.length() > std::numeric_limits<int>::max()
+                         ? std::numeric_limits<int>::max()
+                         : static_cast<int>(reader.length());
 
   int x, y, comp;
   if (stbi_info_from_memory(reader.data(), length, &x, &y, &comp) == 0) {
@@ -146,7 +157,7 @@ std::unique_ptr<ITextureLoader> TextureLoaderFactory::tryCreateInternal(
     return nullptr;
   }
 
-  return std::make_unique<TextureLoader>(reader, x, y, isFloatFormat_);
+  return std::make_unique<TextureLoader>(reader, x, y, isFloatFormat_, preferredFormat);
 }
 
 } // namespace iglu::textureloader::stb::image

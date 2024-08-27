@@ -41,7 +41,7 @@
 #import <igl/vulkan/HWDevice.h>
 #import <igl/vulkan/VulkanContext.h>
 #endif
-#import <math.h>
+#import <cmath>
 #import <simd/simd.h>
 
 using namespace igl;
@@ -72,8 +72,9 @@ using namespace igl;
                   backendType:(igl::BackendType)backendType
           preferLatestVersion:(bool)preferLatestVersion {
   self = [super initWithNibName:nil bundle:nil];
-  if (!self)
+  if (!self) {
     return self;
+  }
 
   backendType_ = backendType;
   shellParams_ = igl::shell::ShellParams();
@@ -101,6 +102,9 @@ using namespace igl;
 }
 
 - (void)teardown {
+  if (session_) {
+    session_->teardown();
+  }
   session_ = nullptr;
   shellPlatform_ = nullptr;
 }
@@ -147,8 +151,9 @@ using namespace igl;
   }
   // draw
   session_->update(std::move(surfaceTextures));
-  if (session_->appParams().exitRequested)
+  if (session_->appParams().exitRequested) {
     [[NSApplication sharedApplication] terminate:nil];
+  }
 }
 
 - (void)loadView {
@@ -310,6 +315,8 @@ using namespace igl;
     igl::vulkan::VulkanContextConfig vulkanContextConfig;
     vulkanContextConfig.terminateOnValidationError = true;
     vulkanContextConfig.enhancedShaderDebugging = false;
+    vulkanContextConfig.enableBufferDeviceAddress = true;
+
     // Disables OS Level Color Management to achieve parity with OpenGL
     vulkanContextConfig.swapChainColorSpace = igl::ColorSpace::PASS_THROUGH;
     vulkanContextConfig.requestedSwapChainTextureFormat =
@@ -318,10 +325,10 @@ using namespace igl;
     auto context =
         igl::vulkan::HWDevice::createContext(vulkanContextConfig, (__bridge void*)vulkanView);
     auto devices = igl::vulkan::HWDevice::queryDevices(
-        *context.get(), igl::HWDeviceQueryDesc(igl::HWDeviceType::DiscreteGpu), nullptr);
+        *context, igl::HWDeviceQueryDesc(igl::HWDeviceType::DiscreteGpu), nullptr);
     if (devices.empty()) {
       devices = igl::vulkan::HWDevice::queryDevices(
-          *context.get(), igl::HWDeviceQueryDesc(igl::HWDeviceType::IntegratedGpu), nullptr);
+          *context, igl::HWDeviceQueryDesc(igl::HWDeviceType::IntegratedGpu), nullptr);
     }
     auto device = igl::vulkan::HWDevice::create(std::move(context), devices[0], 0, 0);
 
@@ -408,7 +415,7 @@ using namespace igl;
 #if IGL_BACKEND_METAL
   case igl::BackendType::Metal: {
     auto& device = shellPlatform_->getDevice();
-    auto platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
+    auto* platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
     IGL_ASSERT(platformDevice);
     IGL_ASSERT(currentDrawable_ != nil);
     auto texture = platformDevice->createTextureFromNativeDrawable(currentDrawable_, nullptr);
@@ -419,7 +426,7 @@ using namespace igl;
 #if IGL_BACKEND_OPENGL
   case igl::BackendType::OpenGL: {
     auto& device = shellPlatform_->getDevice();
-    auto platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
+    auto* platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
     IGL_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDrawable(nullptr);
     return texture;
@@ -429,7 +436,7 @@ using namespace igl;
 #if IGL_BACKEND_VULKAN
   case igl::BackendType::Vulkan: {
     auto& device = shellPlatform_->getDevice();
-    auto platformDevice = device.getPlatformDevice<igl::vulkan::PlatformDevice>();
+    auto* platformDevice = device.getPlatformDevice<igl::vulkan::PlatformDevice>();
     IGL_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDrawable(nullptr);
     return texture;
@@ -458,7 +465,7 @@ using namespace igl;
 #if IGL_BACKEND_METAL
   case igl::BackendType::Metal: {
     auto& device = shellPlatform_->getDevice();
-    auto platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
+    auto* platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
     IGL_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDepth(depthStencilTexture_, nullptr);
     return texture;
@@ -468,7 +475,7 @@ using namespace igl;
 #if IGL_BACKEND_OPENGL
   case igl::BackendType::OpenGL: {
     auto& device = shellPlatform_->getDevice();
-    auto platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
+    auto* platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
     IGL_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDepth(nullptr);
     return texture;
@@ -479,7 +486,7 @@ using namespace igl;
   case igl::BackendType::Vulkan: {
     auto& device = static_cast<igl::vulkan::Device&>(shellPlatform_->getDevice());
     auto extents = device.getVulkanContext().getSwapchainExtent();
-    auto platformDevice =
+    auto* platformDevice =
         shellPlatform_->getDevice().getPlatformDevice<igl::vulkan::PlatformDevice>();
 
     IGL_ASSERT(platformDevice);

@@ -7,6 +7,9 @@
 
 #pragma once
 
+#ifndef IGL_VULKAN_COMMON_H
+#define IGL_VULKAN_COMMON_H
+
 #include <cassert>
 
 // set to 1 to see very verbose debug console logs with Vulkan commands
@@ -61,7 +64,7 @@
   {                                                         \
     const VkResult vk_assert_result = func;                 \
     if (vk_assert_result != VK_SUCCESS) {                   \
-      IGLLog(IGLLogLevel::LOG_ERROR,                        \
+      IGLLog(IGLLogError,                                   \
              "Vulkan API call failed: %s:%i\n  %s\n  %s\n", \
              __FILE__,                                      \
              __LINE__,                                      \
@@ -105,6 +108,50 @@ namespace igl::vulkan {
 #define kColorUploadImage igl::Color(1.f, 0.2f, 0.78f)
 #define kColorDebugLines igl::Color(0.f, 1.f, 1.f)
 
+// The VulkanContextConfig provides a way to override some of the the default behaviors of the
+// VulkanContext
+struct VulkanContextConfig {
+  bool terminateOnValidationError = false; // invoke std::terminate() on any validation error
+
+  // enable/disable enhanced shader debugging capabilities (line drawing)
+  bool enhancedShaderDebugging = false;
+
+  bool enableConcurrentVkDevicesSupport = false;
+
+  bool enableValidation = true;
+  bool enableGPUAssistedValidation = true;
+  bool enableSynchronizationValidation = false;
+  bool enableBufferDeviceAddress = false;
+  bool enableExtraLogs = true;
+  bool enableDescriptorIndexing = false;
+  // @fb-only
+
+  igl::ColorSpace swapChainColorSpace = igl::ColorSpace::SRGB_NONLINEAR;
+  igl::TextureFormat requestedSwapChainTextureFormat = igl::TextureFormat::RGBA_UNorm8;
+
+  std::vector<CommandQueueType> userQueues;
+
+  uint32_t maxResourceCount = 3u;
+
+  // owned by the application - should be alive until initContext() returns
+  const void* pipelineCacheData = nullptr;
+  size_t pipelineCacheDataSize = 0;
+
+  // This enables fences generated at the end of submission to be exported to the client.
+  // The client can then use the SubmitHandle to wait for the completion of the GPU work.
+  bool exportableFences = false;
+
+  // Size for VulkanMemoryAllocator's default pool block size parameter.
+  // Only relevant if VMA is used for memory allocation.
+  // Passing 0 will prompt VMA to a large default value (currently 256 MB).
+  // Using a smaller heap size would increase the chance of memory deallocation and result in less
+  // memory wastage.
+  size_t vmaPreferredLargeHeapBlockSize = 0;
+
+  // Specifies a default fence timeout value.
+  uint64_t fenceTimeoutNanoseconds = UINT64_MAX;
+};
+
 // The functions below are convenience functions used to convert to and from Vulkan values to IGL
 // values
 
@@ -114,11 +161,13 @@ VkFormat textureFormatToVkFormat(igl::TextureFormat format);
 igl::TextureFormat vkFormatToTextureFormat(VkFormat format);
 igl::ColorSpace vkColorSpaceToColorSpace(VkColorSpaceKHR colorSpace);
 VkFormat invertRedAndBlue(VkFormat format);
-bool isTextureFormatRGB(const VkFormat& textureFormat);
-bool isTextureFormatBGR(const VkFormat& textureFormat);
+bool isTextureFormatRGB(VkFormat format);
+bool isTextureFormatBGR(VkFormat format);
+uint32_t getNumImagePlanes(VkFormat format);
 VkColorSpaceKHR colorSpaceToVkColorSpace(igl::ColorSpace colorSpace);
 VkMemoryPropertyFlags resourceStorageToVkMemoryPropertyFlags(igl::ResourceStorage resourceStorage);
 VkCompareOp compareFunctionToVkCompareOp(igl::CompareFunction func);
+VkStencilOp stencilOperationToVkStencilOp(igl::StencilOperation op);
 VkSampleCountFlagBits getVulkanSampleCountFlags(size_t numSamples);
 VkSurfaceFormatKHR colorSpaceToVkSurfaceFormat(igl::ColorSpace colorSpace, bool isBGR);
 uint32_t getVkLayer(igl::TextureType type, uint32_t face, uint32_t layer);
@@ -146,3 +195,13 @@ void overrideImageLayout(ITexture* texture, VkImageLayout layout);
 void ensureShaderModule(IShaderModule* sm);
 
 } // namespace igl::vulkan
+
+namespace igl::vulkan::functions {
+
+void initialize(VulkanFunctionTable& table);
+void loadInstanceFunctions(VulkanFunctionTable& table, VkInstance instance);
+void loadDeviceFunctions(VulkanFunctionTable& table, VkDevice device);
+
+} // namespace igl::vulkan::functions
+
+#endif // IGL_VULKAN_COMMON_H

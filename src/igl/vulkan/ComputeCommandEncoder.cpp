@@ -17,14 +17,13 @@
 #include <igl/vulkan/VulkanPipelineLayout.h>
 #include <igl/vulkan/VulkanTexture.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 ComputeCommandEncoder::ComputeCommandEncoder(const std::shared_ptr<CommandBuffer>& commandBuffer,
                                              VulkanContext& ctx) :
   ctx_(ctx),
   cmdBuffer_(commandBuffer ? commandBuffer->getVkCommandBuffer() : VK_NULL_HANDLE),
-  binder_(commandBuffer, ctx_, VK_PIPELINE_BIND_POINT_COMPUTE) {
+  binder_(commandBuffer.get(), ctx_, VK_PIPELINE_BIND_POINT_COMPUTE) {
   IGL_PROFILER_FUNCTION();
 
   IGL_ASSERT(commandBuffer);
@@ -169,7 +168,7 @@ void ComputeCommandEncoder::bindUniform(const UniformDesc& /*uniformDesc*/, cons
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-void ComputeCommandEncoder::bindTexture(size_t index, ITexture* texture) {
+void ComputeCommandEncoder::bindTexture(uint32_t index, ITexture* texture) {
   IGL_PROFILER_FUNCTION();
 
   IGL_ASSERT(texture);
@@ -185,8 +184,8 @@ void ComputeCommandEncoder::bindTexture(size_t index, ITexture* texture) {
   binder_.bindTexture(index, static_cast<igl::vulkan::Texture*>(texture));
 }
 
-void ComputeCommandEncoder::bindBuffer(size_t index,
-                                       const std::shared_ptr<IBuffer>& buffer,
+void ComputeCommandEncoder::bindBuffer(uint32_t index,
+                                       IBuffer* buffer,
                                        size_t offset,
                                        size_t bufferSize) {
   IGL_PROFILER_FUNCTION();
@@ -195,7 +194,7 @@ void ComputeCommandEncoder::bindBuffer(size_t index,
     return;
   }
 
-  auto* buf = static_cast<igl::vulkan::Buffer*>(buffer.get());
+  auto* buf = static_cast<igl::vulkan::Buffer*>(buffer);
 
   const bool isStorageBuffer = (buf->getBufferType() & BufferDesc::BufferTypeBits::Storage) != 0;
 
@@ -206,7 +205,7 @@ void ComputeCommandEncoder::bindBuffer(size_t index,
     return;
   }
 
-  binder_.bindStorageBuffer((int)index, buf, offset, bufferSize);
+  binder_.bindBuffer(index, buf, offset, bufferSize);
 }
 
 void ComputeCommandEncoder::bindBytes(size_t /*index*/, const void* /*data*/, size_t /*length*/) {
@@ -235,5 +234,4 @@ void ComputeCommandEncoder::bindPushConstants(const void* data, size_t length, s
                               data);
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

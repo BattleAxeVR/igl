@@ -26,8 +26,7 @@
 #include <igl/opengl/UniformBuffer.h>
 #include <igl/opengl/VertexInputState.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
 namespace {
 std::unique_ptr<Buffer> allocateBuffer(BufferDesc::BufferType bufferType,
@@ -305,7 +304,7 @@ void Device::beginScope() {
 void Device::endScope() {
   if (cachedUnbindPolicy_ == UnbindPolicy::EndScope) {
     // Ensure state on exit is consistent, for any external rendering that happens later.
-    context_->colorMask(true, true, true, true);
+    context_->colorMask(1u, 1u, 1u, 1u);
     context_->blendFunc(GL_ONE, GL_ZERO);
     context_->bindBuffer(GL_ARRAY_BUFFER, 0);
     context_->bindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -332,5 +331,58 @@ size_t Device::getCurrentDrawCount() const {
   return context_->getCurrentDrawCount();
 }
 
-} // namespace opengl
-} // namespace igl
+Holder<igl::BindGroupTextureHandle> Device::createBindGroup(
+    const BindGroupTextureDesc& desc,
+    const IRenderPipelineState* IGL_NULLABLE /*compatiblePipeline*/,
+    Result* IGL_NULLABLE outResult) {
+  IGL_ASSERT(context_);
+  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+
+  BindGroupTextureDesc description(desc);
+
+  const auto handle = context_->bindGroupTexturesPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return {this, handle};
+}
+
+Holder<igl::BindGroupBufferHandle> Device::createBindGroup(const BindGroupBufferDesc& desc,
+                                                           Result* IGL_NULLABLE outResult) {
+  IGL_ASSERT(context_);
+  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+
+  BindGroupBufferDesc description(desc);
+
+  const auto handle = context_->bindGroupBuffersPool_.create(std::move(description));
+
+  Result::setResult(outResult,
+                    handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
+                                   : Result());
+
+  return {this, handle};
+}
+
+void Device::destroy(igl::BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  IGL_ASSERT(context_);
+
+  context_->bindGroupTexturesPool_.destroy(handle);
+}
+
+void Device::destroy(igl::BindGroupBufferHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  IGL_ASSERT(context_);
+
+  context_->bindGroupBuffersPool_.destroy(handle);
+}
+
+} // namespace igl::opengl

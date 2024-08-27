@@ -13,10 +13,13 @@
 
 namespace igl {
 
-class IDevice;
-class ITexture;
-class IBuffer;
 class ICommandBuffer;
+class IDevice;
+
+class IBuffer;
+class IRenderPipelineState;
+class ISamplerState;
+class ITexture;
 
 /**
  * Dependencies are used to issue proper memory barriers for external resources, such as textures
@@ -35,19 +38,26 @@ struct Dependencies {
 /**
  * A BindGroup represents a set of resources bound to a command encoder.
  * It is a replacement of the old OpenGL-style binding model where individual resources are bound
- * using multiple calls to bindTexture(...) and bindBuffer(...).
+ * using multiple calls to bindTexture(...), bindSamplerState(), and bindBuffer(...).
  */
-struct BindGroupDesc {
+struct BindGroupTextureDesc {
   std::shared_ptr<ITexture> textures[IGL_TEXTURE_SAMPLERS_MAX] = {};
-  std::shared_ptr<IBuffer> buffersUniform[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
-  std::shared_ptr<IBuffer> buffersStorage[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
+  std::shared_ptr<ISamplerState> samplers[IGL_TEXTURE_SAMPLERS_MAX] = {};
+  std::string debugName;
+};
+struct BindGroupBufferDesc {
+  std::shared_ptr<IBuffer> buffers[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
+  size_t offset[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
+  size_t size[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {}; // 0 means the remaining size from `offset` to
+                                                    // the end of the buffer
+  uint32_t isDynamicBufferMask = 0; // one bit per each buffer
   std::string debugName;
 };
 
 class ICommandEncoder {
  public:
-  ICommandEncoder(std::shared_ptr<ICommandBuffer> commandBuffer) :
-    commandBuffer_(std::move(commandBuffer)) {}
+  explicit ICommandEncoder(const std::shared_ptr<ICommandBuffer>& commandBuffer) :
+    commandBuffer_(commandBuffer) {}
 
   virtual ~ICommandEncoder() = default;
 
@@ -92,7 +102,7 @@ class ICommandEncoder {
     return *commandBuffer_;
   }
 
-  std::shared_ptr<ICommandBuffer> getCommandBufferPtr() {
+  [[nodiscard]] const std::shared_ptr<ICommandBuffer>& getCommandBufferPtr() const {
     IGL_ASSERT(commandBuffer_);
     return commandBuffer_;
   }

@@ -46,7 +46,7 @@ Result checkFramebufferStatus(IContext& context, bool read) {
     framebufferTarget = read ? GL_READ_FRAMEBUFFER : GL_DRAW_FRAMEBUFFER;
   }
   // check that we've created a proper frame buffer
-  GLenum status = context.checkFramebufferStatus(framebufferTarget);
+  const GLenum status = context.checkFramebufferStatus(framebufferTarget);
   if (status != GL_FRAMEBUFFER_COMPLETE) {
     code = Result::Code::RuntimeError;
 
@@ -217,7 +217,7 @@ void Framebuffer::copyBytesColorAttachment(ICommandQueue& /* unused */,
     return;
   }
 
-  FramebufferBindingGuard const guard(getContext());
+  const FramebufferBindingGuard guard(getContext());
 
   CustomFramebuffer extraFramebuffer(getContext());
 
@@ -373,7 +373,7 @@ void Framebuffer::copyTextureColorAttachment(ICommandQueue& /*cmdQueue*/,
     return;
   }
 
-  FramebufferBindingGuard guard(getContext());
+  const FramebufferBindingGuard guard(getContext());
 
   bindBufferForRead();
 
@@ -480,7 +480,7 @@ void CustomFramebuffer::updateDrawableInternal(SurfaceTextures surfaceTextures,
   updateDepthStencil = updateDepthStencil && (depthAttachment != surfaceTextures.depth ||
                                               stencilAttachment != surfaceTextures.depth);
   if (updateColor || updateDepthStencil) {
-    FramebufferBindingGuard guard(getContext());
+    const FramebufferBindingGuard guard(getContext());
     bindBuffer();
     if (updateColor) {
       if (!surfaceTextures.color) {
@@ -510,6 +510,11 @@ void CustomFramebuffer::updateDrawableInternal(SurfaceTextures surfaceTextures,
         if (surfaceTextures.depth->getProperties().hasStencil()) {
           attachAsStencil(*surfaceTextures.depth, defaultWriteAttachmentParams(renderTarget_.mode));
           renderTarget_.stencilAttachment.texture = surfaceTextures.depth;
+        } else {
+          if (stencilAttachment) {
+            static_cast<Texture&>(*stencilAttachment).detachAsStencil(false);
+          }
+          renderTarget_.stencilAttachment.texture = nullptr;
         }
         renderTarget_.depthAttachment.texture = std::move(surfaceTextures.depth);
       }
@@ -542,21 +547,16 @@ void CustomFramebuffer::initialize(const FramebufferDesc& desc, Result* outResul
   renderTarget_ = desc;
 
   // Restore framebuffer binding
-  FramebufferBindingGuard guard(getContext());
-  if (!desc.debugName.empty() &&
-      getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugLabel)) {
-    getContext().objectLabel(
-        GL_FRAMEBUFFER, frameBufferID_, desc.debugName.size(), desc.debugName.c_str());
-  }
+  const FramebufferBindingGuard guard(getContext());
   if (hasImplicitColorAttachment()) {
     // Don't generate framebuffer id. Use implicit framebuffer supplied by containing view
     Result::setOk(outResult);
   } else {
-    prepareResource(outResult);
+    prepareResource(desc.debugName, outResult);
   }
 }
 
-void CustomFramebuffer::prepareResource(Result* outResult) {
+void CustomFramebuffer::prepareResource(const std::string& debugName, Result* outResult) {
   // create a new frame buffer if we don't already have one
   getContext().genFramebuffers(1, &frameBufferID_);
   if (IGL_UNEXPECTED(frameBufferID_ == 0)) {
@@ -565,6 +565,11 @@ void CustomFramebuffer::prepareResource(Result* outResult) {
   }
 
   bindBuffer();
+
+  if (!debugName.empty() &&
+      getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugLabel)) {
+    getContext().objectLabel(GL_FRAMEBUFFER, frameBufferID_, debugName.size(), debugName.c_str());
+  }
 
   std::vector<GLenum> drawBuffers;
 
@@ -779,7 +784,7 @@ void CustomFramebuffer::unbind() const {
   }
 
   if (numAttachments > 0) {
-    auto& features = getContext().deviceFeatures();
+    const auto& features = getContext().deviceFeatures();
     if (features.hasInternalFeature(InternalFeatures::InvalidateFramebuffer)) {
       getContext().invalidateFramebuffer(GL_FRAMEBUFFER, numAttachments, attachments);
     }

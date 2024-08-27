@@ -15,8 +15,7 @@
 #include <igl/vulkan/VulkanHelpers.h>
 #include <igl/vulkan/VulkanSemaphore.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 /// @brief This class provides a simplified interface for obtaining and submitting Command Buffers,
 /// while providing features to help manage their synchronization.
@@ -66,14 +65,21 @@ class VulkanImmediateCommands final {
 
     /// @brief Checks whether the structure is empty and has not been associates with a command
     /// buffer submission yet
-    bool empty() const {
+    [[nodiscard]] bool empty() const {
       return submitId_ == 0;
     }
 
     /// @brief Returns a unique identifiable handle, which is made of the `submitId_` and the
     /// `bufferIndex_` member variables
-    uint64_t handle() const {
+    [[nodiscard]] uint64_t handle() const {
       return (uint64_t(submitId_) << 32) + bufferIndex_;
+    }
+
+    [[nodiscard]] bool operator==(const SubmitHandle& rhs) const {
+      return bufferIndex_ == rhs.bufferIndex_ && submitId_ == rhs.submitId_;
+    }
+    [[nodiscard]] bool operator!=(const SubmitHandle& rhs) const {
+      return !(*this == rhs);
     }
   };
 
@@ -127,7 +133,7 @@ class VulkanImmediateCommands final {
   VkSemaphore acquireLastSubmitSemaphore();
 
   /// @brief Returns the last SubmitHandle, which was submitted when `submit()` was last called
-  SubmitHandle getLastSubmitHandle() const;
+  [[nodiscard]] SubmitHandle getLastSubmitHandle() const;
 
   /// @brief Checks whether the SubmitHandle is recycled. A recycled SubmitHandle is a handle that
   /// has a submit id greater than the submit id associated with the same command buffer stored
@@ -143,9 +149,9 @@ class VulkanImmediateCommands final {
   [[nodiscard]] bool isReady(SubmitHandle handle) const;
 
   /// @brief If the SubmitHandle is not ready, this function waits for the fence associated with the
-  /// command buffer referred by the handle to become signaled. The maximum wait time is
-  /// `UINT64_MAX` nanoseconds
-  void wait(SubmitHandle handle, uint64_t timeoutNanoseconds = UINT64_MAX);
+  /// command buffer referred by the handle to become signaled. The default wait time is
+  /// `UINT64_MAX` nanoseconds. Returns a result code if the wait was successful or not.
+  VkResult wait(SubmitHandle handle, uint64_t timeoutNanoseconds = UINT64_MAX);
 
   /// @brief Wait for _all_ fences for all command buffers stored in `VulkanImmediateCommands` to
   /// become signaled. The maximum wait time is `UINT64_MAX` nanoseconds
@@ -184,5 +190,4 @@ class VulkanImmediateCommands final {
   uint32_t submitCounter_ = 1;
 };
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

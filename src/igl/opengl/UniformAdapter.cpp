@@ -9,8 +9,7 @@
 #include <igl/opengl/UniformAdapter.h>
 #include <igl/opengl/UniformBuffer.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
 UniformAdapter::UniformAdapter(const IContext& context, PipelineType type) : pipelineType_(type) {
   const auto& deviceFeatures = context.deviceFeatures();
@@ -127,15 +126,16 @@ void UniformAdapter::setUniform(const UniformDesc& uniformDesc,
   Result::setOk(outResult);
 }
 
-void UniformAdapter::setUniformBuffer(const std::shared_ptr<IBuffer>& buffer,
+void UniformAdapter::setUniformBuffer(IBuffer* buffer,
                                       size_t offset,
-                                      int bindingIndex,
+                                      uint32_t bindingIndex,
                                       Result* outResult) {
-  IGL_ASSERT_MSG(bindingIndex >= 0, "invalid bindingIndex passed to setUniformBuffer");
   IGL_ASSERT_MSG(bindingIndex <= IGL_UNIFORM_BLOCKS_BINDING_MAX,
-                 "Uniform buffer index is beyond max");
+                 "Uniform buffer index %u is beyond max %u",
+                 bindingIndex,
+                 IGL_UNIFORM_BLOCKS_BINDING_MAX);
   IGL_ASSERT_MSG(buffer, "invalid buffer passed to setUniformBuffer");
-  if (bindingIndex >= 0 && bindingIndex < IGL_UNIFORM_BLOCKS_BINDING_MAX && buffer) {
+  if (bindingIndex < IGL_UNIFORM_BLOCKS_BINDING_MAX && buffer) {
     uniformBufferBindingMap_[bindingIndex] = {buffer, offset};
     uniformBuffersDirtyMask_ |= 1 << bindingIndex;
     Result::setOk(outResult);
@@ -150,7 +150,7 @@ void UniformAdapter::bindToPipeline(IContext& context) {
     const auto& uniformDesc = uniform.desc;
     IGL_ASSERT(uniformDesc.location >= 0);
     IGL_ASSERT_MSG(uniformData_.data(), "Uniform data must be non-null");
-    auto start = uniformData_.data() + uniform.dataOffset;
+    auto* start = uniformData_.data() + uniform.dataOffset;
     if (uniformDesc.numElements > 1 || uniformDesc.type == UniformType::Mat3x3) {
       IGL_ASSERT_MSG(uniformDesc.elementStride > 0,
                      "stride has to be larger than 0 for uniform at offset %zu",
@@ -174,7 +174,7 @@ void UniformAdapter::bindToPipeline(IContext& context) {
   for (size_t bindingIndex = 0; bindingIndex < IGL_UNIFORM_BLOCKS_BINDING_MAX; ++bindingIndex) {
     if (uniformBuffersDirtyMask_ & (1 << bindingIndex)) {
       auto uniformBinding = uniformBufferBindingMap_.at(bindingIndex);
-      auto* bufferState = static_cast<UniformBlockBuffer*>(uniformBinding.first.get());
+      auto* bufferState = static_cast<UniformBlockBuffer*>(uniformBinding.first);
       IGL_ASSERT(bufferState);
       if (uniformBinding.second) {
         bufferState->bindRange(bindingIndex, uniformBinding.second, nullptr);
@@ -186,5 +186,4 @@ void UniformAdapter::bindToPipeline(IContext& context) {
   uniformBuffersDirtyMask_ = 0;
 }
 
-} // namespace opengl
-} // namespace igl
+} // namespace igl::opengl

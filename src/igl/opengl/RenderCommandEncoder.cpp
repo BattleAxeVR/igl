@@ -22,8 +22,7 @@
 #include <igl/opengl/UniformAdapter.h>
 #include <igl/opengl/VertexInputState.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
 namespace {
 GLenum toGlPrimitive(PrimitiveType t) {
@@ -59,23 +58,22 @@ int toGlType(IndexFormat format) {
 
 } // namespace
 
-RenderCommandEncoder::RenderCommandEncoder(std::shared_ptr<CommandBuffer> commandBuffer) :
-  IRenderCommandEncoder(std::move(commandBuffer)),
+RenderCommandEncoder::RenderCommandEncoder(const std::shared_ptr<CommandBuffer>& commandBuffer) :
+  IRenderCommandEncoder(commandBuffer),
   WithContext(static_cast<CommandBuffer&>(getCommandBuffer()).getContext()) {}
 
 std::unique_ptr<RenderCommandEncoder> RenderCommandEncoder::create(
-    std::shared_ptr<CommandBuffer> commandBuffer,
+    const std::shared_ptr<CommandBuffer>& commandBuffer,
     const RenderPassDesc& renderPass,
     const std::shared_ptr<IFramebuffer>& framebuffer,
-    const Dependencies& dependencies,
+    const Dependencies& /*dependencies*/,
     Result* outResult) {
   if (!commandBuffer) {
     Result::setResult(outResult, Result::Code::ArgumentNull, "commandBuffer was null");
     return {};
   }
 
-  std::unique_ptr<RenderCommandEncoder> newEncoder(
-      new RenderCommandEncoder(std::move(commandBuffer)));
+  std::unique_ptr<RenderCommandEncoder> newEncoder(new RenderCommandEncoder(commandBuffer));
   newEncoder->beginEncoding(renderPass, framebuffer, outResult);
   return newEncoder;
 }
@@ -88,7 +86,7 @@ void RenderCommandEncoder::beginEncoding(const RenderPassDesc& renderPass,
   // Save caller state
   auto& context = getContext();
 
-  scissorEnabled_ = context.isEnabled(GL_SCISSOR_TEST);
+  scissorEnabled_ = (context.isEnabled(GL_SCISSOR_TEST) != 0u);
   context.disable(GL_SCISSOR_TEST); // only turn on if bindScissorRect is called
 
   auto& pool = context.getAdapterPool();
@@ -194,8 +192,7 @@ void RenderCommandEncoder::pushDebugGroupLabel(const char* label,
   IGL_ASSERT(adapter_);
   IGL_ASSERT(label != nullptr && *label);
   if (getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugMessage)) {
-    std::string_view labelSV(label);
-    getContext().pushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, labelSV.length(), labelSV.data());
+    getContext().pushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, label);
   } else {
     IGL_LOG_ERROR_ONCE(
         "RenderCommandEncoder::pushDebugGroupLabel not supported in this context!\n");
@@ -207,13 +204,8 @@ void RenderCommandEncoder::insertDebugEventLabel(const char* label,
   IGL_ASSERT(adapter_);
   IGL_ASSERT(label != nullptr && *label);
   if (getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugMessage)) {
-    std::string_view labelSV(label);
-    getContext().debugMessageInsert(GL_DEBUG_SOURCE_APPLICATION,
-                                    GL_DEBUG_TYPE_MARKER,
-                                    0,
-                                    GL_DEBUG_SEVERITY_LOW,
-                                    labelSV.length(),
-                                    labelSV.data());
+    getContext().debugMessageInsert(
+        GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0, GL_DEBUG_SEVERITY_LOW, -1, label);
   } else {
     IGL_LOG_ERROR_ONCE(
         "RenderCommandEncoder::insertDebugEventLabel not supported in this context!\n");
@@ -265,16 +257,14 @@ void RenderCommandEncoder::bindUniform(const UniformDesc& uniformDesc, const voi
   }
 }
 
-void RenderCommandEncoder::bindBuffer(int index,
-                                      const std::shared_ptr<IBuffer>& buffer,
+void RenderCommandEncoder::bindBuffer(uint32_t index,
+                                      IBuffer* buffer,
                                       size_t offset,
                                       size_t bufferSize) {
   (void)bufferSize;
 
-  IGL_ASSERT_MSG(index >= 0, "Invalid index passed to bindBuffer: %d", index);
-
   if (IGL_VERIFY(adapter_) && buffer) {
-    auto glBuffer = std::static_pointer_cast<Buffer>(buffer);
+    auto* glBuffer = static_cast<Buffer*>(buffer);
     auto bufferType = glBuffer->getType();
 
     if (bufferType == Buffer::Type::Uniform) {
@@ -434,12 +424,6 @@ void RenderCommandEncoder::setStencilReferenceValue(uint32_t value) {
   }
 }
 
-void RenderCommandEncoder::setStencilReferenceValues(uint32_t frontValue, uint32_t backValue) {
-  if (IGL_VERIFY(adapter_)) {
-    adapter_->setStencilReferenceValues(frontValue, backValue);
-  }
-}
-
 void RenderCommandEncoder::setBlendColor(Color color) {
   if (IGL_VERIFY(adapter_)) {
     adapter_->setBlendColor(color);
@@ -452,5 +436,49 @@ void RenderCommandEncoder::setDepthBias(float depthBias, float slopeScale, float
   }
 }
 
-} // namespace opengl
-} // namespace igl
+void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  const BindGroupTextureDesc* desc = getContext().bindGroupTexturesPool_.get(handle);
+
+  for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
+    if (desc->textures[i]) {
+      IGL_ASSERT(desc->samplers[i]);
+      bindTexture(i, BindTarget::kAllGraphics, desc->textures[i].get());
+      bindSamplerState(i, BindTarget::kAllGraphics, desc->samplers[i].get());
+    }
+  }
+}
+
+void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
+                                         uint32_t numDynamicOffsets,
+                                         const uint32_t* dynamicOffsets) {
+  if (handle.empty()) {
+    return;
+  }
+
+  const BindGroupBufferDesc* desc = getContext().bindGroupBuffersPool_.get(handle);
+
+  uint32_t dynamicOffset = 0;
+
+  for (uint32_t i = 0; i != IGL_UNIFORM_BLOCKS_BINDING_MAX; i++) {
+    if (desc->buffers[i]) {
+      if (desc->isDynamicBufferMask & (1 << i)) {
+        IGL_ASSERT_MSG(dynamicOffsets, "No dynamic offsets provided");
+        IGL_ASSERT_MSG(dynamicOffset < numDynamicOffsets, "Not enough dynamic offsets provided");
+        bindBuffer(i,
+                   desc->buffers[i].get(),
+                   desc->offset[i] + dynamicOffsets[dynamicOffset++],
+                   desc->size[i]);
+      } else {
+        bindBuffer(i, desc->buffers[i].get(), desc->offset[i], desc->size[i]);
+      }
+    }
+  }
+
+  IGL_ASSERT_MSG(dynamicOffset == numDynamicOffsets, "Not all dynamic offsets were consumed");
+}
+
+} // namespace igl::opengl

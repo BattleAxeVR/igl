@@ -132,6 +132,8 @@ GLFWwindow* initWindow() {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+    vulkanShellPlatform_->getInputDispatcher().queueEvent(
+        igl::shell::KeyEvent(action == GLFW_PRESS, key));
   });
 
   return windowHandle;
@@ -139,6 +141,7 @@ GLFWwindow* initWindow() {
 
 std::shared_ptr<igl::shell::PlatformWin> createPlatform(GLFWwindow* window) {
   igl::vulkan::VulkanContextConfig cfg = igl::vulkan::VulkanContextConfig();
+  cfg.requestedSwapChainTextureFormat = shellParams_.defaultColorFramebufferFormat;
 #if defined(_MSC_VER) && !IGL_DEBUG
   cfg.enableValidation = false;
 #endif

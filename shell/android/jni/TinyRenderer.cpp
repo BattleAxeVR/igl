@@ -40,7 +40,7 @@ void TinyRenderer::init(AAssetManager* mgr,
                         BackendTypeID backendTypeID) {
   backendTypeID_ = backendTypeID;
   Result result;
-  igl::HWDeviceQueryDesc queryDesc(HWDeviceType::IntegratedGpu);
+  const igl::HWDeviceQueryDesc queryDesc(HWDeviceType::IntegratedGpu);
   std::unique_ptr<IDevice> d;
 
   switch (backendTypeID_) {
@@ -67,7 +67,7 @@ void TinyRenderer::init(AAssetManager* mgr,
     auto ctx = vulkan::HWDevice::createContext(config, nativeWindow);
 
     auto devices = vulkan::HWDevice::queryDevices(
-        *ctx.get(), HWDeviceQueryDesc(HWDeviceType::IntegratedGpu), &result);
+        *ctx, HWDeviceQueryDesc(HWDeviceType::IntegratedGpu), &result);
 
     IGL_ASSERT(result.isOk());
     width_ = static_cast<uint32_t>(ANativeWindow_getWidth(nativeWindow));
@@ -77,6 +77,7 @@ void TinyRenderer::init(AAssetManager* mgr,
                                  width_, // width
                                  height_, // height,,
                                  0,
+                                 nullptr,
                                  nullptr,
                                  &result);
     break;
@@ -104,7 +105,29 @@ void TinyRenderer::init(AAssetManager* mgr,
   }
 }
 
+void TinyRenderer::recreateSwapchain(ANativeWindow* nativeWindow) {
+#if IGL_BACKEND_VULKAN
+  width_ = static_cast<uint32_t>(ANativeWindow_getWidth(nativeWindow));
+  height_ = static_cast<uint32_t>(ANativeWindow_getHeight(nativeWindow));
+
+  auto* platform_device = platform_->getDevice().getPlatformDevice<igl::vulkan::PlatformDevice>();
+  // need clear the cached textures before recreate swap chain.
+  platform_device->clear();
+
+  auto& vulkan_device = static_cast<igl::vulkan::Device&>(platform_->getDevice());
+  auto& vk_context = vulkan_device.getVulkanContext();
+
+  vk_context.createSurface(nativeWindow, nullptr);
+  vk_context.initSwapchain(width_, height_);
+
+  // need release frame buffer when recreate swap chain
+  session_->releaseFramebuffer();
+#endif
+}
+
 void TinyRenderer::render(float displayScale) {
+  igl::DeviceScope const scope(platform_->getDevice());
+
   // process user input
   IGL_ASSERT(platform_ != nullptr);
   platform_->getInputDispatcher().processEvents();
@@ -119,7 +142,8 @@ void TinyRenderer::render(float displayScale) {
   case BackendTypeID::GLES3: {
     auto* platformDevice = platform_->getDevice().getPlatformDevice<opengl::egl::PlatformDevice>();
     surfaceTextures.color = platformDevice->createTextureFromNativeDrawable(&result);
-    surfaceTextures.depth = platformDevice->createTextureFromNativeDepth(&result);
+    surfaceTextures.depth =
+        platformDevice->createTextureFromNativeDepth(igl::TextureFormat::Z_UNorm24, &result);
     break;
   }
 #endif
@@ -143,13 +167,15 @@ void TinyRenderer::render(float displayScale) {
   session_->update(std::move(surfaceTextures));
 }
 
-void TinyRenderer::onSurfacesChanged(ANativeWindow* surface, int width, int height) {
+void TinyRenderer::onSurfacesChanged(ANativeWindow* /*surface*/, int width, int height) {
+  igl::DeviceScope const scope(platform_->getDevice());
+
   width_ = static_cast<uint32_t>(width);
   height_ = static_cast<uint32_t>(height);
 #if IGL_BACKEND_OPENGL
   if (backendTypeID_ == BackendTypeID::GLES2 || backendTypeID_ == BackendTypeID::GLES3) {
-    auto readSurface = eglGetCurrentSurface(EGL_READ);
-    auto drawSurface = eglGetCurrentSurface(EGL_DRAW);
+    auto* readSurface = eglGetCurrentSurface(EGL_READ);
+    auto* drawSurface = eglGetCurrentSurface(EGL_DRAW);
 
     IGL_ASSERT(platform_ != nullptr);
     Result result;
@@ -161,16 +187,15 @@ void TinyRenderer::onSurfacesChanged(ANativeWindow* surface, int width, int heig
 #endif
 }
 
-void TinyRenderer::onSurfaceDestroyed(ANativeWindow* surface) {
-  IGL_ASSERT(backendTypeID_ == BackendTypeID::Vulkan);
-  IGL_ASSERT(surface != nullptr);
-}
-
 void TinyRenderer::touchEvent(bool isDown, float x, float y, float dx, float dy) {
-  const float scale = platform_->getDisplayContext().scale;
+  const float scale = platform_->getDisplayContext().pixelsPerPoint;
   IGL_ASSERT(scale > 0.0f);
   platform_->getInputDispatcher().queueEvent(
       igl::shell::TouchEvent(isDown, x / scale, y / scale, dx / scale, dy / scale));
 }
+
+void TinyRenderer::setClearColorValue(float r, float g, float b, float a) {
+  shellParams_.clearColorValue = {r, g, b, a};
+};
 
 } // namespace igl::samples

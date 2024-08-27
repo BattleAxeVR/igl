@@ -22,8 +22,7 @@
 #include <igl/vulkan/Framebuffer.h>
 #include <igl/vulkan/VulkanContext.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 EnhancedShaderDebuggingStore::EnhancedShaderDebuggingStore() {
 #if !IGL_PLATFORM_ANDROID
@@ -158,7 +157,7 @@ igl::RenderPassDesc EnhancedShaderDebuggingStore::renderPassDesc(
   return desc;
 }
 
-std::shared_ptr<igl::IFramebuffer> EnhancedShaderDebuggingStore::framebuffer(
+const std::shared_ptr<igl::IFramebuffer>& EnhancedShaderDebuggingStore::framebuffer(
     igl::vulkan::Device& device,
     const std::shared_ptr<igl::ITexture>& resolveAttachment) const {
   auto foundFramebuffer = framebuffers_.find(resolveAttachment);
@@ -222,8 +221,8 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
     }
 
     // Only check for MSAA while desc.sampleCount == 1. Otherwise we already checked and updated it
-    if (desc.sampleCount == 1 && framebuffer->getResolveColorAttachment(index)) {
-      desc.sampleCount = (int)framebuffer->getColorAttachment(index)->getSamples();
+    if (desc.sampleCount == 1u && framebuffer->getResolveColorAttachment(index)) {
+      desc.sampleCount = framebuffer->getColorAttachment(index)->getSamples();
     }
 
     desc.targetDesc.colorAttachments[index].textureFormat =
@@ -311,7 +310,7 @@ void main() {
 void EnhancedShaderDebuggingStore::installBufferBarrier(
     const igl::ICommandBuffer& commandBuffer) const {
   if (enabled_) {
-    auto cmdBuffer = static_cast<const vulkan::CommandBuffer*>(&commandBuffer);
+    const auto* cmdBuffer = static_cast<const vulkan::CommandBuffer*>(&commandBuffer);
     auto* buffer = static_cast<vulkan::Buffer*>(vertexBuffer().get());
     const auto& ctx = device_->getVulkanContext();
     ivkBufferMemoryBarrier(&ctx.vf_,
@@ -328,7 +327,7 @@ void EnhancedShaderDebuggingStore::installBufferBarrier(
 
 uint64_t EnhancedShaderDebuggingStore::hashFramebufferFormats(
     const std::shared_ptr<igl::IFramebuffer>& framebuffer) const {
-  std::hash<igl::TextureFormat> hashFun;
+  const std::hash<igl::TextureFormat> hashFun;
 
   uint64_t hashValue = 0;
 
@@ -350,5 +349,4 @@ uint64_t EnhancedShaderDebuggingStore::hashFramebufferFormats(
   return hashValue;
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

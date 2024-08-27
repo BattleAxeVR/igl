@@ -77,7 +77,7 @@ struct Color {
   constexpr Color(float r, float g, float b) : r(r), g(g), b(b), a(1.0f) {}
   constexpr Color(float r, float g, float b, float a) : r(r), g(g), b(b), a(a) {}
 
-  const float* IGL_NONNULL toFloatPtr() const {
+  [[nodiscard]] const float* IGL_NONNULL toFloatPtr() const {
     return &r;
   }
 };
@@ -111,7 +111,7 @@ struct Result {
     code(code), message(message) {}
   explicit Result(Code code, std::string message) : code(code), message(std::move(message)) {}
 
-  bool isOk() const {
+  [[nodiscard]] bool isOk() const {
     return code == Result::Code::Ok;
   }
 
@@ -170,7 +170,7 @@ struct Rect {
   T width{}; // zero-initialize
   T height{}; // zero-initialize
 
-  bool isNull() const {
+  [[nodiscard]] bool isNull() const {
     return kNullValue == x && kNullValue == y;
   }
 };
@@ -190,14 +190,10 @@ struct Size {
 
 struct Dimensions {
   Dimensions() = default;
-  Dimensions(size_t w, size_t h, size_t d) {
-    width = w;
-    height = h;
-    depth = d;
-  }
-  size_t width;
-  size_t height;
-  size_t depth;
+  Dimensions(uint32_t w, uint32_t h, uint32_t d) : width(w), height(h), depth(d) {}
+  uint32_t width = 0;
+  uint32_t height = 0;
+  uint32_t depth = 0;
 };
 
 inline bool operator==(const Dimensions& lhs, const Dimensions& rhs) {
@@ -339,14 +335,16 @@ class Handle final {
 static_assert(sizeof(Handle<class Foo>) == sizeof(uint64_t));
 
 // specialized with dummy structs for type safety
-using BindGroupHandle = igl::Handle<struct BindGroup>;
+using BindGroupTextureHandle = igl::Handle<struct BindGroupTextureTag>;
+using BindGroupBufferHandle = igl::Handle<struct BindGroupBufferTag>;
 using TextureHandle = igl::Handle<struct TextureTag>;
 using SamplerHandle = igl::Handle<struct SamplerTag>;
 
 class IDevice;
 
 // forward declarations to access incomplete type IDevice
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::BindGroupHandle handle);
+void destroy(igl::IDevice* IGL_NULLABLE device, igl::BindGroupTextureHandle handle);
+void destroy(igl::IDevice* IGL_NULLABLE device, igl::BindGroupBufferHandle handle);
 void destroy(igl::IDevice* IGL_NULLABLE device, igl::TextureHandle handle);
 void destroy(igl::IDevice* IGL_NULLABLE device, igl::SamplerHandle handle);
 
@@ -453,8 +451,9 @@ class Pool {
     return Handle<ObjectType>(idx, objects_[idx].gen_);
   }
   void destroy(Handle<ObjectType> handle) noexcept {
-    if (handle.empty())
+    if (handle.empty()) {
       return;
+    }
     IGL_ASSERT_MSG(numObjects_ > 0, "Double deletion");
     const uint32_t index = handle.index();
     IGL_ASSERT(index < objects_.size());
@@ -477,8 +476,9 @@ class Pool {
     numObjects_--;
   }
   [[nodiscard]] const ImplObjectType* IGL_NULLABLE get(Handle<ObjectType> handle) const noexcept {
-    if (handle.empty())
+    if (handle.empty()) {
       return nullptr;
+    }
 
     const uint32_t index = handle.index();
     IGL_ASSERT(index < objects_.size());
@@ -486,8 +486,9 @@ class Pool {
     return &objects_[index].obj_;
   }
   [[nodiscard]] ImplObjectType* IGL_NULLABLE get(Handle<ObjectType> handle) noexcept {
-    if (handle.empty())
+    if (handle.empty()) {
       return nullptr;
+    }
 
     const uint32_t index = handle.index();
     IGL_ASSERT(index < objects_.size());
@@ -495,8 +496,9 @@ class Pool {
     return &objects_[index].obj_;
   }
   [[nodiscard]] Handle<ObjectType> findObject(const ImplObjectType* IGL_NULLABLE obj) noexcept {
-    if (!obj)
+    if (!obj) {
       return {};
+    }
 
     for (size_t idx = 0; idx != objects_.size(); idx++) {
       if (objects_[idx].obj_ == *obj) {

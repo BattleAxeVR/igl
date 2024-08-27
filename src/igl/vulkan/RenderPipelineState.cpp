@@ -279,16 +279,15 @@ VkColorComponentFlags colorWriteMaskToVkColorComponentFlags(igl::ColorWriteMask 
 
 } // namespace
 
-namespace igl {
-
-namespace vulkan {
+namespace igl::vulkan {
 
 RenderPipelineState::RenderPipelineState(const igl::vulkan::Device& device,
                                          RenderPipelineDesc desc) :
-  IRenderPipelineState(std::move(desc)),
+  IRenderPipelineState(desc),
   PipelineState(device.getVulkanContext(),
                 desc.shaderStages.get(),
                 desc.immutableSamplers,
+                desc.isDynamicBufferMask,
                 desc.debugName.c_str()),
   device_(device),
   reflection_(std::make_shared<RenderPipelineReflection>()) {
@@ -377,8 +376,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
   // @fb-only
   const VkDescriptorSetLayout DSLs[] = {
       dslCombinedImageSamplers_->getVkDescriptorSetLayout(),
-      dslUniformBuffers_->getVkDescriptorSetLayout(),
-      dslStorageBuffers_->getVkDescriptorSetLayout(),
+      dslBuffers_->getVkDescriptorSetLayout(),
       ctx.getBindlessVkDescriptorSetLayout(),
   };
 
@@ -484,6 +482,8 @@ VkPipeline RenderPipelineState::getVkPipeline(
                  &pipeline,
                  desc_.debugName.c_str()));
 
+  IGL_ASSERT(pipeline != VK_NULL_HANDLE);
+
   pipelines_[dynamicState] = pipeline;
 
   // @fb-only
@@ -511,11 +511,11 @@ std::shared_ptr<igl::IRenderPipelineReflection> RenderPipelineState::renderPipel
 
 void RenderPipelineState::setRenderPipelineReflection(
     const IRenderPipelineReflection& renderPipelineReflection) {
-  auto& vulkanReflection = static_cast<const RenderPipelineReflection&>(renderPipelineReflection);
+  const auto& vulkanReflection =
+      static_cast<const RenderPipelineReflection&>(renderPipelineReflection);
   auto copy = RenderPipelineReflection(vulkanReflection);
 
   reflection_ = std::make_shared<RenderPipelineReflection>(std::move(copy));
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

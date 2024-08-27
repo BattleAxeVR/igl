@@ -17,8 +17,7 @@
 #include <utility>
 #include <vector>
 
-namespace iglu {
-namespace material {
+namespace iglu::material {
 class MemoizedQualifiedMemberNameCalculator;
 
 /// Handles allocation, updating and binding of shader uniforms. It uses reflection
@@ -258,7 +257,9 @@ class ShaderUniforms final {
                                          const igl::NameHandle& blockInstanceName,
                                          const igl::NameHandle& memberName);
 
-  ShaderUniforms(igl::IDevice& device, const igl::IRenderPipelineReflection& reflection);
+  ShaderUniforms(igl::IDevice& device,
+                 const igl::IRenderPipelineReflection& reflection,
+                 bool enableSuballocationforVulkan = true);
   ~ShaderUniforms();
 
  private:
@@ -350,5 +351,4 @@ class ShaderUniforms final {
                   BufferDesc* buffer);
 };
 
-} // namespace material
-} // namespace iglu
+} // namespace iglu::material

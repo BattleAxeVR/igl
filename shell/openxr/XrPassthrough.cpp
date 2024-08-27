@@ -46,13 +46,16 @@ XrPassthrough::~XrPassthrough() noexcept {
 
 // NOLINTNEXTLINE(bugprone-exception-escape)
 const std::vector<const char*>& XrPassthrough::getExtensions() noexcept {
-  static std::vector<const char*> kExtensions{XR_FB_PASSTHROUGH_EXTENSION_NAME};
+  static const std::vector<const char*> kExtensions{XR_FB_PASSTHROUGH_EXTENSION_NAME};
   return kExtensions;
 }
 
 bool XrPassthrough::initialize() noexcept {
   const XrPassthroughCreateInfoFB passthroughInfo{
-      .type = XR_TYPE_PASSTHROUGH_CREATE_INFO_FB, .next = nullptr, .flags = 0u};
+      .type = XR_TYPE_PASSTHROUGH_CREATE_INFO_FB,
+      .next = nullptr,
+      .flags = XR_PASSTHROUGH_IS_RUNNING_AT_CREATION_BIT_FB,
+  };
 
   XrResult result;
   XR_CHECK(result = xrCreatePassthroughFB_(session_, &passthroughInfo, &passthrough_));

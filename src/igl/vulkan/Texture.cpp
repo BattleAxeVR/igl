@@ -16,8 +16,7 @@
 #include <igl/vulkan/VulkanStagingDevice.h>
 #include <igl/vulkan/VulkanTexture.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 Texture::Texture(const igl::vulkan::Device& device, TextureFormat format) :
   ITexture(format), device_(device) {}
@@ -153,7 +152,8 @@ Result Texture::create(const TextureDesc& desc) {
                                    ? VK_IMAGE_TILING_OPTIMAL
                                    : VK_IMAGE_TILING_LINEAR;
 
-  if (desc.format == TextureFormat::YUV_NV12) {
+  if (getProperties().numPlanes > 1) {
+    // some constraints for multiplanar image formats
     IGL_ASSERT(imageType == VK_IMAGE_TYPE_2D);
     IGL_ASSERT(samples == VK_SAMPLE_COUNT_1_BIT);
     IGL_ASSERT(tiling == VK_IMAGE_TILING_OPTIMAL);
@@ -213,7 +213,7 @@ Result Texture::create(const TextureDesc& desc) {
   if (aspect == VK_IMAGE_ASPECT_COLOR_BIT && samples == VK_SAMPLE_COUNT_1_BIT &&
       (usageFlags & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0) {
     // always clear color attachments by default
-    clearColorTexture({0, 0, 0, 1});
+    clearColorTexture({0, 0, 0, 0});
   }
 
   return Result();
@@ -233,9 +233,16 @@ Result Texture::uploadInternal(TextureType /*type*/,
     return Result{};
   }
 
+  const auto& vulkanImage = texture_->getVulkanImage();
+  if (vulkanImage.isMappedPtrAccessible()) {
+    checked_memcpy(
+        vulkanImage.mappedPtr_, vulkanImage.allocatedSize, data, bytesPerRow * range.width);
+    vulkanImage.flushMappedMemory();
+    return Result();
+  }
+
   const VulkanContext& ctx = device_.getVulkanContext();
-  ctx.stagingDevice_->imageData(
-      texture_->getVulkanImage(), desc_.type, range, getProperties(), bytesPerRow, data);
+  ctx.stagingDevice_->imageData(vulkanImage, desc_.type, range, getProperties(), bytesPerRow, data);
 
   return Result();
 }
@@ -249,7 +256,7 @@ VkFormat Texture::getVkFormat() const {
   return texture_ ? texture_->getVulkanImage().imageFormat_ : VK_FORMAT_UNDEFINED;
 }
 
-size_t Texture::getNumLayers() const {
+uint32_t Texture::getNumLayers() const {
   return desc_.numLayers;
 }
 
@@ -320,10 +327,15 @@ VkImageView Texture::getVkImageViewForFramebuffer(uint32_t mipLevel,
     imageViews.resize(index + 1);
   }
 
+  const VkFormat vkFormat =
+      getProperties().isDepthOrStencil()
+          ? device_.getVulkanContext().getClosestDepthStencilFormat(desc_.format)
+          : textureFormatToVkFormat(desc_.format);
+
   const VkImageAspectFlags flags = texture_->getVulkanImage().getImageAspectFlags();
   imageViews[index] = texture_->getVulkanImage().createImageView(
       isStereo ? VK_IMAGE_VIEW_TYPE_2D_ARRAY : VK_IMAGE_VIEW_TYPE_2D,
-      textureFormatToVkFormat(desc_.format),
+      vkFormat,
       flags,
       mipLevel,
       1u,
@@ -361,5 +373,4 @@ void Texture::clearColorTexture(const igl::Color& rgba) {
   img.ctx_->immediate_->submit(wrapper);
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

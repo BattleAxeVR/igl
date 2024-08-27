@@ -19,8 +19,7 @@
 #include <igl/opengl/Shader.h>
 #include <igl/opengl/Texture.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
 ///----------------------------------------------------------------------------
 /// MARK: - ComputeCommandEncoder
@@ -65,8 +64,7 @@ void ComputeCommandEncoder::pushDebugGroupLabel(const char* label,
                                                 const igl::Color& /*color*/) const {
   IGL_ASSERT(label != nullptr && *label);
   if (getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugMessage)) {
-    std::string_view labelSV(label);
-    getContext().pushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, labelSV.length(), labelSV.data());
+    getContext().pushDebugGroup(GL_DEBUG_SOURCE_APPLICATION, 0, -1, label);
   } else {
     IGL_LOG_ERROR_ONCE(
         "ComputeCommandEncoder::pushDebugGroupLabel not supported in this context!\n");
@@ -77,13 +75,8 @@ void ComputeCommandEncoder::insertDebugEventLabel(const char* label,
                                                   const igl::Color& /*color*/) const {
   IGL_ASSERT(label != nullptr && *label);
   if (getContext().deviceFeatures().hasInternalFeature(InternalFeatures::DebugMessage)) {
-    std::string_view labelSV(label);
-    getContext().debugMessageInsert(GL_DEBUG_SOURCE_APPLICATION,
-                                    GL_DEBUG_TYPE_MARKER,
-                                    0,
-                                    GL_DEBUG_SEVERITY_LOW,
-                                    labelSV.length(),
-                                    labelSV.data());
+    getContext().debugMessageInsert(
+        GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_MARKER, 0, GL_DEBUG_SEVERITY_LOW, -1, label);
   } else {
     IGL_LOG_ERROR_ONCE(
         "ComputeCommandEncoder::insertDebugEventLabel not supported in this context!\n");
@@ -109,20 +102,20 @@ void ComputeCommandEncoder::bindUniform(const UniformDesc& uniformDesc, const vo
   }
 }
 
-void ComputeCommandEncoder::bindTexture(size_t index, ITexture* texture) {
+void ComputeCommandEncoder::bindTexture(uint32_t index, ITexture* texture) {
   if (IGL_VERIFY(adapter_)) {
     adapter_->setTexture(texture, index);
   }
 }
 
-void ComputeCommandEncoder::bindBuffer(size_t index,
-                                       const std::shared_ptr<IBuffer>& buffer,
+void ComputeCommandEncoder::bindBuffer(uint32_t index,
+                                       IBuffer* buffer,
                                        size_t offset,
                                        size_t bufferSize) {
   (void)bufferSize;
 
   if (IGL_VERIFY(adapter_) && buffer) {
-    auto glBuffer = std::static_pointer_cast<Buffer>(buffer);
+    auto* glBuffer = static_cast<Buffer*>(buffer);
     adapter_->setBuffer(glBuffer, offset, static_cast<int>(index));
   }
 }
@@ -137,5 +130,4 @@ void ComputeCommandEncoder::bindPushConstants(const void* /*data*/,
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-} // namespace opengl
-} // namespace igl
+} // namespace igl::opengl

@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 # CMake 3.16 can load Vulkan SDK
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 project(IGLVulkan CXX C)
 
@@ -16,6 +16,13 @@ if(APPLE)
   file(GLOB APPLE_HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} moltenvk/*.h)
   list(APPEND SRC_FILES ${APPLE_SRC_FILES})
   list(APPEND HEADER_FILES ${APPLE_HEADER_FILES})
+endif()
+
+if(ANDROID)
+  file(GLOB ANDROID_SRC_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} android/*.cpp)
+  file(GLOB ANDROID_HEADER_FILES LIST_DIRECTORIES false RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} android/*.h)
+  list(APPEND SRC_FILES ${ANDROID_SRC_FILES})
+  list(APPEND HEADER_FILES ${ANDROID_HEADER_FILES})
 endif()
 
 add_library(IGLVulkan ${SRC_FILES} ${HEADER_FILES})

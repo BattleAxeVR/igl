@@ -3,7 +3,7 @@
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
 
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.19)
 
 set(PROJECT_NAME "IGL Samples")
 
@@ -42,9 +42,13 @@ add_demo("Tiny")
 if(IGL_WITH_VULKAN)
   # this demo app does not work without Vulkan (yet)
   add_demo("Tiny_Mesh")
+  add_demo("Tiny_Mesh_BindGroups")
 endif()
 
 add_demo("Tiny_MeshLarge")
 
 target_sources(Tiny_MeshLarge
                PUBLIC "${IGL_ROOT_DIR}/third-party/deps/src/3D-Graphics-Rendering-Cookbook/shared/UtilsCubemap.cpp")
+if(NOT IGL_WITH_VULKAN)
+  target_sources(Tiny_MeshLarge PUBLIC "${IGL_ROOT_DIR}/src/igl/vulkan/util/TextureFormat.cpp")
+endif()

@@ -53,10 +53,7 @@ class RenderCommandEncoder : public IRenderCommandEncoder {
   void bindRenderPipelineState(const std::shared_ptr<IRenderPipelineState>& pipelineState) override;
   void bindDepthStencilState(const std::shared_ptr<IDepthStencilState>& depthStencilState) override;
 
-  void bindBuffer(int index,
-                  const std::shared_ptr<IBuffer>& buffer,
-                  size_t bufferOffset,
-                  size_t bufferSize) override;
+  void bindBuffer(uint32_t index, IBuffer* buffer, size_t bufferOffset, size_t bufferSize) override;
   void bindVertexBuffer(uint32_t index, IBuffer& buffer, size_t bufferOffset) override;
   void bindIndexBuffer(IBuffer& buffer, IndexFormat format, size_t bufferOffset) override;
 
@@ -73,6 +70,11 @@ class RenderCommandEncoder : public IRenderCommandEncoder {
   /// @brief This is only for backends that MUST use single uniforms in some situations. Do not
   /// implement!
   void bindUniform(const UniformDesc& uniformDesc, const void* data) override;
+
+  void bindBindGroup(BindGroupTextureHandle handle) override;
+  void bindBindGroup(BindGroupBufferHandle handle,
+                     uint32_t numDynamicOffsets = 0,
+                     const uint32_t* dynamicOffsets = nullptr) override;
 
   void draw(size_t vertexCount,
             uint32_t instanceCount,
@@ -93,11 +95,10 @@ class RenderCommandEncoder : public IRenderCommandEncoder {
                                 uint32_t stride = 0) override;
 
   void setStencilReferenceValue(uint32_t value) override;
-  void setStencilReferenceValues(uint32_t frontValue, uint32_t backValue) override;
   void setBlendColor(Color color) override;
   void setDepthBias(float depthBias, float slopeScale, float clamp) override;
 
-  VkCommandBuffer getVkCommandBuffer() const {
+  [[nodiscard]] VkCommandBuffer getVkCommandBuffer() const {
     return cmdBuffer_;
   }
 
@@ -150,6 +151,10 @@ class RenderCommandEncoder : public IRenderCommandEncoder {
   Dependencies dependencies_ = {};
 
   const igl::vulkan::RenderPipelineState* rps_ = nullptr;
+  igl::BindGroupTextureHandle pendingBindGroupTexture_ = {};
+  igl::BindGroupBufferHandle pendingBindGroupBuffer_ = {};
+  uint32_t numDynamicOffsets_ = 0;
+  uint32_t dynamicOffsets_[IGL_UNIFORM_BLOCKS_BINDING_MAX] = {};
 };
 
 } // namespace igl::vulkan

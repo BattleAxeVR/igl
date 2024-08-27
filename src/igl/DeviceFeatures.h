@@ -27,6 +27,7 @@ namespace igl {
  * Compute                    Supports compute
  * DepthCompare               Supports setting depth compare function
  * DepthShaderRead            Supports reading depth texture from a shader
+ * DrawFirstIndexFirstVertex  Supports firstIndex/firstVertex parameters in IRenderCommandEncoder::drawIndexed()
  * DrawIndexedIndirect        Supports IRenderCommandEncoder::drawIndexedIndirect
  * ExplicitBinding,           Supports uniforms block explicit binding in shaders
  * ExplicitBindingExt,        Supports uniforms block explicit binding in shaders via an extension
@@ -37,6 +38,7 @@ namespace igl {
  * MultiSample                Supports multisample textures
  * MultiSampleResolve         Supports GPU multisampled texture resolve
  * Multiview                  Supports multiview
+ * MultiViewMultisample       Supports multisampled multiview
  * PushConstants              Supports push constants(Vulkan)
  * ReadWriteFramebuffer       Supports separate FB reading/writing binding
  * SamplerMinMaxLod           Supports constraining the min and max texture LOD when sampling
@@ -71,6 +73,7 @@ enum class DeviceFeatures {
   Compute,
   DepthCompare,
   DepthShaderRead,
+  DrawFirstIndexFirstVertex,
   DrawIndexedIndirect,
   ExplicitBinding,
   ExplicitBindingExt,
@@ -81,6 +84,7 @@ enum class DeviceFeatures {
   MultiSample,
   MultiSampleResolve,
   Multiview,
+  MultiViewMultisample,
   PushConstants,
   ReadWriteFramebuffer,
   SamplerMinMaxLod,
@@ -235,7 +239,7 @@ class ICapabilities {
    * @return True,  If feature is supported
    *         False, Otherwise
    */
-  virtual bool hasFeature(DeviceFeatures feature) const = 0;
+  [[nodiscard]] virtual bool hasFeature(DeviceFeatures feature) const = 0;
 
   /**
    * @brief This function indicates if a device requirement is at all present.
@@ -244,7 +248,7 @@ class ICapabilities {
    * @return True,      If requirement is present
    *         False,     Otherwise
    */
-  virtual bool hasRequirement(DeviceRequirement requirement) const = 0;
+  [[nodiscard]] virtual bool hasRequirement(DeviceRequirement requirement) const = 0;
 
   /**
    * @brief This function gets capabilities of a specified texture format
@@ -252,7 +256,8 @@ class ICapabilities {
    * @param format The texture format
    * @return TextureFormatCapabilities
    */
-  virtual TextureFormatCapabilities getTextureFormatCapabilities(TextureFormat format) const = 0;
+  [[nodiscard]] virtual TextureFormatCapabilities getTextureFormatCapabilities(
+      TextureFormat format) const = 0;
 
   /**
    * @brief This function gets device feature limits and return additional error code in 'result'.
@@ -270,7 +275,7 @@ class ICapabilities {
    * @brief Gets the latest shader language version supported by this device.
    * @return ShaderVersion
    */
-  virtual ShaderVersion getShaderVersion() const = 0;
+  [[nodiscard]] virtual ShaderVersion getShaderVersion() const = 0;
 
  protected:
   virtual ~ICapabilities() = default;

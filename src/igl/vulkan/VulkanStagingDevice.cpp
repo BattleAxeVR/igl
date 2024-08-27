@@ -21,9 +21,7 @@ using VulkanSubmitHandle = igl::vulkan::VulkanImmediateCommands::SubmitHandle;
 
 constexpr VkDeviceSize kMinStagingBufferSize = static_cast<const VkDeviceSize>(1024u) * 1024u;
 
-namespace igl {
-
-namespace vulkan {
+namespace igl::vulkan {
 
 VulkanStagingDevice::VulkanStagingDevice(VulkanContext& ctx) : ctx_(ctx) {
   IGL_PROFILER_FUNCTION();
@@ -76,7 +74,7 @@ void VulkanStagingDevice::bufferSubData(VulkanBuffer& buffer,
     // do the transfer
     const VkBufferCopy copy = {memoryChunk.offset, chunkDstOffset, copySize};
 
-    auto& wrapper = immediate_->acquire();
+    const auto& wrapper = immediate_->acquire();
     ctx_.vf_.vkCmdCopyBuffer(
         wrapper.cmdBuf_, stagingBuffer->getVkBuffer(), buffer.getVkBuffer(), 1, &copy);
     memoryChunk.handle = immediate_->submit(wrapper); // store the submit handle with the allocation
@@ -258,7 +256,7 @@ void VulkanStagingDevice::getBufferSubData(const VulkanBuffer& buffer,
     // do the transfer
     const VkBufferCopy copy = {chunkSrcOffset, memoryChunk.offset, copySize};
 
-    auto& wrapper = immediate_->acquire();
+    const auto& wrapper = immediate_->acquire();
 
     auto& stagingBuffer = stagingBuffers_[memoryChunk.stagingBufferIndex];
 
@@ -266,7 +264,7 @@ void VulkanStagingDevice::getBufferSubData(const VulkanBuffer& buffer,
         wrapper.cmdBuf_, buffer.getVkBuffer(), stagingBuffer->getVkBuffer(), 1, &copy);
 
     // Wait for command to finish
-    immediate_->wait(immediate_->submit(wrapper));
+    immediate_->wait(immediate_->submit(wrapper), ctx_.config_.fenceTimeoutNanoseconds);
 
     // Copy data into data
     const uint8_t* src = stagingBuffer->getMappedPtr() + memoryChunk.offset;
@@ -288,11 +286,15 @@ void VulkanStagingDevice::imageData(const VulkanImage& image,
                                     const void* data) {
   IGL_PROFILER_FUNCTION();
 
-  const bool isYUV_NV12 = image.imageFormat_ == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+  const bool is420 = (image.imageFormat_ == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) ||
+                     (image.imageFormat_ == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM);
 
+  // @fb-only
   const uint32_t storageSize =
-      isYUV_NV12 ? image.extent_.width * image.extent_.height * 3u / 2u
-                 : static_cast<uint32_t>(properties.getBytesPerRange(range, bytesPerRow));
+      is420 ? image.extent_.width * image.extent_.height * 3u / 2u
+            : static_cast<uint32_t>(properties.getBytesPerRange(range, bytesPerRow));
+
+  IGL_ASSERT(storageSize);
 
   // We don't support uploading image data in small chunks. If the total upload size exceeds the
   // the maximum allowed staging buffer size, we can't upload it
@@ -312,16 +314,16 @@ void VulkanStagingDevice::imageData(const VulkanImage& image,
   // 1. Copy the pixel data into the host visible staging buffer
   stagingBuffer->bufferSubData(memoryChunk.offset, storageSize, data);
 
-  auto& wrapper = immediate_->acquire();
+  const auto& wrapper = immediate_->acquire();
   const uint32_t initialLayer = getVkLayer(type, range.face, range.layer);
   const uint32_t numLayers = getVkLayer(type, range.numFaces, range.numLayers);
 
   std::vector<VkBufferImageCopy> copyRegions;
   copyRegions.reserve(range.numMipLevels);
 
-  if (isYUV_NV12) {
-    // this is a prototype support implemented for one multiplanar image format; refactor it later
-
+  // @fb-only
+  if (is420) {
+    // this is a prototype support implemented for a couple of multiplanar image formats
     IGL_ASSERT(range.face == 0 && range.layer == 0 && range.mipLevel == 0);
     IGL_ASSERT(range.numFaces == 1 && range.numLayers == 1 && range.numMipLevels == 1);
     IGL_ASSERT(range.x == 0 && range.y == 0 && range.z == 0);
@@ -333,28 +335,44 @@ void VulkanStagingDevice::imageData(const VulkanImage& image,
                                wrapper.cmdBuf_,
                                "VulkanStagingDevice::imageData (upload YUV image data)",
                                kColorUploadImage.toFloatPtr());
+    VkImageAspectFlags imageAspect = VK_IMAGE_ASPECT_PLANE_0_BIT;
 
-    // Luminance
+    // Luminance (1 plane)
     copyRegions.emplace_back(
         ivkGetBufferImageCopy2D(memoryChunk.offset,
                                 0,
                                 ivkGetRect2D(0, 0, w, h),
                                 VkImageSubresourceLayers{VK_IMAGE_ASPECT_PLANE_0_BIT, 0, 0, 1}));
+    // Chrominance (in 1 or 2 planes, 420 subsampled)
+    const VkDeviceSize planeSize0 = static_cast<VkDeviceSize>(w) * static_cast<VkDeviceSize>(h);
+    const VkDeviceSize planeSize1 = planeSize0 / 4; // subsampled
+    if (image.imageFormat_ == VK_FORMAT_G8_B8R8_2PLANE_420_UNORM) {
+      imageAspect |= VK_IMAGE_ASPECT_PLANE_1_BIT;
+      copyRegions.emplace_back(
+          ivkGetBufferImageCopy2D(memoryChunk.offset + planeSize0,
+                                  0,
+                                  ivkGetRect2D(0, 0, w / 2, h / 2),
+                                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_PLANE_1_BIT, 0, 0, 1}));
+    } else if (image.imageFormat_ == VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM) {
+      imageAspect |= VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT;
+      copyRegions.emplace_back(
+          ivkGetBufferImageCopy2D(memoryChunk.offset + planeSize0,
+                                  0,
+                                  ivkGetRect2D(0, 0, w / 2, h / 2),
+                                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_PLANE_1_BIT, 0, 0, 1}));
+      copyRegions.emplace_back(
+          ivkGetBufferImageCopy2D(memoryChunk.offset + planeSize0 + planeSize1,
+                                  0,
+                                  ivkGetRect2D(0, 0, w / 2, h / 2),
+                                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_PLANE_2_BIT, 0, 0, 1}));
 
-    // Chrominance
-    copyRegions.emplace_back(
-        ivkGetBufferImageCopy2D(memoryChunk.offset + static_cast<VkDeviceSize>(w) * h,
-                                0,
-                                ivkGetRect2D(0, 0, w / 2, h / 2),
-                                VkImageSubresourceLayers{VK_IMAGE_ASPECT_PLANE_1_BIT, 0, 0, 1}));
+    } else {
+      IGL_ASSERT_MSG(false, "Unimplemented multiplanar image format");
+      return;
+    }
 
     const VkImageSubresourceRange subresourceRange = {
-        VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT,
-        0,
-        VK_REMAINING_MIP_LEVELS,
-        0,
-        VK_REMAINING_ARRAY_LAYERS,
-    };
+        imageAspect, 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS};
     // 1. Transition initial image layout into TRANSFER_DST_OPTIMAL
     ivkImageMemoryBarrier(&ctx_.vf_,
                           wrapper.cmdBuf_,
@@ -534,7 +552,7 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
                                          const uint32_t layer,
                                          const VkRect2D& imageRegion,
                                          TextureFormatProperties properties,
-                                         VkFormat format,
+                                         VkFormat /*format*/,
                                          VkImageLayout layout,
                                          void* data,
                                          uint32_t bytesPerRow,
@@ -542,7 +560,7 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
   IGL_PROFILER_FUNCTION();
   IGL_ASSERT(layout != VK_IMAGE_LAYOUT_UNDEFINED);
 
-  bool mustRepack = bytesPerRow != 0 && bytesPerRow % properties.bytesPerBlock != 0;
+  const bool mustRepack = bytesPerRow != 0 && bytesPerRow % properties.bytesPerBlock != 0;
 
   const auto range =
       TextureRangeDesc::new2D(0, 0, imageRegion.extent.width, imageRegion.extent.height);
@@ -559,10 +577,10 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
 #endif
 
   // get next staging buffer free offset
-  MemoryRegion const memoryChunk = nextFreeBlock(storageSize, true);
+  const MemoryRegion memoryChunk = nextFreeBlock(storageSize, true);
 
   IGL_ASSERT(memoryChunk.size >= storageSize);
-  auto& wrapper1 = immediate_->acquire();
+  const auto& wrapper1 = immediate_->acquire();
 
   // 1. Transition to VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
   ivkImageMemoryBarrier(&ctx_.vf_,
@@ -593,7 +611,7 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
                                   &copy);
 
   // Wait for command to finish
-  immediate_->wait(immediate_->submit(wrapper1));
+  immediate_->wait(immediate_->submit(wrapper1), ctx_.config_.fenceTimeoutNanoseconds);
 
   // 3. Copy data from staging buffer into data
   if (!IGL_VERIFY(stagingBuffer->getMappedPtr())) {
@@ -617,7 +635,7 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
   }
 
   // 4. Transition back to the initial image layout
-  auto& wrapper2 = immediate_->acquire();
+  const auto& wrapper2 = immediate_->acquire();
 
   ivkImageMemoryBarrier(&ctx_.vf_,
                         wrapper2.cmdBuf_,
@@ -631,7 +649,7 @@ void VulkanStagingDevice::getImageData2D(VkImage srcImage,
                         VkImageSubresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, level, 1, layer, 1});
 
   // the data should be available as we get out of this function
-  immediate_->wait(immediate_->submit(wrapper2));
+  immediate_->wait(immediate_->submit(wrapper2), ctx_.config_.fenceTimeoutNanoseconds);
   regions_.push_back(memoryChunk);
 }
 
@@ -644,7 +662,7 @@ void VulkanStagingDevice::waitAndReset() {
   IGL_PROFILER_FUNCTION();
 
   for (const auto region : regions_) {
-    immediate_->wait(region.handle);
+    immediate_->wait(region.handle, ctx_.config_.fenceTimeoutNanoseconds);
   }
 
   regions_.clear();
@@ -720,5 +738,4 @@ void VulkanStagingDevice::allocateStagingBuffer(VkDeviceSize minimumSize) {
   freeStagingBufferSize_ += stagingBufferSize;
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

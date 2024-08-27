@@ -92,8 +92,8 @@ igl::SurfaceTextures createSurfaceTextures(igl::IDevice& device) {
     igl::opengl::Device& oglDevice = static_cast<igl::opengl::Device&>(device);
     oglDevice.getContext().setCurrent();
     TextureDesc desc = {
-        static_cast<size_t>(shellParams_.viewportSize.x),
-        static_cast<size_t>(shellParams_.viewportSize.y),
+        static_cast<uint32_t>(shellParams_.viewportSize.x),
+        static_cast<uint32_t>(shellParams_.viewportSize.y),
         1,
         1,
         1,
@@ -120,7 +120,7 @@ igl::SurfaceTextures createSurfaceTextures(igl::IDevice& device) {
 GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
   glfwSetErrorCallback(glfwErrorHandler);
   if (!glfwInit()) {
-    IGLLog(IGLLogLevel::LOG_ERROR, "initGLWindow> glfwInit failed");
+    IGLLog(IGLLogError, "initGLWindow> glfwInit failed");
     return nullptr;
   }
 
@@ -137,7 +137,7 @@ GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
   GLFWwindow* windowHandle = glfwCreateWindow(
       shellParams_.viewportSize.x, shellParams_.viewportSize.y, "Hello igl", NULL, NULL);
   if (!windowHandle) {
-    IGLLog(IGLLogLevel::LOG_ERROR, "initGLWindow> we couldn't create the window");
+    IGLLog(IGLLogError, "initGLWindow> we couldn't create the window");
     glfwTerminate();
     return nullptr;
   }

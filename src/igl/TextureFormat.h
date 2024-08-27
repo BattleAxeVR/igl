@@ -201,11 +201,12 @@ enum class TextureFormat : uint8_t {
   Z_UNorm24,
   Z_UNorm32, // NA on iOS/GLES but works on iOS Metal. The client has to account for
              // this!
-  S8_UInt_Z24_UNorm, // NA on iOS
+  S8_UInt_Z24_UNorm,
   S8_UInt_Z32_UNorm, // NA on iOS/GLES but works on iOS Metal. The client has to
                      // account for this!
   S_UInt8,
 
   YUV_NV12, // Semi-planar 8-bit YUV 4:2:0 NV12; 2 planes in a single image
+  YUV_420p, // Tri-planar  8-bit YUV 4:2:0;      3 planes in a single image
 };
 } // namespace igl

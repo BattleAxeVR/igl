@@ -19,16 +19,17 @@ class ImageLoaderAndroid final : public ImageLoader {
  public:
   ImageLoaderAndroid(FileLoader& fileLoader);
   ~ImageLoaderAndroid() override = default;
-  ImageData loadImageData(const std::string& imageName) noexcept override;
+  ImageData loadImageData(const std::string& imageName,
+                          std::optional<igl::TextureFormat> preferredFormat = {}) noexcept override;
   void setAssetManager(AAssetManager* mgr) {
     assetManager_ = mgr;
   }
-  AAssetManager* getAssetManager() const noexcept {
+  [[nodiscard]] AAssetManager* getAssetManager() const noexcept {
     return assetManager_;
   }
 
  private:
-  AAssetManager* assetManager_;
+  AAssetManager* assetManager_{};
 };
 
 } // namespace igl::shell

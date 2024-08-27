@@ -12,9 +12,16 @@
 #include <cstdio>
 #include <cstdlib>
 
+// clang-format off
 #if defined(VK_USE_PLATFORM_WIN32_KHR)
-#include <windows.h>
+  #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+  #endif
+  #include <windows.h>
+#else
+  #include <dlfcn.h>
 #endif
+// clang-format on
 
 #include <igl/vulkan/ShaderModule.h>
 #include <igl/vulkan/Texture.h>
@@ -27,8 +34,7 @@
 #include <igl/vulkan/util/SpvReflection.h>
 #include <igl/vulkan/util/TextureFormat.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 Result getResultFromVkResult(VkResult result) {
   if (result == VK_SUCCESS) {
@@ -84,6 +90,29 @@ VkFormat invertRedAndBlue(VkFormat format) {
   default:
     IGL_UNREACHABLE_RETURN(format);
   }
+}
+
+VkStencilOp stencilOperationToVkStencilOp(igl::StencilOperation op) {
+  switch (op) {
+  case igl::StencilOperation::Keep:
+    return VK_STENCIL_OP_KEEP;
+  case igl::StencilOperation::Zero:
+    return VK_STENCIL_OP_ZERO;
+  case igl::StencilOperation::Replace:
+    return VK_STENCIL_OP_REPLACE;
+  case igl::StencilOperation::IncrementClamp:
+    return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+  case igl::StencilOperation::DecrementClamp:
+    return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+  case igl::StencilOperation::Invert:
+    return VK_STENCIL_OP_INVERT;
+  case igl::StencilOperation::IncrementWrap:
+    return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+  case igl::StencilOperation::DecrementWrap:
+    return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+  }
+  IGL_ASSERT_NOT_REACHED();
+  return VK_STENCIL_OP_KEEP;
 }
 
 VkFormat textureFormatToVkFormat(igl::TextureFormat format) {
@@ -157,69 +186,69 @@ VkFormat textureFormatToVkFormat(igl::TextureFormat format) {
   case TextureFormat::RGBA_F32:
     return VK_FORMAT_R32G32B32A32_SFLOAT;
   case TextureFormat::RGBA_ASTC_4x4:
-    return VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_4x4:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_5x4:
-    return VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_5x4_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_5x4:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_5x5:
-    return VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_5x5_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_5x5:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_6x5:
-    return VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_6x5_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_6x5:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_6x6:
-    return VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_6x6_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_6x6:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_8x5:
-    return VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_8x5_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_8x5:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_8x6:
-    return VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_8x6_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_8x6:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_8x8:
-    return VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_8x8_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_8x8:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_10x5:
-    return VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_10x5_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_10x5:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_10x6:
-    return VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_10x6_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_10x6:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_10x8:
-    return VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_10x8_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_10x8:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_10x10:
-    return VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_10x10_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_10x10:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_12x10:
-    return VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_12x10_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_12x10:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
   case TextureFormat::RGBA_ASTC_12x12:
-    return VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
+    return VK_FORMAT_ASTC_12x12_UNORM_BLOCK;
   case TextureFormat::SRGB8_A8_ASTC_12x12:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
   case TextureFormat::RGBA_PVRTC_2BPPV1:
-    return VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG;
+    return VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG;
   case TextureFormat::RGB_PVRTC_2BPPV1:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG;
   case TextureFormat::RGBA_PVRTC_4BPPV1:
-    return VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG;
+    return VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG;
   case TextureFormat::RGB_PVRTC_4BPPV1:
-    return VK_FORMAT_UNDEFINED;
+    return VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG;
   case TextureFormat::RGB8_ETC1:
     return VK_FORMAT_UNDEFINED;
   case TextureFormat::RGB8_ETC2:
@@ -260,6 +289,8 @@ VkFormat textureFormatToVkFormat(igl::TextureFormat format) {
     return VK_FORMAT_S8_UINT;
   case TextureFormat::YUV_NV12:
     return VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
+  case TextureFormat::YUV_420p:
+    return VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM;
   }
   IGL_UNREACHABLE_RETURN(VK_FORMAT_UNDEFINED)
 }
@@ -304,14 +335,14 @@ igl::ColorSpace vkColorSpaceToColorSpace(VkColorSpaceKHR colorSpace) {
   }
 }
 
-bool isTextureFormatRGB(const VkFormat& textureFormat) {
-  return textureFormat == VK_FORMAT_R8G8B8A8_UNORM || textureFormat == VK_FORMAT_R8G8B8A8_SRGB ||
-         textureFormat == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
+bool isTextureFormatRGB(VkFormat format) {
+  return format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB ||
+         format == VK_FORMAT_A2R10G10B10_UNORM_PACK32;
 }
 
-bool isTextureFormatBGR(const VkFormat& textureFormat) {
-  return textureFormat == VK_FORMAT_B8G8R8A8_UNORM || textureFormat == VK_FORMAT_B8G8R8A8_SRGB ||
-         textureFormat == VK_FORMAT_A2B10G10R10_UNORM_PACK32;
+bool isTextureFormatBGR(VkFormat format) {
+  return format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB ||
+         format == VK_FORMAT_A2B10G10R10_UNORM_PACK32;
 }
 
 igl::TextureFormat vkFormatToTextureFormat(VkFormat format) {
@@ -593,25 +624,82 @@ void ensureShaderModule(IShaderModule* sm) {
       continue;
     }
   }
-  for (const auto& b : info.uniformBuffers) {
-    if (!IGL_VERIFY(b.descriptorSet == kBindPoint_BuffersUniform)) {
+  for (const auto& b : info.buffers) {
+    if (!IGL_VERIFY(b.descriptorSet == kBindPoint_Buffers)) {
       IGL_LOG_ERROR(
-          "Missing descriptor set id for uniform buffers: the shader should contain \"layout(set = "
+          "Missing descriptor set id for buffers: the shader should contain \"layout(set = "
           "%u, ...)\"",
-          kBindPoint_BuffersUniform);
-      continue;
-    }
-  }
-  for (const auto& b : info.storageBuffers) {
-    if (!IGL_VERIFY(b.descriptorSet == kBindPoint_BuffersStorage)) {
-      IGL_LOG_ERROR(
-          "Missing descriptor set id for storage buffers: the shader should contain \"layout(set = "
-          "%u, ...)\"",
-          kBindPoint_BuffersStorage);
+          kBindPoint_Buffers);
       continue;
     }
   }
 }
 
-} // namespace vulkan
-} // namespace igl
+uint32_t getNumImagePlanes(VkFormat format) {
+  switch (format) {
+  case VK_FORMAT_UNDEFINED:
+    return 0;
+  case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+    return 2;
+  case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+    return 3;
+  default:
+    return 1;
+  }
+}
+} // namespace igl::vulkan
+
+namespace igl::vulkan::functions {
+
+namespace {
+PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() {
+#if defined(_WIN32)
+  HMODULE lib = LoadLibraryA("vulkan-1.dll");
+  if (!lib) {
+    return nullptr;
+  }
+  return (PFN_vkGetInstanceProcAddr)GetProcAddress(lib, "vkGetInstanceProcAddr");
+#elif defined(__APPLE__)
+  void* lib = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
+  if (!lib) {
+    lib = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
+  }
+  if (!lib) {
+    lib = dlopen("libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
+  }
+  if (!lib) {
+    return nullptr;
+  }
+  return (PFN_vkGetInstanceProcAddr)dlsym(lib, "vkGetInstanceProcAddr");
+#else
+  void* lib = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
+  if (!lib) {
+    lib = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+  }
+  if (!lib) {
+    return nullptr;
+  }
+  return (PFN_vkGetInstanceProcAddr)dlsym(lib, "vkGetInstanceProcAddr");
+#endif
+  return nullptr;
+}
+} // namespace
+
+void initialize(VulkanFunctionTable& table) {
+  table.vkGetInstanceProcAddr = getVkGetInstanceProcAddr();
+  IGL_ASSERT(table.vkGetInstanceProcAddr != nullptr);
+
+  loadVulkanLoaderFunctions(&table, table.vkGetInstanceProcAddr);
+}
+
+void loadInstanceFunctions(VulkanFunctionTable& table, VkInstance instance) {
+  IGL_ASSERT(table.vkGetInstanceProcAddr != nullptr);
+  loadVulkanInstanceFunctions(&table, instance, table.vkGetInstanceProcAddr);
+}
+
+void loadDeviceFunctions(VulkanFunctionTable& table, VkDevice device) {
+  IGL_ASSERT(table.vkGetDeviceProcAddr != nullptr);
+  loadVulkanDeviceFunctions(&table, device, table.vkGetDeviceProcAddr);
+}
+
+} // namespace igl::vulkan::functions

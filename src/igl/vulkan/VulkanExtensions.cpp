@@ -12,8 +12,7 @@
 #include <algorithm>
 #include <iterator>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 VulkanExtensions::VulkanExtensions() {
   extensions_.resize(kNumberOfExtensionTypes);
@@ -80,6 +79,12 @@ bool VulkanExtensions::enable(const char* extensionName, ExtensionType extension
   return false;
 }
 
+void VulkanExtensions::forceEnable(const char* extensionName, ExtensionType extensionType) {
+  const size_t vectorIndex = (size_t)extensionType;
+
+  enabledExtensions_[vectorIndex].insert(extensionName);
+}
+
 void VulkanExtensions::enableCommonExtensions(ExtensionType extensionType,
                                               const VulkanContextConfig& config) {
   if (extensionType == ExtensionType::Instance) {
@@ -112,7 +117,14 @@ void VulkanExtensions::enableCommonExtensions(ExtensionType extensionType,
 #endif
 
   } else if (extensionType == ExtensionType::Device) {
+#if defined(VK_KHR_shader_float16_int8) && VK_KHR_shader_float16_int8
+    enable(VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME, ExtensionType::Device);
+#endif
 #if IGL_PLATFORM_ANDROID
+    enable(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME, ExtensionType::Device);
+    enable(VK_KHR_EXTERNAL_MEMORY_EXTENSION_NAME, ExtensionType::Device);
+    enable(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME,
+           ExtensionType::Device);
     if (config.enableDescriptorIndexing) {
 #endif
       // On Android, vkEnumerateInstanceExtensionProperties crashes when validation layers are
@@ -170,5 +182,4 @@ std::vector<const char*> VulkanExtensions::allEnabled(ExtensionType extensionTyp
   return returnList;
 }
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

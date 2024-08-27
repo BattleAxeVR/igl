@@ -14,11 +14,10 @@
 #include <igl/opengl/IContext.h>
 #include <igl/opengl/RenderPipelineState.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 
-void CommandQueue::setInitialContext(std::shared_ptr<IContext> context) {
-  context_ = std::move(context);
+void CommandQueue::setInitialContext(const std::shared_ptr<IContext>& context) {
+  context_ = context;
 }
 
 std::shared_ptr<ICommandBuffer> CommandQueue::createCommandBuffer(const CommandBufferDesc& /*desc*/,
@@ -47,5 +46,4 @@ SubmitHandle CommandQueue::submit(const ICommandBuffer& commandBuffer, bool /* e
   return SubmitHandle{};
 }
 
-} // namespace opengl
-} // namespace igl
+} // namespace igl::opengl

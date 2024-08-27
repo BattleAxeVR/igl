@@ -13,8 +13,7 @@
 #include <igl/opengl/DepthStencilState.h>
 #include <igl/opengl/Texture.h>
 
-namespace igl {
-namespace opengl {
+namespace igl::opengl {
 namespace {
 bool isPowerOfTwo(size_t number) {
   return (number & (number - 1)) == 0;
@@ -32,8 +31,9 @@ SamplerState::SamplerState(IContext& context, const SamplerStateDesc& desc) :
   addressV_(convertAddressMode(desc.addressModeV)),
   addressW_(convertAddressMode(desc.addressModeW)),
   depthCompareFunction_(DepthStencilState::convertCompareFunction(desc.depthCompareFunction)),
-  depthCompareEnabled_(desc.depthCompareEnabled) {
-  std::hash<SamplerStateDesc> h;
+  depthCompareEnabled_(desc.depthCompareEnabled),
+  isYUV_(desc.yuvFormat != igl::TextureFormat::Invalid) {
+  const std::hash<SamplerStateDesc> h;
   hash_ = h(desc);
 }
 
@@ -42,7 +42,7 @@ void SamplerState::bind(ITexture* t) {
     return;
   }
 
-  auto texture = static_cast<igl::opengl::Texture*>(t);
+  auto* texture = static_cast<igl::opengl::Texture*>(t);
   if (texture->getSamplerHash() == hash_) {
     return;
   }
@@ -257,5 +257,8 @@ SamplerAddressMode SamplerState::convertGLAddressMode(GLint glAddressMode) {
   return addressMode;
 }
 
-} // namespace opengl
-} // namespace igl
+bool SamplerState::isYUV() const noexcept {
+  return isYUV_;
+}
+
+} // namespace igl::opengl

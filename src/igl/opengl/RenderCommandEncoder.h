@@ -28,7 +28,7 @@ class CommandBuffer;
 class RenderCommandEncoder final : public IRenderCommandEncoder, public WithContext {
  public:
   static std::unique_ptr<RenderCommandEncoder> create(
-      std::shared_ptr<CommandBuffer> commandBuffer,
+      const std::shared_ptr<CommandBuffer>& commandBuffer,
       const RenderPassDesc& renderPass,
       const std::shared_ptr<IFramebuffer>& framebuffer,
       const Dependencies& dependencies,
@@ -37,7 +37,7 @@ class RenderCommandEncoder final : public IRenderCommandEncoder, public WithCont
   ~RenderCommandEncoder() override;
 
  private:
-  explicit RenderCommandEncoder(std::shared_ptr<CommandBuffer> commandBuffer);
+  explicit RenderCommandEncoder(const std::shared_ptr<CommandBuffer>& commandBuffer);
   void beginEncoding(const RenderPassDesc& renderPass,
                      const std::shared_ptr<IFramebuffer>& framebuffer,
                      Result* outResult);
@@ -59,16 +59,18 @@ class RenderCommandEncoder final : public IRenderCommandEncoder, public WithCont
   // The data pointer must remain valid until the commandBuffer's execution has been completed by
   // CommandQueue::submit()
   void bindUniform(const UniformDesc& uniformDesc, const void* data) override;
-  void bindBuffer(int index,
-                  const std::shared_ptr<IBuffer>& buffer,
-                  size_t bufferOffset,
-                  size_t bufferSize) override;
+  void bindBuffer(uint32_t index, IBuffer* buffer, size_t bufferOffset, size_t bufferSize) override;
   void bindVertexBuffer(uint32_t index, IBuffer& buffer, size_t bufferOffset) override;
   void bindIndexBuffer(IBuffer& buffer, IndexFormat format, size_t bufferOffset) override;
   void bindBytes(size_t index, uint8_t target, const void* data, size_t length) override;
   void bindPushConstants(const void* data, size_t length, size_t offset) override;
   void bindSamplerState(size_t index, uint8_t target, ISamplerState* samplerState) override;
   void bindTexture(size_t index, uint8_t target, ITexture* texture) override;
+
+  void bindBindGroup(BindGroupTextureHandle handle) override;
+  void bindBindGroup(BindGroupBufferHandle handle,
+                     uint32_t numDynamicOffsets,
+                     const uint32_t* dynamicOffsets) override;
 
   void draw(size_t vertexCount,
             uint32_t instanceCount,
@@ -89,7 +91,6 @@ class RenderCommandEncoder final : public IRenderCommandEncoder, public WithCont
                                 uint32_t stride) override;
 
   void setStencilReferenceValue(uint32_t value) override;
-  void setStencilReferenceValues(uint32_t frontValue, uint32_t backValue) override;
   void setBlendColor(Color color) override;
   void setDepthBias(float depthBias, float slopeScale, float clamp) override;
 

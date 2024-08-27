@@ -14,8 +14,11 @@
 #include <igl/vulkan/VulkanHelpers.h>
 #include <igl/vulkan/VulkanImageView.h>
 
-namespace igl {
-namespace vulkan {
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+struct AHardwareBuffer;
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+
+namespace igl::vulkan {
 
 class VulkanContext;
 class VulkanImageView;
@@ -171,6 +174,9 @@ class VulkanImage final {
                                             VkImageUsageFlags usageFlags,
                                             VkImageCreateFlags createFlags,
                                             VkSampleCountFlagBits samples,
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+                                            AHardwareBuffer* hwBuffer,
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
                                             const char* debugName = nullptr);
 #endif // IGL_PLATFORM_WIN || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
 
@@ -179,10 +185,10 @@ class VulkanImage final {
   VulkanImage(const VulkanImage&) = delete;
   VulkanImage& operator=(const VulkanImage&) = delete;
 
-  VulkanImage(VulkanImage&& other) {
+  VulkanImage(VulkanImage&& other) noexcept {
     *this = std::move(other);
   }
-  VulkanImage& operator=(VulkanImage&& other);
+  VulkanImage& operator=(VulkanImage&& other) noexcept;
 
   VkImage getVkImage() const {
     return vkImage_;
@@ -231,7 +237,7 @@ class VulkanImage final {
    * the `srcStageMask` and the `dstStageMask` parameters. Not not all `VkPipelineStageFlags` are
    * supported.
    */
-  void transitionLayout(VkCommandBuffer commandBuffer,
+  void transitionLayout(VkCommandBuffer cmdBuf,
                         VkImageLayout newImageLayout,
                         VkPipelineStageFlags srcStageMask,
                         VkPipelineStageFlags dstStageMask,
@@ -253,14 +259,20 @@ class VulkanImage final {
     return isCoherentMemory_;
   }
 
+  void flushMappedMemory() const;
+
  public:
+  // Vulkan as for v1.3.210 supports max 3 planes for multi-plane images.
+  static constexpr uint8_t kMaxImagePlanes = 3;
+
   const VulkanContext* ctx_ = nullptr;
   VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
   VkDevice device_ = VK_NULL_HANDLE;
   VkImage vkImage_ = VK_NULL_HANDLE;
   VkImageUsageFlags usageFlags_ = 0;
-  VkDeviceMemory vkMemory_ = VK_NULL_HANDLE;
-  VkDeviceMemory vkMemoryCbCr_ = VK_NULL_HANDLE;
+  // Separate VkDeviceMemory objects to support disjoint multiplanar images
+  // @fb-only
+  VkDeviceMemory vkMemory_[kMaxImagePlanes] = {VK_NULL_HANDLE, VK_NULL_HANDLE, VK_NULL_HANDLE};
   VmaAllocation vmaAllocation_ = VK_NULL_HANDLE;
   VkFormatProperties formatProperties_{};
   void* mappedPtr_ = nullptr;
@@ -320,6 +332,9 @@ class VulkanImage final {
               VkImageCreateFlags createFlags,
               VkSampleCountFlagBits samples,
               VkExternalMemoryHandleTypeFlags compatibleHandleTypes,
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+              AHardwareBuffer* hwBuffer,
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
               const char* debugName);
 #endif // IGL_PLATFORM_WIN || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
 
@@ -329,5 +344,4 @@ class VulkanImage final {
   void destroy();
 };
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

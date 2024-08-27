@@ -16,8 +16,7 @@
 #include <igl/metal/SamplerState.h>
 #include <igl/metal/Texture.h>
 
-namespace igl {
-namespace metal {
+namespace igl::metal {
 
 ComputeCommandEncoder::ComputeCommandEncoder(id<MTLCommandBuffer> buffer) {
   id<MTLComputeCommandEncoder> computeEncoder = [buffer computeCommandEncoder];
@@ -78,7 +77,7 @@ void ComputeCommandEncoder::bindUniform(const UniformDesc& /*uniformDesc*/, cons
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-void ComputeCommandEncoder::bindTexture(size_t index, ITexture* texture) {
+void ComputeCommandEncoder::bindTexture(uint32_t index, ITexture* texture) {
   IGL_ASSERT(encoder_);
 
   if (texture) {
@@ -87,8 +86,8 @@ void ComputeCommandEncoder::bindTexture(size_t index, ITexture* texture) {
   }
 }
 
-void ComputeCommandEncoder::bindBuffer(size_t index,
-                                       const std::shared_ptr<IBuffer>& buffer,
+void ComputeCommandEncoder::bindBuffer(uint32_t index,
+                                       IBuffer* buffer,
                                        size_t offset,
                                        size_t bufferSize) {
   (void)bufferSize;
@@ -118,5 +117,4 @@ void ComputeCommandEncoder::bindPushConstants(const void* /*data*/,
   IGL_ASSERT_NOT_IMPLEMENTED();
 }
 
-} // namespace metal
-} // namespace igl
+} // namespace igl::metal

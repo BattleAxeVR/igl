@@ -11,11 +11,11 @@
 #include <igl/SamplerState.h>
 #include <igl/vulkan/Common.h>
 
-namespace igl {
-namespace vulkan {
+namespace igl::vulkan {
 
 class Device;
 class PipelineState;
+class VulkanContext;
 class VulkanSampler;
 
 /**
@@ -42,7 +42,12 @@ class SamplerState final : public ISamplerState {
    * This ID is intended for bindless rendering. See the ResourcesBinder and VulkanContext classes
    * for more information
    */
-  uint32_t getSamplerId() const;
+  [[nodiscard]] uint32_t getSamplerId() const;
+
+  /**
+   * @brief Returns true if this sampler is a YUV sampler.
+   */
+  [[nodiscard]] bool isYUV() const noexcept override;
 
  private:
   /**
@@ -53,6 +58,7 @@ class SamplerState final : public ISamplerState {
  private:
   friend class PipelineState;
   friend class ResourcesBinder;
+  friend class VulkanContext;
 
   /** @brief The device used to create the resource */
   const igl::vulkan::Device& device_;
@@ -62,5 +68,4 @@ class SamplerState final : public ISamplerState {
   std::shared_ptr<VulkanSampler> sampler_;
 };
 
-} // namespace vulkan
-} // namespace igl
+} // namespace igl::vulkan

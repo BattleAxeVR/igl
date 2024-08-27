@@ -17,8 +17,7 @@
 #define OFFSCREEN_RT_WIDTH 1
 #define OFFSCREEN_RT_HEIGHT 1
 
-namespace igl {
-namespace tests {
+namespace igl::tests {
 
 //
 // DeviceTest
@@ -40,11 +39,11 @@ class DeviceTest : public ::testing::Test {
     util::createDeviceAndQueue(iglDev_, cmdQueue_);
 
     // Create an offscreen texture to render to
-    TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
-                                             OFFSCREEN_RT_WIDTH,
-                                             OFFSCREEN_RT_HEIGHT,
-                                             TextureDesc::TextureUsageBits::Sampled |
-                                                 TextureDesc::TextureUsageBits::Attachment);
+    const TextureDesc texDesc = TextureDesc::new2D(TextureFormat::RGBA_UNorm8,
+                                                   OFFSCREEN_RT_WIDTH,
+                                                   OFFSCREEN_RT_HEIGHT,
+                                                   TextureDesc::TextureUsageBits::Sampled |
+                                                       TextureDesc::TextureUsageBits::Attachment);
 
     Result ret;
     offscreenTexture_ = iglDev_->createTexture(texDesc, &ret);
@@ -91,7 +90,7 @@ class DeviceTest : public ::testing::Test {
     inputDesc.numAttributes = inputDesc.numInputBindings = 2;
 
     vertexInputState_ = iglDev_->createVertexInputState(inputDesc, &ret);
-    ASSERT_TRUE(ret.isOk());
+    ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
     ASSERT_TRUE(vertexInputState_ != nullptr);
 
     // Initialize index buffer
@@ -102,7 +101,7 @@ class DeviceTest : public ::testing::Test {
     bufDesc.length = sizeof(data::vertex_index::QUAD_IND);
 
     ib_ = iglDev_->createBuffer(bufDesc, &ret);
-    ASSERT_TRUE(ret.isOk());
+    ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
     ASSERT_TRUE(ib_ != nullptr);
 
     // Initialize Render Pipeline Descriptor, but leave the creation
@@ -154,11 +153,11 @@ TEST_F(DeviceTest, LastDrawStat) {
 
   // Do a dummy draw
   cmdBuf_ = cmdQueue_->createCommandBuffer(cbDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
   ASSERT_TRUE(cmdBuf_ != nullptr);
 
   pipelineState = iglDev_->createRenderPipeline(renderPipelineDesc_, &ret);
-  ASSERT_TRUE(ret.isOk());
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
   ASSERT_TRUE(pipelineState != nullptr);
 
   renderPass_.colorAttachments[0].clearColor = {0, 0, 0, 0};
@@ -210,5 +209,4 @@ TEST_F(DeviceTest, GetBackendType) {
   }
 }
 
-} // namespace tests
-} // namespace igl
+} // namespace igl::tests

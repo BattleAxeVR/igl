@@ -33,6 +33,7 @@ struct ImageDimensionality {
     DimCube = 3,
     DimRect = 4,
     Dim2dExternal = 666, // Doesn't exist in SPIR-V, but needed for Android.
+    Dim2dExternalYUV = 667, // Doesn't exist in SPIR-V, but needed for Android.
   };
 };
 
@@ -45,6 +46,7 @@ TextureType getIGLTextureType(uint32_t dim, bool isArrayed) {
   case ImageDimensionality::DimCube:
     return TextureType::Cube;
   case ImageDimensionality::Dim2dExternal:
+  case ImageDimensionality::Dim2dExternalYUV:
     return TextureType::ExternalImage;
 
   case ImageDimensionality::DimRect:
@@ -210,7 +212,7 @@ SpvModuleInfo getReflectionData(const uint32_t* spirv, size_t numBytes) {
 
       switch (SpvOp(opCode)) {
       case SpvOpTypeStruct:
-        (isStorage ? info.storageBuffers : info.uniformBuffers).push_back({id.binding, id.dset});
+        info.buffers.push_back({id.binding, id.dset, isStorage});
         break;
       case SpvOpTypeImage:
         break;
@@ -231,6 +233,13 @@ SpvModuleInfo getReflectionData(const uint32_t* spirv, size_t numBytes) {
     if (id.opCode == SpvOpVariable && id.storageClass == SpvStorageClassPushConstant) {
       info.hasPushConstants = true;
     }
+  }
+
+  for (const auto& desc : info.buffers) {
+    info.usageMaskBuffers |= 1ul << desc.bindingLocation;
+  }
+  for (const auto& desc : info.textures) {
+    info.usageMaskTextures |= 1ul << desc.bindingLocation;
   }
 
   return info;
@@ -259,11 +268,12 @@ void combineDescriptions(std::vector<T>& out, const std::vector<T>& c1, const st
 SpvModuleInfo mergeReflectionData(const SpvModuleInfo& info1, const SpvModuleInfo& info2) {
   SpvModuleInfo result;
 
-  combineDescriptions(result.uniformBuffers, info1.uniformBuffers, info2.uniformBuffers);
-  combineDescriptions(result.storageBuffers, info1.storageBuffers, info2.storageBuffers);
+  combineDescriptions(result.buffers, info1.buffers, info2.buffers);
   combineDescriptions(result.textures, info1.textures, info2.textures);
 
   result.hasPushConstants = info1.hasPushConstants || info2.hasPushConstants;
+  result.usageMaskBuffers = info1.usageMaskBuffers | info2.usageMaskBuffers;
+  result.usageMaskTextures = info1.usageMaskTextures | info2.usageMaskTextures;
 
   return result;
 }

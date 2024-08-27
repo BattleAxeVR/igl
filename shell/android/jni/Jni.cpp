@@ -55,10 +55,16 @@ JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_touchEvent(JNIEnv* 
                                                                         jfloat y,
                                                                         jfloat dx,
                                                                         jfloat dy);
+JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_setClearColorValue(JNIEnv* env,
+                                                                                jobject obj,
+                                                                                jfloat r,
+                                                                                jfloat g,
+                                                                                jfloat b,
+                                                                                jfloat a);
 };
 
 JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_init(JNIEnv* env,
-                                                                  jobject obj,
+                                                                  jobject /*obj*/,
                                                                   jobject java_asset_manager,
                                                                   jobject surface) {
   if (!renderers[activeBackendTypeID]) {
@@ -67,14 +73,16 @@ JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_init(JNIEnv* env,
                                          surface ? ANativeWindow_fromSurface(env, surface)
                                                  : nullptr,
                                          activeBackendTypeID);
+  } else if (activeBackendTypeID == BackendTypeID::Vulkan) {
+    renderers[activeBackendTypeID]->recreateSwapchain(ANativeWindow_fromSurface(env, surface));
   }
 }
 
 JNIEXPORT jboolean JNICALL
-Java_com_facebook_igl_shell_SampleLib_isBackendTypeIDSupported(JNIEnv* env,
-                                                               jobject obj,
+Java_com_facebook_igl_shell_SampleLib_isBackendTypeIDSupported(JNIEnv* /*env*/,
+                                                               jobject /*obj*/,
                                                                jint backendTypeID) {
-  BackendTypeID backend = (BackendTypeID)backendTypeID;
+  const auto backend = (BackendTypeID)backendTypeID;
   (void)backend;
 #if IGL_BACKEND_OPENGL
   if (backend == BackendTypeID::GLES2 || backend == BackendTypeID::GLES3) {
@@ -90,14 +98,14 @@ Java_com_facebook_igl_shell_SampleLib_isBackendTypeIDSupported(JNIEnv* env,
 }
 
 JNIEXPORT void JNICALL
-Java_com_facebook_igl_shell_SampleLib_setActiveBackendTypeID(JNIEnv* env,
-                                                             jobject obj,
+Java_com_facebook_igl_shell_SampleLib_setActiveBackendTypeID(JNIEnv* /*env*/,
+                                                             jobject /*obj*/,
                                                              jint backendTypeID) {
   activeBackendTypeID = (BackendTypeID)backendTypeID;
 }
 
 JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_surfaceChanged(JNIEnv* env,
-                                                                            jobject obj,
+                                                                            jobject /*obj*/,
                                                                             jobject surface,
                                                                             jint width,
                                                                             jint height) {
@@ -105,8 +113,8 @@ JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_surfaceChanged(JNIE
       surface ? ANativeWindow_fromSurface(env, surface) : nullptr, width, height);
 }
 
-JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_render(JNIEnv* env,
-                                                                    jobject obj,
+JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_render(JNIEnv* /*env*/,
+                                                                    jobject /*obj*/,
                                                                     jfloat displayScale) {
   if (renderers[activeBackendTypeID] != nullptr) {
     renderers[activeBackendTypeID]->render(displayScale);
@@ -114,30 +122,29 @@ JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_render(JNIEnv* env,
 }
 
 JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_surfaceDestroyed(JNIEnv* env,
-                                                                              jobject obj,
-                                                                              jobject surface) {
-  // For Vulkan we deallocate the whole renderer and recreate it when surface is re-created.
-  // This is done because we currently don't have an easy way to destroy the surface + swapchain
-  // independent of the whole device.
-  // This is not needed for GL
-  if (activeBackendTypeID == BackendTypeID::Vulkan && renderers[activeBackendTypeID] != nullptr) {
-    renderers[activeBackendTypeID]->onSurfaceDestroyed(
-        surface ? ANativeWindow_fromSurface(env, surface) : nullptr);
-    auto& renderer = renderers[activeBackendTypeID];
-    renderer.reset();
-    renderers[activeBackendTypeID] = nullptr;
-  }
-}
+                                                                              jobject /*obj*/,
+                                                                              jobject surface) {}
 
-JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_touchEvent(JNIEnv* env,
-                                                                        jobject obj,
+JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_touchEvent(JNIEnv* /*env*/,
+                                                                        jobject /*obj*/,
                                                                         jboolean isDown,
                                                                         jfloat x,
                                                                         jfloat y,
                                                                         jfloat dx,
                                                                         jfloat dy) {
   if (renderers[activeBackendTypeID] != nullptr) {
-    renderers[activeBackendTypeID]->touchEvent(isDown, x, y, dx, dy);
+    renderers[activeBackendTypeID]->touchEvent(isDown != 0u, x, y, dx, dy);
+  }
+}
+
+JNIEXPORT void JNICALL Java_com_facebook_igl_shell_SampleLib_setClearColorValue(JNIEnv* /*env*/,
+                                                                                jobject /*obj*/,
+                                                                                jfloat r,
+                                                                                jfloat g,
+                                                                                jfloat b,
+                                                                                jfloat a) {
+  if (renderers[activeBackendTypeID] != nullptr) {
+    renderers[activeBackendTypeID]->setClearColorValue(r, g, b, a);
   }
 }
 

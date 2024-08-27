@@ -25,7 +25,6 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
-#include <stdio.h>
 #include <thread>
 
 #include <igl/FPSCounter.h>
@@ -219,8 +218,8 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 #ifdef VULKAN
 // kBinding_StorageImages in VulkanContext.cpp
-layout (set = 3, binding = 6, rgba8) uniform readonly  image2D kTextures2Din[];
-layout (set = 3, binding = 6, rgba8) uniform writeonly image2D kTextures2Dout[];
+layout (set = 2, binding = 6, rgba8) uniform readonly  image2D kTextures2Din[];
+layout (set = 2, binding = 6, rgba8) uniform writeonly image2D kTextures2Dout[];
 
 layout(push_constant) uniform PushConstants {
   uint textureId;
@@ -322,7 +321,7 @@ layout(set = 1, binding = 1, std140) uniform PerObject {
   UniformsPerObject perObject;
 };
 
-layout(set = 2, binding = 2, std430) readonly buffer Materials {
+layout(set = 1, binding = 2, std430) readonly buffer Materials {
   Material mtl[];
 } mat;
 #else
@@ -701,9 +700,9 @@ bool isShadowMapDirty_ = true;
 
 struct VertexData {
   vec3 position;
-  uint32_t normal; // Int_2_10_10_10_REV
-  uint32_t uv; // hvec2
-  uint32_t mtlIndex;
+  uint32_t normal{}; // Int_2_10_10_10_REV
+  uint32_t uv{}; // hvec2
+  uint32_t mtlIndex{};
 };
 
 std::vector<VertexData> vertexData_;
@@ -812,8 +811,9 @@ std::string convertFileName(std::string fileName) {
 }
 
 bool initWindow(GLFWwindow** outWindow) {
-  if (!glfwInit())
+  if (!glfwInit()) {
     return false;
+  }
 
 #if USE_OPENGL_BACKEND
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -863,7 +863,7 @@ bool initWindow(GLFWwindow** outWindow) {
 #endif // IGL_WITH_IGLU
   });
 
-  glfwSetMouseButtonCallback(window, [](auto* window, int button, int action, int mods) {
+  glfwSetMouseButtonCallback(window, [](auto* window, int button, int action, int /*mods*/) {
 #if IGL_WITH_IGLU
     if (!ImGui::GetIO().WantCaptureMouse) {
 #endif // IGL_WITH_IGLU
@@ -901,8 +901,9 @@ bool initWindow(GLFWwindow** outWindow) {
     if (key == GLFW_KEY_T && pressed) {
       enableWireframe_ = !enableWireframe_;
     }
-    if (key == GLFW_KEY_ESCAPE && pressed)
+    if (key == GLFW_KEY_ESCAPE && pressed) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
+    }
     if (key == GLFW_KEY_W) {
       positioner_.movement_.forward_ = pressed;
     }
@@ -948,7 +949,7 @@ void initIGL() {
   // create a device
   {
     {
-      Result result;
+      const Result result;
 #if USE_OPENGL_BACKEND
 #if IGL_PLATFORM_WIN
       auto ctx = std::make_unique<igl::opengl::wgl::Context>(GetDC(glfwGetWin32Window(window_)),
@@ -986,12 +987,12 @@ void initIGL() {
       const HWDeviceType hardwareType = kPreferIntegratedGPU ? HWDeviceType::IntegratedGpu
                                                              : HWDeviceType::DiscreteGpu;
       std::vector<HWDeviceDesc> devices =
-          vulkan::HWDevice::queryDevices(*ctx.get(), HWDeviceQueryDesc(hardwareType), nullptr);
+          vulkan::HWDevice::queryDevices(*ctx, HWDeviceQueryDesc(hardwareType), nullptr);
       if (devices.empty()) {
         const HWDeviceType fallbackHardwareType =
             !kPreferIntegratedGPU ? HWDeviceType::IntegratedGpu : HWDeviceType::DiscreteGpu;
-        devices = vulkan::HWDevice::queryDevices(
-            *ctx.get(), HWDeviceQueryDesc(fallbackHardwareType), nullptr);
+        devices =
+            vulkan::HWDevice::queryDevices(*ctx, HWDeviceQueryDesc(fallbackHardwareType), nullptr);
       }
       IGL_ASSERT_MSG(!devices.empty(), "GPU is not found");
       device_ =
@@ -1129,10 +1130,10 @@ void initIGL() {
   }
 
   // Command queue: backed by different types of GPU HW queues
-  CommandQueueDesc desc{CommandQueueType::Graphics};
+  const CommandQueueDesc desc{CommandQueueType::Graphics};
   commandQueue_ = device_->createCommandQueue(desc, nullptr);
 
-  renderPassOffscreen_.colorAttachments.push_back(igl::RenderPassDesc::ColorAttachmentDesc{});
+  renderPassOffscreen_.colorAttachments.emplace_back();
   renderPassOffscreen_.colorAttachments.back().loadAction = LoadAction::Clear;
   renderPassOffscreen_.colorAttachments.back().storeAction =
       kNumSamplesMSAA > 1 ? StoreAction::MsaaResolve : StoreAction::Store;
@@ -1141,7 +1142,7 @@ void initIGL() {
   renderPassOffscreen_.depthAttachment.storeAction = StoreAction::DontCare;
   renderPassOffscreen_.depthAttachment.clearDepth = 1.0f;
 
-  renderPassMain_.colorAttachments.push_back(igl::RenderPassDesc::ColorAttachmentDesc{});
+  renderPassMain_.colorAttachments.emplace_back();
   renderPassMain_.colorAttachments.back().loadAction = LoadAction::Clear;
   renderPassMain_.colorAttachments.back().storeAction = StoreAction::Store;
   renderPassMain_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -1198,13 +1199,13 @@ bool loadAndCache(const char* cacheFileName) {
   std::vector<VertexData> shapeData;
   resplitShapes.resize(materials.size());
   int prevIndex = shapes[0].mesh.material_ids[0];
-  for (size_t s = 0; s < shapes.size(); s++) {
+  for (auto& shape : shapes) {
     size_t index_offset = 0;
-    for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-      IGL_ASSERT(shapes[s].mesh.num_face_vertices[f] == 3);
+    for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
+      IGL_ASSERT(shape.mesh.num_face_vertices[f] == 3);
 
       for (size_t v = 0; v < 3; v++) {
-        tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+        const tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
 
         const vec3 pos(attrib.vertices[3 * size_t(idx.vertex_index) + 0],
                        attrib.vertices[3 * size_t(idx.vertex_index) + 1],
@@ -1223,7 +1224,7 @@ bool loadAndCache(const char* cacheFileName) {
                                      attrib.texcoords[2 * size_t(idx.texcoord_index) + 1])
                               : vec2(0);
 
-        const int mtlIndex = shapes[s].mesh.material_ids[f];
+        const int mtlIndex = shape.mesh.material_ids[f];
 
         IGL_ASSERT(mtlIndex >= 0 && mtlIndex < materials.size());
 
@@ -1526,11 +1527,17 @@ void createRenderPipelines() {
 // @fb-only
 #if USE_OPENGL_BACKEND
     desc.uniformBlockBindingMap.emplace(
-        0, std::make_pair(IGL_NAMEHANDLE("PerFrame"), igl::NameHandle{}));
+        0,
+        std::vector<std::pair<igl::NameHandle, igl::NameHandle>>{
+            std::make_pair(IGL_NAMEHANDLE("PerFrame"), igl::NameHandle{})});
     desc.uniformBlockBindingMap.emplace(
-        1, std::make_pair(IGL_NAMEHANDLE("PerObject"), igl::NameHandle{}));
+        1,
+        std::vector<std::pair<igl::NameHandle, igl::NameHandle>>{
+            std::make_pair(IGL_NAMEHANDLE("PerObject"), igl::NameHandle{})});
     desc.uniformBlockBindingMap.emplace(
-        2, std::make_pair(IGL_NAMEHANDLE("MeshMaterials"), igl::NameHandle{}));
+        2,
+        std::vector<std::pair<igl::NameHandle, igl::NameHandle>>{
+            std::make_pair(IGL_NAMEHANDLE("MeshMaterials"), igl::NameHandle{})});
 #endif
     desc.cullMode = igl::CullMode::Back;
     desc.frontFaceWinding = igl::WindingMode::CounterClockwise;
@@ -1554,9 +1561,13 @@ void createRenderPipelines() {
     desc.fragmentUnitSamplerMap.clear();
     desc.uniformBlockBindingMap.clear();
     desc.uniformBlockBindingMap.emplace(
-        0, std::make_pair(IGL_NAMEHANDLE("PerFrame"), igl::NameHandle{}));
+        0,
+        std::vector<std::pair<igl::NameHandle, igl::NameHandle>>{
+            std::make_pair(IGL_NAMEHANDLE("PerFrame"), igl::NameHandle{})});
     desc.uniformBlockBindingMap.emplace(
-        1, std::make_pair(IGL_NAMEHANDLE("PerObject"), igl::NameHandle{}));
+        1,
+        std::vector<std::pair<igl::NameHandle, igl::NameHandle>>{
+            std::make_pair(IGL_NAMEHANDLE("PerObject"), igl::NameHandle{})});
 #endif
     desc.shaderStages =
         ShaderStagesCreator::fromModuleStringInput(*device_,
@@ -1787,7 +1798,7 @@ void createShadowMap() {
                                  "Shadow map");
   desc.numMipLevels = TextureDesc::calcNumMipLevels(w, h);
   Result ret;
-  std::shared_ptr<ITexture> shadowMap = device_->createTexture(desc, &ret);
+  const std::shared_ptr<ITexture> shadowMap = device_->createTexture(desc, &ret);
   IGL_ASSERT(ret.isOk());
 
   FramebufferDesc framebufferDesc;
@@ -1813,7 +1824,7 @@ void createOffscreenFramebuffer() {
     descDepth.numMipLevels = 1;
     descDepth.storage = ResourceStorage::Memoryless;
   }
-  std::shared_ptr<ITexture> texDepth = device_->createTexture(descDepth, &ret);
+  const std::shared_ptr<ITexture> texDepth = device_->createTexture(descDepth, &ret);
   IGL_ASSERT(ret.isOk());
 
   TextureDesc::TextureUsage usage =
@@ -1831,7 +1842,7 @@ void createOffscreenFramebuffer() {
     descColor.numMipLevels = 1;
     descColor.storage = ResourceStorage::Memoryless;
   }
-  std::shared_ptr<ITexture> texColor = device_->createTexture(descColor, &ret);
+  const std::shared_ptr<ITexture> texColor = device_->createTexture(descColor, &ret);
   IGL_ASSERT(ret.isOk());
 
   FramebufferDesc framebufferDesc;
@@ -1841,7 +1852,8 @@ void createOffscreenFramebuffer() {
     auto descColorResolve =
         TextureDesc::new2D(format, w, h, usage, "Offscreen framebuffer (c - resolve)");
     descColorResolve.usage = usage;
-    std::shared_ptr<ITexture> texResolveColor = device_->createTexture(descColorResolve, &ret);
+    const std::shared_ptr<ITexture> texResolveColor =
+        device_->createTexture(descColorResolve, &ret);
     IGL_ASSERT(ret.isOk());
     framebufferDesc.colorAttachments[0].resolveTexture = texResolveColor;
   }
@@ -1895,7 +1907,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
 
   // Pass 1: shadows
   if (isShadowMapDirty_) {
-    std::shared_ptr<ICommandBuffer> buffer =
+    const std::shared_ptr<ICommandBuffer> buffer =
         commandQueue_->createCommandBuffer(CommandBufferDesc(), nullptr);
 
     auto commands = buffer->createRenderCommandEncoder(renderPassShadow_, fbShadowMap_);
@@ -1916,8 +1928,8 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
     const int ubPerFrameShadowIdx = 0;
     const int ubPerObjectIdx = 1;
 #endif
-    commands->bindBuffer(ubPerFrameShadowIdx, ubPerFrameShadow_[frameIndex], 0);
-    commands->bindBuffer(ubPerObjectIdx, ubPerObject_[frameIndex], 0);
+    commands->bindBuffer(ubPerFrameShadowIdx, ubPerFrameShadow_[frameIndex].get());
+    commands->bindBuffer(ubPerObjectIdx, ubPerObject_[frameIndex].get());
 
 #if USE_OPENGL_BACKEND
     int start = 0;
@@ -1936,14 +1948,14 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
 
     commandQueue_->submit(*buffer);
 
-    fbShadowMap_->getDepthAttachment()->generateMipmap(*commandQueue_.get());
+    fbShadowMap_->getDepthAttachment()->generateMipmap(*commandQueue_);
 
     isShadowMapDirty_ = false;
   }
 
   // Pass 2: mesh
   {
-    std::shared_ptr<ICommandBuffer> buffer =
+    const std::shared_ptr<ICommandBuffer> buffer =
         commandQueue_->createCommandBuffer(CommandBufferDesc(), nullptr);
 
     // This will clear the framebuffer
@@ -1970,9 +1982,9 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
     const int ubPerObjectIdx = 1;
     const int sbIdx = 2;
 #endif
-    commands->bindBuffer(ubPerFrameIdx, ubPerFrame_[frameIndex], 0);
-    commands->bindBuffer(ubPerObjectIdx, ubPerObject_[frameIndex], 0);
-    commands->bindBuffer(sbIdx, sbMaterials_, 0);
+    commands->bindBuffer(ubPerFrameIdx, ubPerFrame_[frameIndex].get());
+    commands->bindBuffer(ubPerObjectIdx, ubPerObject_[frameIndex].get());
+    commands->bindBuffer(sbIdx, sbMaterials_.get());
     commands->bindTexture(0, igl::BindTarget::kFragment, fbShadowMap_->getDepthAttachment().get());
     commands->bindTexture(4, igl::BindTarget::kFragment, skyboxTextureIrradiance_.get());
     commands->bindSamplerState(0, igl::BindTarget::kFragment, samplerShadow_.get());
@@ -2052,7 +2064,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
 
   // Pass 3: compute shader post-processing
   if (enableComputePass_) {
-    std::shared_ptr<ICommandBuffer> buffer =
+    const std::shared_ptr<ICommandBuffer> buffer =
         commandQueue_->createCommandBuffer(CommandBufferDesc{"computeBuffer"}, nullptr);
 
     auto commands = buffer->createComputeCommandEncoder();
@@ -2072,7 +2084,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
 
   // Pass 4: render into the swapchain image
   {
-    std::shared_ptr<ICommandBuffer> buffer =
+    const std::shared_ptr<ICommandBuffer> buffer =
         commandQueue_->createCommandBuffer(CommandBufferDesc(), nullptr);
 
     // This will clear the framebuffer
@@ -2088,7 +2100,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
     commands->popDebugGroupLabel();
 
 #if IGL_WITH_IGLU
-    imguiSession_->endFrame(*device_.get(), *commands);
+    imguiSession_->endFrame(*device_, *commands);
 #endif // IGL_WITH_IGLU
 
     commands->endEncoding();
@@ -2099,11 +2111,11 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
   }
 
 #if !USE_OPENGL_BACKEND
-  fbMain_->getDepthAttachment()->generateMipmap(*commandQueue_.get());
+  fbMain_->getDepthAttachment()->generateMipmap(*commandQueue_);
 #endif
 }
 
-void generateCompressedTexture(LoadedImage img) {
+void generateCompressedTexture(const LoadedImage& img) {
   if (loaderShouldExit_.load(std::memory_order_acquire)) {
     return;
   }
@@ -2173,13 +2185,13 @@ void generateCompressedTexture(LoadedImage img) {
 
 LoadedImage loadImage(const char* fileName, int channels) {
   if (!fileName || !*fileName) {
-    return LoadedImage();
+    return {};
   }
 
   const std::string debugName = IGL_FORMAT("{} ({})", fileName, channels).c_str();
 
   {
-    std::lock_guard lock(imagesCacheMutex_);
+    const std::lock_guard lock(imagesCacheMutex_);
 
     const auto it = imagesCache_.find(debugName);
 
@@ -2195,12 +2207,12 @@ LoadedImage loadImage(const char* fileName, int channels) {
   img.channels = channels;
   img.debugName = debugName;
 
-  if (img.pixels && kEnableCompression && (channels != 1) &&
+  if ((img.pixels != nullptr) && kEnableCompression && (channels != 1) &&
       !std::filesystem::exists(img.compressedFileName.c_str())) {
     generateCompressedTexture(img);
   }
 
-  std::lock_guard lock(imagesCacheMutex_);
+  const std::lock_guard lock(imagesCacheMutex_);
 
   imagesCache_[fileName] = img;
 
@@ -2235,7 +2247,7 @@ void loadMaterial(size_t i) {
     // skip missing textures
     materials_[i].texDiffuse = 0;
   } else {
-    std::lock_guard guard(loadedMaterialsMutex_);
+    const std::lock_guard guard(loadedMaterialsMutex_);
     loadedMaterials_.push_back(mtl);
     remainingMaterialsToLoad_.fetch_add(1u, std::memory_order_release);
   }
@@ -2525,7 +2537,7 @@ std::shared_ptr<ITexture> createTexture(const LoadedImage& img) {
 #endif // USE_TEXTURE_LOADER
   } else {
     tex->upload(TextureRangeDesc::new2D(0, 0, img.w, img.h), img.pixels);
-    tex->generateMipmap(*commandQueue_.get());
+    tex->generateMipmap(*commandQueue_);
   }
   texturesCache_[img.debugName] = tex;
   return tex;
@@ -2535,7 +2547,7 @@ void processLoadedMaterials() {
   LoadedMaterial mtl;
 
   {
-    std::lock_guard guard(loadedMaterialsMutex_);
+    const std::lock_guard guard(loadedMaterialsMutex_);
     if (loadedMaterials_.empty()) {
       return;
     } else {
@@ -2566,7 +2578,7 @@ void processLoadedMaterials() {
 
 } // namespace
 
-int main(int argc, char* argv[]) {
+int main(int /*argc*/, char* /*argv*/[]) {
   // find the content folder
   {
     using namespace std::filesystem;
@@ -2605,7 +2617,7 @@ int main(int argc, char* argv[]) {
   createComputePipeline();
 
 #if IGL_WITH_IGLU
-  imguiSession_ = std::make_unique<iglu::imgui::Session>(*device_.get(), inputDispatcher_);
+  imguiSession_ = std::make_unique<iglu::imgui::Session>(*device_, inputDispatcher_);
 #endif // IGL_WITH_IGLU
 
   double prevTime = glfwGetTime();
@@ -2637,7 +2649,7 @@ int main(int argc, char* argv[]) {
         ImGui::End();
       }
 
-      if (uint32_t num = remainingMaterialsToLoad_.load(std::memory_order_acquire)) {
+      if (const uint32_t num = remainingMaterialsToLoad_.load(std::memory_order_acquire)) {
         ImGui::SetNextWindowPos(ImVec2(0, 0));
         ImGui::Begin(
             "Loading...", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoInputs);
@@ -2645,30 +2657,8 @@ int main(int argc, char* argv[]) {
                            ImVec2(ImGui::GetIO().DisplaySize.x, 32));
         ImGui::End();
       }
-      // a nice FPS counter
-      {
-        const ImGuiWindowFlags flags =
-            ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize |
-            ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing |
-            ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-        const ImGuiViewport* v = ImGui::GetMainViewport();
-        IGL_ASSERT(v);
-        ImGui::SetNextWindowPos(
-            {
-                v->WorkPos.x + v->WorkSize.x - 15.0f,
-                v->WorkPos.y + 15.0f,
-            },
-            ImGuiCond_Always,
-            {1.0f, 0.0f});
-        ImGui::SetNextWindowBgAlpha(0.30f);
-        ImGui::SetNextWindowSize(ImVec2(ImGui::CalcTextSize("FPS : _______").x, 0));
-        if (ImGui::Begin("##FPS", nullptr, flags)) {
-          ImGui::Text("FPS : %i", (int)fps_.getAverageFPS());
-          ImGui::Text("Ms  : %.1f", 1000.0 / fps_.getAverageFPS());
-        }
-        ImGui::End();
-      }
 
+      imguiSession_->drawFPS(fps_.getAverageFPS());
 #endif // IGL_WITH_IGLU
     }
 

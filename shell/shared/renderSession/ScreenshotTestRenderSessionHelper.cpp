@@ -16,10 +16,9 @@ namespace igl::shell {
 void SaveFrameBufferToPng(const char* absoluteFilename,
                           const std::shared_ptr<IFramebuffer>& framebuffer,
                           Platform& platform) {
-  igl::Result ret;
   auto drawableSurface = framebuffer->getColorAttachment(0);
   auto frameBuffersize = drawableSurface->getDimensions();
-  int const bytesPerPixel = 4;
+  const int bytesPerPixel = 4;
   const auto rangeDesc =
       TextureRangeDesc::new2D(0, 0, frameBuffersize.width, frameBuffersize.height);
   igl::shell::ImageData imageData;
@@ -48,7 +47,7 @@ void SaveFrameBufferToPng(const char* absoluteFilename,
 
   imageData.data = iglu::textureloader::IData::tryCreate(std::move(buffer), numPixels, nullptr);
 
-  IGLLog(IGLLogLevel::LOG_INFO, "Writing screenshot to: %s", absoluteFilename);
+  IGLLog(IGLLogInfo, "Writing screenshot to: %s", absoluteFilename);
   platform.getImageWriter().writeImage(absoluteFilename, imageData);
 }
 

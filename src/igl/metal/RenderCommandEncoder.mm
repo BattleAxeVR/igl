@@ -12,15 +12,15 @@
 #include <igl/RenderPass.h>
 #include <igl/metal/Buffer.h>
 #include <igl/metal/DepthStencilState.h>
+#include <igl/metal/Device.h>
 #include <igl/metal/Framebuffer.h>
 #include <igl/metal/RenderPipelineState.h>
 #include <igl/metal/SamplerState.h>
 #include <igl/metal/Texture.h>
 
-namespace igl {
-namespace metal {
+namespace igl::metal {
 RenderCommandEncoder::RenderCommandEncoder(const std::shared_ptr<CommandBuffer>& commandBuffer) :
-  IRenderCommandEncoder::IRenderCommandEncoder(commandBuffer) {}
+  IRenderCommandEncoder::IRenderCommandEncoder(commandBuffer), device_(commandBuffer->device()) {}
 
 void RenderCommandEncoder::initialize(const std::shared_ptr<CommandBuffer>& commandBuffer,
                                       const RenderPassDesc& renderPass,
@@ -32,6 +32,14 @@ void RenderCommandEncoder::initialize(const std::shared_ptr<CommandBuffer>& comm
     return;
   }
   MTLRenderPassDescriptor* metalRenderPassDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+  if (!metalRenderPassDesc) {
+    static const char* kFailedToCreateRenderPassDesc =
+        "Failed to create Metal render pass descriptor";
+    IGL_ASSERT_MSG(false, kFailedToCreateRenderPassDesc);
+    Result::setResult(outResult, Result::Code::RuntimeError, kFailedToCreateRenderPassDesc);
+    return;
+  }
+
   const FramebufferDesc& desc = static_cast<const Framebuffer&>(*framebuffer).get();
 
   // Colors
@@ -69,7 +77,7 @@ void RenderCommandEncoder::initialize(const std::shared_ptr<CommandBuffer>& comm
       metalColorAttachment.resolveTexture = static_cast<Texture&>(*iglResolveTexture).get();
     }
 
-    auto& iglColorAttachment = renderPass.colorAttachments[index];
+    const auto& iglColorAttachment = renderPass.colorAttachments[index];
     metalColorAttachment.loadAction = convertLoadAction(iglColorAttachment.loadAction);
     metalColorAttachment.storeAction = convertStoreAction(iglColorAttachment.storeAction);
     metalColorAttachment.clearColor = convertClearColor(iglColorAttachment.clearColor);
@@ -155,18 +163,18 @@ void RenderCommandEncoder::popDebugGroupLabel() const {
 
 void RenderCommandEncoder::bindViewport(const Viewport& viewport) {
   IGL_ASSERT(encoder_);
-  MTLViewport metalViewport = {viewport.x,
-                               viewport.y,
-                               viewport.width,
-                               viewport.height,
-                               viewport.minDepth,
-                               viewport.maxDepth};
+  const MTLViewport metalViewport = {viewport.x,
+                                     viewport.y,
+                                     viewport.width,
+                                     viewport.height,
+                                     viewport.minDepth,
+                                     viewport.maxDepth};
   [encoder_ setViewport:metalViewport];
 }
 
 void RenderCommandEncoder::bindScissorRect(const ScissorRect& rect) {
   IGL_ASSERT(encoder_);
-  MTLScissorRect scissorRect = {rect.x, rect.y, rect.width, rect.height};
+  const MTLScissorRect scissorRect = {rect.x, rect.y, rect.width, rect.height};
   [encoder_ setScissorRect:scissorRect];
 }
 
@@ -189,8 +197,8 @@ void RenderCommandEncoder::bindCullMode(const CullMode& cullMode) {
 
 void RenderCommandEncoder::bindFrontFacingWinding(const WindingMode& frontFaceWinding) {
   IGL_ASSERT(encoder_);
-  MTLWinding mode = (frontFaceWinding == WindingMode::Clockwise) ? MTLWindingClockwise
-                                                                 : MTLWindingCounterClockwise;
+  const MTLWinding mode = (frontFaceWinding == WindingMode::Clockwise) ? MTLWindingClockwise
+                                                                       : MTLWindingCounterClockwise;
 
   [encoder_ setFrontFacingWinding:mode];
 }
@@ -245,13 +253,8 @@ void RenderCommandEncoder::setStencilReferenceValue(uint32_t value) {
   [encoder_ setStencilReferenceValue:value];
 }
 
-void RenderCommandEncoder::setStencilReferenceValues(uint32_t frontValue, uint32_t backValue) {
-  IGL_ASSERT(encoder_);
-  [encoder_ setStencilFrontReferenceValue:frontValue backReferenceValue:backValue];
-}
-
-void RenderCommandEncoder::bindBuffer(int index,
-                                      const std::shared_ptr<IBuffer>& buffer,
+void RenderCommandEncoder::bindBuffer(uint32_t index,
+                                      IBuffer* buffer,
                                       size_t offset,
                                       size_t bufferSize) {
   (void)bufferSize;
@@ -510,5 +513,49 @@ MTLClearColor RenderCommandEncoder::convertClearColor(Color value) {
   return MTLClearColorMake(value.r, value.g, value.b, value.a);
 }
 
-} // namespace metal
-} // namespace igl
+void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
+  if (handle.empty()) {
+    return;
+  }
+
+  const BindGroupTextureDesc* desc = device_.bindGroupTexturesPool_.get(handle);
+
+  for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
+    if (desc->textures[i]) {
+      IGL_ASSERT(desc->samplers[i]);
+      bindTexture(i, BindTarget::kAllGraphics, desc->textures[i].get());
+      bindSamplerState(i, BindTarget::kAllGraphics, desc->samplers[i].get());
+    }
+  }
+}
+
+void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
+                                         uint32_t numDynamicOffsets,
+                                         const uint32_t* dynamicOffsets) {
+  if (handle.empty()) {
+    return;
+  }
+
+  const BindGroupBufferDesc* desc = device_.bindGroupBuffersPool_.get(handle);
+
+  uint32_t dynamicOffset = 0;
+
+  for (uint32_t i = 0; i != IGL_UNIFORM_BLOCKS_BINDING_MAX; i++) {
+    if (desc->buffers[i]) {
+      if (desc->isDynamicBufferMask & (1 << i)) {
+        IGL_ASSERT_MSG(dynamicOffsets, "No dynamic offsets provided");
+        IGL_ASSERT_MSG(dynamicOffset < numDynamicOffsets, "Not enough dynamic offsets provided");
+        bindBuffer(i,
+                   desc->buffers[i].get(),
+                   desc->offset[i] + dynamicOffsets[dynamicOffset++],
+                   desc->size[i]);
+      } else {
+        bindBuffer(i, desc->buffers[i].get(), desc->offset[i], desc->size[i]);
+      }
+    }
+  }
+
+  IGL_ASSERT_MSG(dynamicOffset == numDynamicOffsets, "Not all dynamic offsets were consumed");
+}
+
+} // namespace igl::metal

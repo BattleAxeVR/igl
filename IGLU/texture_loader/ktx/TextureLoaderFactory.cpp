@@ -119,6 +119,7 @@ void TextureLoader::loadToExternalMemoryInternal(uint8_t* IGL_NONNULL data,
 
 std::unique_ptr<ITextureLoader> TextureLoaderFactory::tryCreateInternal(
     DataReader reader,
+    igl::TextureFormat /*preferredFormat*/,
     igl::Result* IGL_NULLABLE outResult) const noexcept {
   const auto range = textureRange(reader);
   auto result = range.validate();
@@ -149,9 +150,9 @@ std::unique_ptr<ITextureLoader> TextureLoaderFactory::tryCreateInternal(
 
   if (ktxTexture_NeedsTranscoding(rawTexture)) {
 #if IGL_PLATFORM_ANDROID || IGL_PLATFORM_IOS
-    ktx_transcode_fmt_e transcodeFormat = KTX_TTF_ASTC_4x4_RGBA;
+    const ktx_transcode_fmt_e transcodeFormat = KTX_TTF_ASTC_4x4_RGBA;
 #else
-    ktx_transcode_fmt_e transcodeFormat = KTX_TTF_BC7_RGBA;
+    const ktx_transcode_fmt_e transcodeFormat = KTX_TTF_BC7_RGBA;
 #endif
     error =
         ktxTexture2_TranscodeBasis(reinterpret_cast<ktxTexture2*>(rawTexture), transcodeFormat, 0);

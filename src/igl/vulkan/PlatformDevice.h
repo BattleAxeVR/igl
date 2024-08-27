@@ -11,6 +11,10 @@
 #include <igl/Texture.h>
 #include <igl/vulkan/Common.h>
 
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+struct AHardwareBuffer;
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+
 namespace igl {
 class ITexture;
 
@@ -41,6 +45,13 @@ class PlatformDevice : public IPlatformDevice {
   /// @return pointer to generated Texture or nullptr
   std::shared_ptr<ITexture> createTextureFromNativeDrawable(Result* outResult);
 
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+  std::shared_ptr<ITexture> createTextureWithSharedMemory(const TextureDesc& desc,
+                                                          Result* outResult) const;
+  std::shared_ptr<ITexture> createTextureWithSharedMemory(AHardwareBuffer* buffer,
+                                                          Result* outResult) const;
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+
   /// @param handle The handle to the GPU Fence
   /// @return The Vulkan fence associated with the handle
   [[nodiscard]] VkFence getVkFenceFromSubmitHandle(SubmitHandle handle) const;
@@ -56,8 +67,14 @@ class PlatformDevice : public IPlatformDevice {
   [[nodiscard]] int getFenceFdFromSubmitHandle(SubmitHandle handle) const;
 #endif
 
+  /// Clear the cached textures
+  void clear() {
+    nativeDrawableTextures_.clear();
+    nativeDepthTexture_ = nullptr;
+  }
+
  protected:
-  bool isType(PlatformDeviceType t) const noexcept override {
+  [[nodiscard]] bool isType(PlatformDeviceType t) const noexcept override {
     return t == Type;
   }
 

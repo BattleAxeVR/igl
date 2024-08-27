@@ -50,21 +50,15 @@ struct BindingsTextures {
  */
 class ResourcesBinder final {
  public:
-  ResourcesBinder(const std::shared_ptr<CommandBuffer>& commandBuffer,
+  ResourcesBinder(const CommandBuffer* commandBuffer,
                   const VulkanContext& ctx,
                   VkPipelineBindPoint bindPoint);
 
   /// @brief Binds a uniform buffer with an offset to index equal to `index`
-  void bindUniformBuffer(uint32_t index,
-                         igl::vulkan::Buffer* buffer,
-                         size_t bufferOffset,
-                         size_t bufferSize);
-
-  /// @brief Binds a storage buffer with an offset to index equal to `index`
-  void bindStorageBuffer(uint32_t index,
-                         igl::vulkan::Buffer* buffer,
-                         size_t bufferOffset,
-                         size_t bufferSize);
+  void bindBuffer(uint32_t index,
+                  igl::vulkan::Buffer* buffer,
+                  size_t bufferOffset,
+                  size_t bufferSize);
 
   /// @brief Binds a sampler state to index equal to `index`
   void bindSamplerState(uint32_t index, igl::vulkan::SamplerState* samplerState);
@@ -82,8 +76,9 @@ class ResourcesBinder final {
 
  private:
   friend class VulkanContext;
+  friend class RenderCommandEncoder;
 
-  bool isGraphics() const {
+  [[nodiscard]] bool isGraphics() const {
     return bindPoint_ == VK_PIPELINE_BIND_POINT_GRAPHICS;
   }
 
@@ -92,20 +87,18 @@ class ResourcesBinder final {
    */
   enum DirtyFlagBits : uint8_t {
     DirtyFlagBits_Textures = 1 << 0,
-    DirtyFlagBits_UniformBuffers = 1 << 1,
-    DirtyFlagBits_StorageBuffers = 1 << 2,
+    DirtyFlagBits_Buffers = 1 << 1,
   };
 
  private:
   const VulkanContext& ctx_;
   VkCommandBuffer cmdBuffer_ = VK_NULL_HANDLE;
   VkPipeline lastPipelineBound_ = VK_NULL_HANDLE;
-  uint32_t isDirtyFlags_ =
-      DirtyFlagBits_Textures | DirtyFlagBits_UniformBuffers | DirtyFlagBits_StorageBuffers;
+  uint32_t isDirtyFlags_ = DirtyFlagBits_Textures | DirtyFlagBits_Buffers;
   BindingsTextures bindingsTextures_;
-  BindingsBuffers bindingsUniformBuffers_;
-  BindingsBuffers bindingsStorageBuffers_;
+  BindingsBuffers bindingsBuffers_;
   VkPipelineBindPoint bindPoint_ = VK_PIPELINE_BIND_POINT_GRAPHICS;
+  VulkanImmediateCommands::SubmitHandle nextSubmitHandle_ = {};
 };
 
 } // namespace igl::vulkan

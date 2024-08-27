@@ -32,8 +32,8 @@ class ComputeCommandAdapter final : public WithContext {
   enum class StateMask : StateBits { NONE = 0, PIPELINE = 1 << 1 };
 
   struct BufferState {
-    std::shared_ptr<Buffer> resource;
-    size_t offset;
+    Buffer* resource = nullptr;
+    size_t offset = 0;
   };
 
   using TextureState = ITexture*;
@@ -43,16 +43,13 @@ class ComputeCommandAdapter final : public WithContext {
   ComputeCommandAdapter(IContext& context);
 
   void clearTextures();
-  void setTexture(ITexture* texture, size_t index);
+  void setTexture(ITexture* texture, uint32_t index);
 
   void clearBuffers();
-  void setBuffer(std::shared_ptr<Buffer> buffer, size_t offset, int index);
+  void setBuffer(Buffer* buffer, size_t offset, uint32_t index);
 
   void clearUniformBuffers();
-  void setBlockUniform(const std::shared_ptr<Buffer>& buffer,
-                       size_t offset,
-                       int index,
-                       Result* outResult = nullptr);
+  void setBlockUniform(Buffer* buffer, size_t offset, int index, Result* outResult = nullptr);
   void setUniform(const UniformDesc& uniformDesc, const void* data, Result* outResult = nullptr);
 
   void setPipelineState(const std::shared_ptr<IComputePipelineState>& newValue);
@@ -66,7 +63,7 @@ class ComputeCommandAdapter final : public WithContext {
   void willDispatch();
   void didDispatch();
 
-  bool isDirty(StateMask mask) const {
+  [[nodiscard]] bool isDirty(StateMask mask) const {
     return (dirtyStateBits_ & EnumToValue(mask)) != 0;
   }
   void setDirty(StateMask mask) {
@@ -80,7 +77,7 @@ class ComputeCommandAdapter final : public WithContext {
   std::array<BufferState, IGL_VERTEX_BUFFER_MAX> buffers_;
   std::bitset<IGL_VERTEX_BUFFER_MAX> buffersDirty_;
   std::bitset<IGL_TEXTURE_SAMPLERS_MAX> textureStatesDirty_;
-  TextureStates textureStates_;
+  TextureStates textureStates_{};
   UniformAdapter uniformAdapter_;
   StateBits dirtyStateBits_ = EnumToValue(StateMask::NONE);
   std::shared_ptr<IComputePipelineState> pipelineState_;

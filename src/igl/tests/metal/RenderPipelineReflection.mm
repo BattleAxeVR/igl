@@ -17,8 +17,7 @@
 #include <igl/metal/Shader.h>
 #include <igl/metal/VertexInputState.h>
 
-namespace igl {
-namespace tests {
+namespace igl::tests {
 
 class RenderPipelineReflectionMTLTest : public ::testing::Test {
  public:
@@ -42,7 +41,7 @@ class RenderPipelineReflectionMTLTest : public ::testing::Test {
         },
         "",
         &ret);
-    ASSERT_TRUE(ret.isOk());
+    ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
 
     // Initialize vertex Shader
     vertShader_ = shaderLibrary->getShaderModule(ShaderStage::Vertex, data::shader::simpleVertFunc);
@@ -74,7 +73,7 @@ class RenderPipelineReflectionMTLTest : public ::testing::Test {
     inputDesc.numAttributes = inputDesc.numInputBindings = 2;
 
     vertexInputState_ = iglDev_->createVertexInputState(inputDesc, &ret);
-    ASSERT_TRUE(ret.isOk());
+    ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
     ASSERT_TRUE(vertexInputState_ != nullptr);
 
     NSError* error = nullptr;
@@ -147,5 +146,4 @@ TEST_F(RenderPipelineReflectionMTLTest, VerifySamplers) {
   ASSERT_EQ(theOneSampler.name, "linearSampler");
 }
 
-} // namespace tests
-} // namespace igl
+} // namespace igl::tests
