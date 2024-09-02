@@ -1608,7 +1608,11 @@ void XrApp::pollActions(const bool mainThread) {
 }
 
 bool XrApp::passthroughSupported() const noexcept {
+#if ENABLE_PASSTHROUGH
   return supportedOptionalXrExtensions_.count(XR_FB_PASSTHROUGH_EXTENSION_NAME) != 0;
+#else
+  return false;
+#endif
 }
 
 bool XrApp::passthroughEnabled() const noexcept {

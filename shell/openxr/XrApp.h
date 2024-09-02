@@ -29,6 +29,8 @@
 #define ENABLE_META_OPENXR_FEATURES 1
 #endif
 
+#define ENABLE_PASSTHROUGH !ENABLE_META_OPENXR_FEATURES
+
 #if ENABLE_META_OPENXR_FEATURES
 #include <extx1_event_channel.h>
 #include <fb_face_tracking2.h>
