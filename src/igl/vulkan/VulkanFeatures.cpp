@@ -32,7 +32,12 @@ void VulkanFeatures::enableDefaultFeatures1_1() noexcept {
   features.multiDrawIndirect = VK_TRUE;
   features.drawIndirectFirstInstance = VK_TRUE;
   features.depthBiasClamp = VK_TRUE;
+#ifdef IGL_PLATFORM_ANDROID
+  // fillModeNonSolid is not well supported on Android, only enable by default when it's not android
+  features.fillModeNonSolid = VK_FALSE;
+#else
   features.fillModeNonSolid = VK_TRUE;
+#endif
 
 #if defined(VK_EXT_descriptor_indexing) && VK_EXT_descriptor_indexing
   if (config_.enableDescriptorIndexing) {
@@ -204,6 +209,46 @@ void VulkanFeatures::assembleFeatureChain(const VulkanContextConfig& config) noe
 #endif
   VkPhysicalDevice16BitStorageFeatures_.pNext = nullptr;
   ivkAddNext(&VkPhysicalDeviceFeatures2_, &VkPhysicalDevice16BitStorageFeatures_);
+}
+
+VulkanFeatures& VulkanFeatures::operator=(const VulkanFeatures& other) noexcept {
+  if (this == &other) {
+    return *this;
+  }
+
+  const bool sameVersion = version_ == other.version_;
+  const bool sameConfiguration =
+      config_.enableBufferDeviceAddress == other.config_.enableBufferDeviceAddress &&
+      config_.enableDescriptorIndexing == other.config_.enableDescriptorIndexing;
+  if (!sameVersion || !sameConfiguration) {
+    return *this;
+  }
+
+  VkPhysicalDeviceFeatures2_ = other.VkPhysicalDeviceFeatures2_;
+
+  VkPhysicalDeviceSamplerYcbcrConversionFeatures_ =
+      other.VkPhysicalDeviceSamplerYcbcrConversionFeatures_;
+  VkPhysicalDeviceShaderDrawParametersFeatures_ =
+      other.VkPhysicalDeviceShaderDrawParametersFeatures_;
+  VkPhysicalDeviceMultiviewFeatures_ = other.VkPhysicalDeviceMultiviewFeatures_;
+#if defined(VK_KHR_buffer_device_address) && VK_KHR_buffer_device_address
+  VkPhysicalDeviceBufferDeviceAddressFeaturesKHR_ =
+      other.VkPhysicalDeviceBufferDeviceAddressFeaturesKHR_;
+#endif
+#if defined(VK_EXT_descriptor_indexing) && VK_EXT_descriptor_indexing
+  VkPhysicalDeviceDescriptorIndexingFeaturesEXT_ =
+      other.VkPhysicalDeviceDescriptorIndexingFeaturesEXT_;
+#endif
+  VkPhysicalDevice16BitStorageFeatures_ = other.VkPhysicalDevice16BitStorageFeatures_;
+
+  // Vulkan 1.2
+#if defined(VK_VERSION_1_2)
+  VkPhysicalDeviceShaderFloat16Int8Features_ = other.VkPhysicalDeviceShaderFloat16Int8Features_;
+#endif
+
+  assembleFeatureChain(config_);
+
+  return *this;
 }
 
 } // namespace igl::vulkan

@@ -337,7 +337,7 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
         EnhancedShaderDebuggingStore::recordLineShaderCode(
             ctx_->enhancedShaderDebuggingStore_ != nullptr, ctx_->extensions_);
 
-    if (ctx_->vkPhysicalDeviceShaderFloat16Int8Features_.shaderFloat16 == VK_TRUE) {
+    if (ctx_->features().VkPhysicalDeviceShaderFloat16Int8Features_.shaderFloat16 == VK_TRUE) {
       extraExtensions += "#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require\n";
     }
 
@@ -536,9 +536,9 @@ bool Device::hasFeature(DeviceFeatures feature) const {
   case DeviceFeatures::BufferDeviceAddress:
     return true;
   case DeviceFeatures::Multiview:
-    return ctx_->vkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE;
+    return ctx_->features().VkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE;
   case DeviceFeatures::MultiViewMultisample:
-    return ctx_->vkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE &&
+    return ctx_->features().VkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE &&
            deviceProperties.limits.framebufferColorSampleCounts > VK_SAMPLE_COUNT_1_BIT;
   case DeviceFeatures::BindUniform:
     return false;

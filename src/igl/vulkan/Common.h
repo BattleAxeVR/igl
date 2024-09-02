@@ -131,6 +131,7 @@ struct VulkanContextConfig {
 
   std::vector<CommandQueueType> userQueues;
 
+  // the number of resources to support BufferAPIHintBits::Ring
   uint32_t maxResourceCount = 3u;
 
   // owned by the application - should be alive until initContext() returns
@@ -195,5 +196,13 @@ void overrideImageLayout(ITexture* texture, VkImageLayout layout);
 void ensureShaderModule(IShaderModule* sm);
 
 } // namespace igl::vulkan
+
+namespace igl::vulkan::functions {
+
+void initialize(VulkanFunctionTable& table);
+void loadInstanceFunctions(VulkanFunctionTable& table, VkInstance instance);
+void loadDeviceFunctions(VulkanFunctionTable& table, VkDevice device);
+
+} // namespace igl::vulkan::functions
 
 #endif // IGL_VULKAN_COMMON_H
