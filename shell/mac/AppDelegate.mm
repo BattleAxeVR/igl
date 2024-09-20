@@ -14,6 +14,51 @@
 
 #import <igl/Common.h>
 
+namespace {
+
+#if IGL_BACKEND_OPENGL
+NSColorSpace* colorSpaceToNSColorSpace(igl::ColorSpace colorSpace) {
+  switch (colorSpace) {
+  case igl::ColorSpace::SRGB_LINEAR:
+    return [NSColorSpace sRGBColorSpace]; // closest thing to linear srgb
+  case igl::ColorSpace::SRGB_NONLINEAR:
+    return [NSColorSpace sRGBColorSpace];
+  case igl::ColorSpace::DISPLAY_P3_NONLINEAR:
+    return [NSColorSpace displayP3ColorSpace];
+  case igl::ColorSpace::DISPLAY_P3_LINEAR:
+    return [NSColorSpace displayP3ColorSpace];
+  case igl::ColorSpace::EXTENDED_SRGB_LINEAR:
+    return [NSColorSpace extendedSRGBColorSpace];
+  case igl::ColorSpace::DCI_P3_NONLINEAR:
+    return [NSColorSpace displayP3ColorSpace];
+  case igl::ColorSpace::ADOBERGB_LINEAR:
+    return [NSColorSpace adobeRGB1998ColorSpace];
+  case igl::ColorSpace::ADOBERGB_NONLINEAR:
+    return [NSColorSpace adobeRGB1998ColorSpace];
+  case igl::ColorSpace::PASS_THROUGH:
+    return nil;
+  case igl::ColorSpace::EXTENDED_SRGB_NONLINEAR:
+    return [NSColorSpace extendedSRGBColorSpace];
+  case igl::ColorSpace::DISPLAY_NATIVE_AMD:
+    return [NSColorSpace deviceRGBColorSpace];
+  case igl::ColorSpace::BT709_LINEAR:
+  case igl::ColorSpace::BT709_NONLINEAR:
+  case igl::ColorSpace::BT2020_LINEAR:
+  case igl::ColorSpace::HDR10_ST2084:
+  case igl::ColorSpace::DOLBYVISION:
+  case igl::ColorSpace::HDR10_HLG:
+  case igl::ColorSpace::BT2020_NONLINEAR:
+  case igl::ColorSpace::BT601_NONLINEAR:
+  case igl::ColorSpace::BT2100_HLG_NONLINEAR:
+  case igl::ColorSpace::BT2100_PQ_NONLINEAR:
+    IGL_ASSERT_NOT_IMPLEMENTED();
+    return [NSColorSpace sRGBColorSpace];
+  }
+  IGL_UNREACHABLE_RETURN([NSColorSpace sRGBColorSpace]);
+}
+#endif
+} // namespace
+
 @interface AppDelegate ()
 
 @property (weak) IBOutlet NSWindow* window;
@@ -24,7 +69,6 @@
 @implementation AppDelegate
 
 - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
-  [self.window setColorSpace:[NSColorSpace sRGBColorSpace]];
   [self setupViewController];
   [self.window makeKeyAndOrderFront:nil];
   [self.window makeFirstResponder:self.tabViewController.view];
@@ -40,8 +84,7 @@
   // Headless tab
   NSTabViewItem* tinyHeadlessTabViewItem = [[NSTabViewItem alloc] initWithIdentifier:nil];
   viewController = [[ViewController alloc] initWithFrame:frame
-                                             backendType:igl::BackendType::Invalid
-                                     preferLatestVersion:true];
+                                          backendVersion:{igl::BackendFlavor::Invalid, 0, 0}];
 
   tinyHeadlessTabViewItem.viewController = viewController;
   tinyHeadlessTabViewItem.label = @"Headless";
@@ -52,8 +95,7 @@
   // Metal tab
   NSTabViewItem* tinyMetalTabViewItem = [[NSTabViewItem alloc] initWithIdentifier:nil];
   viewController = [[ViewController alloc] initWithFrame:frame
-                                             backendType:igl::BackendType::Metal
-                                     preferLatestVersion:true];
+                                          backendVersion:{igl::BackendFlavor::Metal, 3, 0}];
   tinyMetalTabViewItem.viewController = viewController;
 
   tinyMetalTabViewItem.label = @"Metal";
@@ -64,9 +106,7 @@
   // OpenGL tab
   NSTabViewItem* tinyOGL4TabViewItem = [[NSTabViewItem alloc] initWithIdentifier:nil];
   viewController = [[ViewController alloc] initWithFrame:frame
-                                             backendType:igl::BackendType::OpenGL
-                                            majorVersion:4
-                                            minorVersion:1];
+                                          backendVersion:{igl::BackendFlavor::OpenGL, 4, 1}];
   tinyOGL4TabViewItem.viewController = viewController;
 
   tinyOGL4TabViewItem.label = @"OGL 4.1";
@@ -75,19 +115,20 @@
   // @fb-only
   // @fb-only
       // @fb-only
-                                // @fb-only
-                               // @fb-only
-                               // @fb-only
+                             // @fb-only
   // @fb-only
   // @fb-only
+
+  NSColorSpace* metalColorSpace = colorSpaceToNSColorSpace(viewController.colorSpace);
+  [self.window setColorSpace:metalColorSpace];
 #endif
 
 // @fb-only
   // @fb-only
   // @fb-only
   // @fb-only
-                                             // @fb-only
-                                     // @fb-only
+      // @fb-only
+                             // @fb-only
   // @fb-only
 
   // @fb-only
@@ -98,8 +139,7 @@
   // Vulkan tab
   NSTabViewItem* tinyVulkanTabViewItem = [[NSTabViewItem alloc] initWithIdentifier:nil];
   viewController = [[ViewController alloc] initWithFrame:frame
-                                             backendType:igl::BackendType::Vulkan
-                                     preferLatestVersion:true];
+                                          backendVersion:{igl::BackendFlavor::Vulkan, 1, 3}];
 
   tinyVulkanTabViewItem.viewController = viewController;
   tinyVulkanTabViewItem.label = @"Vulkan";

@@ -7,6 +7,8 @@
 
 // @fb-only
 
+#include <cstring>
+
 #include <IGLU/simdtypes/SimdTypes.h>
 #include <igl/NameHandle.h>
 #include <igl/ShaderCreator.h>
@@ -44,7 +46,10 @@ static std::string getMetalShaderSource() {
   return R"(
               using namespace metal;
 
-              typedef struct { float3 color; } UniformBlock;
+              typedef struct {
+                 float3 color;
+                 float4x4 mvp;
+               } UniformBlock;
 
               typedef struct {
                 float3 position [[attribute(0)]];
@@ -113,10 +118,11 @@ static std::string getVulkanVertexShaderSource() {
 
             layout (set = 1, binding = 0, std140) uniform UniformsPerObject {
               vec3 color;
+              mat4 mvp;
             } perObject;
 
             void main() {
-              gl_Position = vec4(position, 1.0);
+              gl_Position = perObject.mvp * vec4(position, 1.0);
               uv = uv_in;
               color = perObject.color;
             }
@@ -187,9 +193,6 @@ static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& de
   IGL_UNREACHABLE_RETURN(nullptr)
 }
 
-ColorSession::ColorSession(std::shared_ptr<Platform> platform) :
-  RenderSession(std::move(platform)) {}
-
 // clang-tidy off
 void ColorSession::initialize() noexcept {
   // clang-tidy on
@@ -223,7 +226,7 @@ void ColorSession::initialize() noexcept {
   samp0_ = device.createSamplerState(samplerDesc, nullptr);
   IGL_ASSERT(samp0_ != nullptr);
 
-  tex0_ = getPlatform().loadTexture("macbeth.png", false /* calculateMipmapLevels */);
+  tex0_ = getPlatform().loadTexture("macbeth.png");
 
   shaderStages_ = getShaderStagesForBackend(device);
   IGL_ASSERT(shaderStages_ != nullptr);
@@ -241,7 +244,9 @@ void ColorSession::initialize() noexcept {
   renderPass_.depthAttachment.clearDepth = 1.0;
 
   // init uniforms
-  fragmentParameters_ = FragmentFormat{{1.0f, 1.0f, 1.0f}};
+  glm::mat4x4 mvp(1.0f);
+  memcpy(&fragmentParameters_.mvp, &mvp, sizeof(mvp));
+  fragmentParameters_.color = {1.0f, 1.0f, 1.0f};
 
   BufferDesc fpDesc;
   fpDesc.type = BufferDesc::BufferTypeBits::Uniform;
@@ -269,7 +274,7 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
     framebuffer_->updateDrawable(surfaceTextures.color);
   }
 
-  const size_t _textureUnit = 0;
+  const size_t textureUnit = 0;
 
   // Graphics pipeline
   if (pipelineState_ == nullptr) {
@@ -281,7 +286,7 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
         framebuffer_->getColorAttachment(0)->getProperties().format;
     graphicsDesc.targetDesc.depthAttachmentFormat =
         framebuffer_->getDepthAttachment()->getProperties().format;
-    graphicsDesc.fragmentUnitSamplerMap[_textureUnit] = IGL_NAMEHANDLE("inputImage");
+    graphicsDesc.fragmentUnitSamplerMap[textureUnit] = IGL_NAMEHANDLE("inputImage");
     graphicsDesc.cullMode = igl::CullMode::Back;
     graphicsDesc.frontFaceWinding = igl::WindingMode::Clockwise;
     graphicsDesc.targetDesc.colorAttachments[0].blendEnabled = true;
@@ -322,6 +327,10 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
     fragmentUniformDescriptors_.back().offset = offsetof(FragmentFormat, color);
   }
 
+  glm::mat4x4 mvp = getPlatform().getPreRotationMatrix();
+  memcpy(&fragmentParameters_.mvp, &mvp, sizeof(mvp));
+  fragmentParamBuffer_->upload(&fragmentParameters_, {sizeof(fragmentParameters_)});
+
   // Submit commands
   const std::shared_ptr<igl::IRenderCommandEncoder> commands =
       buffer->createRenderCommandEncoder(renderPass_, framebuffer_);
@@ -340,8 +349,8 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
       IGL_ASSERT_NOT_REACHED();
     }
 
-    commands->bindTexture(_textureUnit, BindTarget::kFragment, tex0_.get());
-    commands->bindSamplerState(_textureUnit, BindTarget::kFragment, samp0_.get());
+    commands->bindTexture(textureUnit, BindTarget::kFragment, tex0_.get());
+    commands->bindSamplerState(textureUnit, BindTarget::kFragment, samp0_.get());
     commands->bindIndexBuffer(*ib0_, IndexFormat::UInt16);
     commands->drawIndexed(6);
 
@@ -349,7 +358,6 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
   }
 
   IGL_ASSERT(buffer != nullptr);
-
   if (shellParams().shouldPresent) {
     buffer->present(drawableSurface);
   }

@@ -7,6 +7,14 @@
 
 // @fb-only
 
+#include <igl/Macros.h>
+
+#if defined(FORCE_USE_ANGLE) || IGL_PLATFORM_LINUX
+#include <igl/opengl/egl/HWDevice.h>
+#else
+#include <igl/opengl/wgl/HWDevice.h>
+#endif // FORCE_USE_ANGLE
+
 // clang-format off
 #if defined(_WIN32)
   #define GLFW_EXPOSE_NATIVE_WIN32
@@ -25,9 +33,13 @@
 #if defined(_WIN32)
   #include <GL/glew.h>
 #endif // _WIN32
+
+// clang-format on
+
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
+#include "AutoContextReleaseDevice.h"
 #include <igl/Core.h>
 #include <igl/IGL.h>
 #include <igl/opengl/Device.h>
@@ -37,14 +49,14 @@
 #include <memory>
 #include <shell/shared/platform/win/PlatformWin.h>
 #include <shell/shared/renderSession/AppParams.h>
-#include <shell/shared/renderSession/DefaultSession.h>
+#include <shell/shared/renderSession/DefaultRenderSessionFactory.h>
+#include <shell/shared/renderSession/IRenderSessionFactory.h>
+#include <shell/shared/renderSession/RenderSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
+#include <shell/shared/renderSession/transition/TransitionRenderSessionFactory.h>
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
-#include "AutoContextReleaseDevice.h"
-#include "ImageTestApp.h"
-// clang-format on
 
 using namespace igl;
 
@@ -117,16 +129,17 @@ igl::SurfaceTextures createSurfaceTextures(igl::IDevice& device) {
 
 } // namespace
 
-GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
+GLFWwindow* initGLWindow(const shell::RenderSessionConfig& config) {
   glfwSetErrorCallback(glfwErrorHandler);
   if (!glfwInit()) {
     IGLLog(IGLLogError, "initGLWindow> glfwInit failed");
     return nullptr;
   }
 
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, majorVersion);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minorVersion);
-  if (majorVersion > 3 || (majorVersion == 3 && minorVersion >= 2)) {
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, config.backendVersion.majorVersion);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, config.backendVersion.minorVersion);
+  if (config.backendVersion.majorVersion > 3 ||
+      (config.backendVersion.majorVersion == 3 && config.backendVersion.minorVersion >= 2)) {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
   }
   glfwWindowHint(GLFW_VISIBLE, true);
@@ -134,13 +147,36 @@ GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
   glfwWindowHint(GLFW_RESIZABLE, true);
   glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 
-  GLFWwindow* windowHandle = glfwCreateWindow(
-      shellParams_.viewportSize.x, shellParams_.viewportSize.y, "Hello igl", NULL, NULL);
+  int posX = 0;
+  int posY = 0;
+  int width = config.width;
+  int height = config.height;
+
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    // render full screen without overlapping the task bar
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+    glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
+  } else if (config.screenMode == shell::ScreenMode::Fullscreen) {
+    glfwWindowHint(GLFW_MAXIMIZED, true);
+  }
+
+  GLFWwindow* windowHandle =
+      glfwCreateWindow(width, height, config.displayName.c_str(), nullptr, nullptr);
   if (!windowHandle) {
     IGLLog(IGLLogError, "initGLWindow> we couldn't create the window");
     glfwTerminate();
     return nullptr;
   }
+
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    glfwSetWindowPos(windowHandle, posX, posY);
+  }
+
+  glfwGetFramebufferSize(windowHandle, &width, &height);
+  shellParams_.viewportSize.x = width;
+  shellParams_.viewportSize.y = height;
 
   int result = glfwGetWindowAttrib(windowHandle, GLFW_CLIENT_API);
 
@@ -172,6 +208,9 @@ GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
 
   glfwSetKeyCallback(windowHandle,
                      [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+                       if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+                         glfwSetWindowShouldClose(window, GLFW_TRUE);
+                       }
                        if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
                          angleBackend = !angleBackend;
                          IGL_LOG_INFO("%s\n", angleBackend ? "Angle" : "Vulkan");
@@ -186,10 +225,13 @@ GLFWwindow* initGLWindow(uint32_t majorVersion, uint32_t minorVersion) {
 }
 
 // This mode is the normal running mode when running samples as applications.
-static void RunApplicationMode(uint32_t majorVersion, uint32_t minorVersion) {
+static void run(uint32_t majorVersion,
+                uint32_t minorVersion,
+                std::unique_ptr<igl::shell::IRenderSessionFactory> factory,
+                const shell::RenderSessionConfig& config) {
   shellParams_ = initShellParams();
   using WindowPtr = std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)>;
-  WindowPtr glWindow(initGLWindow(majorVersion, minorVersion), &glfwDestroyWindow);
+  WindowPtr glWindow(initGLWindow(config), &glfwDestroyWindow);
 
   if (!glWindow.get())
     return;
@@ -213,8 +255,9 @@ static void RunApplicationMode(uint32_t majorVersion, uint32_t minorVersion) {
 #endif
   {
     std::unique_ptr<igl::shell::RenderSession> glSession_;
-    glSession_ = igl::shell::createDefaultRenderSession(glShellPlatform_);
-    IGL_ASSERT_MSG(glSession_, "createDefaultRenderSession() must return a valid session");
+    glSession_ = factory->createRenderSession(glShellPlatform_);
+    IGL_ASSERT_MSG(glSession_,
+                   "IRenderSessionFactory::createRenderSession() must return a valid session");
     glSession_->setShellParams(shellParams_);
     glSession_->initialize();
 
@@ -246,19 +289,36 @@ static void RunApplicationMode(uint32_t majorVersion, uint32_t minorVersion) {
 int main(int argc, char* argv[]) {
   igl::shell::Platform::initializeCommandLineArgs(argc, argv);
 
+  auto factory = igl::shell::createDefaultRenderSessionFactory();
+
   uint32_t majorVersion = 4;
   uint32_t minorVersion = 6;
   if (argc == 2) {
     std::tie(majorVersion, minorVersion) = igl::opengl::parseVersionString(argv[1]);
   }
 
-  const char* screenshotTestsOutPath = std::getenv("SCREENSHOT_TESTS_OUT");
+  std::vector<shell::RenderSessionConfig> suggestedConfigs = {
+      {
+          .displayName =
+              "OpenGL " + std::to_string(majorVersion) + "." + std::to_string(minorVersion),
+          .backendVersion = {.flavor = BackendFlavor::OpenGL,
+                             .majorVersion = static_cast<uint8_t>(majorVersion),
+                             .minorVersion = static_cast<uint8_t>(minorVersion)},
+          .colorFramebufferFormat = TextureFormat::RGBA_SRGB,
+          .width = 1024,
+          .height = 768,
+          .screenMode = shell::ScreenMode::FullscreenNoTaskbar,
+      },
+  };
 
-  if (screenshotTestsOutPath) {
-    shell::util::RunScreenshotTestsMode(shellParams_);
-  } else {
-    RunApplicationMode(majorVersion, minorVersion);
+  const auto requestedConfigs = factory->requestedConfigs(std::move(suggestedConfigs));
+  if (IGL_UNEXPECTED(requestedConfigs.size() != 1)) {
+    return -1;
   }
+
+  IGL_ASSERT(requestedConfigs[0].backendVersion.flavor == BackendFlavor::OpenGL);
+
+  run(majorVersion, minorVersion, std::move(factory), requestedConfigs[0]);
 
   return 0;
 }

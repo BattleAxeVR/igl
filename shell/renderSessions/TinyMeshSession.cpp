@@ -74,7 +74,7 @@ constexpr uint32_t kNumBufferedFrames = 3;
 int width_ = 0;
 int height_ = 0;
 
-constexpr uint32_t kNumCubes = 16;
+constexpr uint32_t kNumCubes = 256;
 
 struct VertexPosUvw {
   vec3 position;
@@ -499,16 +499,6 @@ void TinyMeshSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
 
     desc.vertexInputState = vertexInput0_;
     desc.shaderStages = getShaderStagesForBackend(*device_);
-    /*
-    desc.shaderStages = ShaderStagesCreator::fromModuleStringInput(*device_,
-                                                                   getVulkanVertexShaderSource(),
-                                                                   "main",
-                                                                   "",
-                                                                   getVulkanFragmentShaderSource(),
-                                                                   "main",
-                                                                   "",
-                                                                   nullptr);
-                                                                   */
 
 #if !TINY_TEST_USE_DEPTH_BUFFER
     desc.cullMode = igl::CullMode::Back;
@@ -574,8 +564,7 @@ void TinyMeshSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
   }
   commands->popDebugGroupLabel();
   {
-    imguiSession_->beginFrame(framebufferDesc_,
-                              getPlatform().getDisplayContext().pixelsPerPoint * 2);
+    imguiSession_->beginFrame(framebufferDesc_, getPlatform().getDisplayContext().pixelsPerPoint);
     ImGui::Begin("Texture Viewer", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::Image(ImTextureID(texture1_.get()), ImVec2(512, 512));
     ImGui::End();

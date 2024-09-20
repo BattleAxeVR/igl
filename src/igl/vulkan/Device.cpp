@@ -14,7 +14,6 @@
 #include <igl/vulkan/CommandQueue.h>
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/ComputePipelineState.h>
-#include <igl/vulkan/DepthStencilState.h>
 #include <igl/vulkan/EnhancedShaderDebuggingStore.h>
 #include <igl/vulkan/Framebuffer.h>
 #include <igl/vulkan/PlatformDevice.h>
@@ -22,13 +21,13 @@
 #include <igl/vulkan/SamplerState.h>
 #include <igl/vulkan/ShaderModule.h>
 #include <igl/vulkan/Texture.h>
-#include <igl/vulkan/VertexInputState.h>
 #include <igl/vulkan/VulkanBuffer.h>
 #include <igl/vulkan/VulkanContext.h>
 #include <igl/vulkan/VulkanDevice.h>
 #include <igl/vulkan/VulkanHelpers.h>
 #include <igl/vulkan/VulkanImageView.h>
 #include <igl/vulkan/VulkanShaderModule.h>
+#include <igl/vulkan/util/TextureFormat.h>
 
 // Writes the shader code to disk for debugging. Used in `Device::createShaderModule()`
 #if IGL_SHADER_DUMP && IGL_DEBUG
@@ -659,7 +658,7 @@ ICapabilities::TextureFormatCapabilities Device::getTextureFormatCapabilities(
     TextureFormat format) const {
   IGL_PROFILER_FUNCTION();
 
-  const VkFormat vkFormat = igl::vulkan::textureFormatToVkFormat(format);
+  const VkFormat vkFormat = igl::vulkan::util::textureFormatToVkFormat(format);
 
   if (vkFormat == VK_FORMAT_UNDEFINED) {
     return TextureFormatCapabilityBits::Unsupported;
@@ -712,6 +711,13 @@ ICapabilities::TextureFormatCapabilities Device::getTextureFormatCapabilities(
 
 ShaderVersion Device::getShaderVersion() const {
   return {ShaderFamily::SpirV, 1, 5, 0};
+}
+
+BackendVersion Device::getBackendVersion() const {
+  const uint32_t apiVersion = ctx_->vkPhysicalDeviceProperties2_.properties.apiVersion;
+  return {BackendFlavor::Vulkan,
+          static_cast<uint8_t>(VK_API_VERSION_MAJOR(apiVersion)),
+          static_cast<uint8_t>(VK_API_VERSION_MINOR(apiVersion))};
 }
 
 Holder<igl::BindGroupTextureHandle> Device::createBindGroup(const igl::BindGroupTextureDesc& desc,

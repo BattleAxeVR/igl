@@ -7,6 +7,7 @@
 
 #include "VulkanSwapchain.h"
 
+#include <igl/vulkan/ColorSpace.h>
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/VulkanContext.h>
@@ -14,6 +15,7 @@
 #include <igl/vulkan/VulkanRenderPassBuilder.h>
 #include <igl/vulkan/VulkanSemaphore.h>
 #include <igl/vulkan/VulkanTexture.h>
+#include <igl/vulkan/util/TextureFormat.h>
 
 namespace {
 
@@ -34,10 +36,10 @@ bool isNativeSwapChainBGR(const std::vector<VkSurfaceFormatKHR>& formats) {
     // The preferred format should be the one which is closer to the beginning of the formats
     // container. If BGR is encountered earlier, it should be picked as the format of choice. If RGB
     // happens to be earlier, take it.
-    if (igl::vulkan::isTextureFormatRGB(format.format)) {
+    if (igl::vulkan::util::isTextureFormatRGB(format.format)) {
       return false;
     }
-    if (igl::vulkan::isTextureFormatBGR(format.format)) {
+    if (igl::vulkan::util::isTextureFormatBGR(format.format)) {
       return true;
     }
   }
@@ -50,10 +52,10 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
   IGL_ASSERT(!formats.empty());
 
   const bool isNativeSwapchainBGR = isNativeSwapChainBGR(formats);
-  auto vulkanTextureFormat = igl::vulkan::textureFormatToVkFormat(textureFormat);
-  const bool isRequestedFormatBGR = igl::vulkan::isTextureFormatBGR(vulkanTextureFormat);
+  auto vulkanTextureFormat = igl::vulkan::util::textureFormatToVkFormat(textureFormat);
+  const bool isRequestedFormatBGR = igl::vulkan::util::isTextureFormatBGR(vulkanTextureFormat);
   if (isNativeSwapchainBGR != isRequestedFormatBGR) {
-    vulkanTextureFormat = igl::vulkan::invertRedAndBlue(vulkanTextureFormat);
+    vulkanTextureFormat = igl::vulkan::util::invertRedAndBlue(vulkanTextureFormat);
   }
   const auto preferred =
       VkSurfaceFormatKHR{vulkanTextureFormat, igl::vulkan::colorSpaceToVkColorSpace(colorSpace)};
@@ -94,10 +96,10 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& mode
 VkImageUsageFlags chooseUsageFlags(const VulkanFunctionTable& vf,
                                    VkPhysicalDevice pd,
                                    VkSurfaceKHR surface,
-                                   VkFormat format) {
+                                   VkFormat format,
+                                   VkSurfaceCapabilitiesKHR& caps) {
   VkImageUsageFlags usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-  VkSurfaceCapabilitiesKHR caps = {};
   VK_ASSERT(vf.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &caps));
 
   const bool isStorageSupported = (caps.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT) > 0;
@@ -119,7 +121,7 @@ VkImageUsageFlags chooseUsageFlags(const VulkanFunctionTable& vf,
 
 namespace igl::vulkan {
 
-VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint32_t height) :
+VulkanSwapchain::VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t height) :
   ctx_(ctx),
   device_(ctx.device_->getVkDevice()),
   graphicsQueue_(ctx.deviceQueues_.graphicsQueue),
@@ -128,11 +130,11 @@ VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint3
   surfaceFormat_ = chooseSwapSurfaceFormat(ctx.deviceSurfaceFormats_,
                                            ctx.config_.requestedSwapChainTextureFormat,
                                            ctx.config_.swapChainColorSpace);
-  IGL_LOG_DEBUG(
-      "Swapchain format: %s; colorSpace: %s\n",
-      TextureFormatProperties::fromTextureFormat(vkFormatToTextureFormat(surfaceFormat_.format))
-          .name,
-      colorSpaceToString(vkColorSpaceToColorSpace(surfaceFormat_.colorSpace)));
+  IGL_LOG_DEBUG("Swapchain format: %s; colorSpace: %s\n",
+                TextureFormatProperties::fromTextureFormat(
+                    util::vkTextureFormatToTextureFormat(surfaceFormat_.format))
+                    .name,
+                colorSpaceToString(vkColorSpaceToColorSpace(surfaceFormat_.colorSpace)));
 
   IGL_ASSERT_MSG(
       ctx.vkSurface_ != VK_NULL_HANDLE,
@@ -153,8 +155,11 @@ VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint3
   }
 #endif
 
-  const VkImageUsageFlags usageFlags =
-      chooseUsageFlags(ctx.vf_, ctx.getVkPhysicalDevice(), ctx.vkSurface_, surfaceFormat_.format);
+  const VkImageUsageFlags usageFlags = chooseUsageFlags(ctx.vf_,
+                                                        ctx.getVkPhysicalDevice(),
+                                                        ctx.vkSurface_,
+                                                        surfaceFormat_.format,
+                                                        ctx.deviceSurfaceCaps_);
 
   {
     const uint32_t requestedSwapchainImageCount = chooseSwapImageCount(ctx.deviceSurfaceCaps_);

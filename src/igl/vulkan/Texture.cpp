@@ -15,6 +15,7 @@
 #include <igl/vulkan/VulkanImageView.h>
 #include <igl/vulkan/VulkanStagingDevice.h>
 #include <igl/vulkan/VulkanTexture.h>
+#include <igl/vulkan/util/TextureFormat.h>
 
 namespace igl::vulkan {
 
@@ -28,7 +29,7 @@ Result Texture::create(const TextureDesc& desc) {
 
   const VkFormat vkFormat = getProperties().isDepthOrStencil()
                                 ? ctx.getClosestDepthStencilFormat(desc_.format)
-                                : textureFormatToVkFormat(desc_.format);
+                                : util::textureFormatToVkFormat(desc_.format);
 
   const igl::TextureType type = desc_.type;
   if (!IGL_VERIFY(type == TextureType::TwoD || type == TextureType::TwoDArray ||
@@ -330,7 +331,7 @@ VkImageView Texture::getVkImageViewForFramebuffer(uint32_t mipLevel,
   const VkFormat vkFormat =
       getProperties().isDepthOrStencil()
           ? device_.getVulkanContext().getClosestDepthStencilFormat(desc_.format)
-          : textureFormatToVkFormat(desc_.format);
+          : util::textureFormatToVkFormat(desc_.format);
 
   const VkImageAspectFlags flags = texture_->getVulkanImage().getImageAspectFlags();
   imageViews[index] = texture_->getVulkanImage().createImageView(
@@ -366,11 +367,13 @@ void Texture::clearColorTexture(const igl::Color& rgba) {
   const igl::vulkan::VulkanImage& img = texture_->getVulkanImage();
   IGL_ASSERT(img.valid());
 
-  const auto& wrapper = img.ctx_->immediate_->acquire();
+  const auto& wrapper = img.ctx_->stagingDevice_->immediate_->acquire();
 
+  // There is a memory barrier inserted in clearColorImage().
+  // The memory barrier is necessary to ensure synchronized access.
   img.clearColorImage(wrapper.cmdBuf_, rgba);
 
-  img.ctx_->immediate_->submit(wrapper);
+  img.ctx_->stagingDevice_->immediate_->submit(wrapper);
 }
 
 } // namespace igl::vulkan

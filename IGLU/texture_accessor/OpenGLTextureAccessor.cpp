@@ -51,7 +51,7 @@ OpenGLTextureAccessor::OpenGLTextureAccessor(std::shared_ptr<igl::ITexture> text
     context.bufferData(GL_PIXEL_PACK_BUFFER, textureBytesPerImage_, nullptr, GL_DYNAMIC_READ);
     context.bindBuffer(GL_PIXEL_PACK_BUFFER, 0);
   }
-};
+}
 
 void OpenGLTextureAccessor::requestBytes(igl::ICommandQueue& commandQueue,
                                          std::shared_ptr<igl::ITexture> texture) {
@@ -84,7 +84,7 @@ void OpenGLTextureAccessor::requestBytes(igl::ICommandQueue& commandQueue,
     }
     const auto& properties = glTexture.getProperties();
     context.pixelStorei(GL_PACK_ALIGNMENT,
-                        glTexture.getAlignment(properties.getBytesPerRow(textureWidth_), 0));
+                        glTexture.getAlignment(properties.getBytesPerRow(textureWidth_)));
 
     // Start transferring from framebuffer -> PBO
     context.bindBuffer(GL_PIXEL_PACK_BUFFER, pboId_);
@@ -121,7 +121,7 @@ RequestStatus OpenGLTextureAccessor::getRequestStatus() {
     }
   }
   return status_;
-};
+}
 
 std::vector<unsigned char>& OpenGLTextureAccessor::getBytes() {
   copyBytes(latestBytesRead_.data(), latestBytesRead_.size());

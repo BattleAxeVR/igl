@@ -29,7 +29,7 @@
 
 #include <igl/FPSCounter.h>
 #include <igl/IGL.h>
-#include <igl/vulkan/util/TextureFormat.h>
+#include <igl/vulkan/util/TextureFormatInt.h>
 
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
@@ -1603,10 +1603,10 @@ void createRenderPipelines() {
                                                                    nullptr);
 #if USE_OPENGL_BACKEND
     size_t bindingPoint = 0;
-    desc.uniformBlockBindingMap.emplace(
-        bindingPoint++, std::make_pair(IGL_NAMEHANDLE("ShadowFrameUniforms"), igl::NameHandle{}));
-    desc.uniformBlockBindingMap.emplace(
-        bindingPoint++, std::make_pair(IGL_NAMEHANDLE("ShadowObjectUniforms"), igl::NameHandle{}));
+    desc.uniformBlockBindingMap[bindingPoint++].emplace_back(
+        std::make_pair(IGL_NAMEHANDLE("ShadowFrameUniforms"), igl::NameHandle{}));
+    desc.uniformBlockBindingMap[bindingPoint++].emplace_back(
+        std::make_pair(IGL_NAMEHANDLE("ShadowObjectUniforms"), igl::NameHandle{}));
 #endif
     desc.cullMode = igl::CullMode::Disabled;
     desc.debugName = IGL_NAMEHANDLE("Pipeline: shadow");
@@ -1718,8 +1718,8 @@ void createRenderPipelineSkybox() {
 // @fb-only
 #if USE_OPENGL_BACKEND
   size_t bindingPoint = 0;
-  desc.uniformBlockBindingMap.emplace(
-      bindingPoint++, std::make_pair(IGL_NAMEHANDLE("SkyboxFrameUniforms"), igl::NameHandle{}));
+  desc.uniformBlockBindingMap[bindingPoint++].emplace_back(
+      std::make_pair(IGL_NAMEHANDLE("SkyboxFrameUniforms"), igl::NameHandle{}));
 #endif
   desc.cullMode = igl::CullMode::Front;
   desc.frontFaceWinding = igl::WindingMode::CounterClockwise;
@@ -2295,7 +2295,7 @@ void loadCubemapTexture(const std::string& fileNameKTX, std::shared_ptr<ITexture
   }
 
   auto desc =
-      TextureDesc::newCube(igl::vulkan::util::vkTextureFormatToTextureFormat(texture->vkFormat),
+      TextureDesc::newCube(igl::vulkan::util::intVkTextureFormatToTextureFormat(texture->vkFormat),
                            texRefRange.width,
                            texRefRange.height,
                            TextureDesc::TextureUsageBits::Sampled,

@@ -20,8 +20,10 @@
 #include <memory>
 #include <shell/shared/platform/win/PlatformWin.h>
 #include <shell/shared/renderSession/AppParams.h>
+#include <shell/shared/renderSession/DefaultRenderSessionFactory.h>
 #include <shell/shared/renderSession/DefaultSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
+#include <shell/shared/renderSession/transition/TransitionRenderSessionFactory.h>
 #include <sstream>
 #include <stdexcept>
 #include <stdio.h>
@@ -91,26 +93,49 @@ class EGLDevice final : public ::igl::opengl::Device {
   ::igl::opengl::PlatformDevice platformDevice_;
 };
 
-GLFWwindow* initGLESWindow(uint32_t majorVersion, uint32_t minorVersion) {
+GLFWwindow* initGLESWindow(const shell::RenderSessionConfig& config) {
   glfwSetErrorCallback(glfwErrorHandler);
   if (!glfwInit())
     return nullptr;
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
   glfwWindowHint(GLFW_CONTEXT_CREATION_API, GLFW_EGL_CONTEXT_API);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, majorVersion);
-  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, minorVersion);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, config.backendVersion.majorVersion);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, config.backendVersion.minorVersion);
   glfwWindowHint(GLFW_VISIBLE, true);
   glfwWindowHint(GLFW_DOUBLEBUFFER, true);
   glfwWindowHint(GLFW_RESIZABLE, true);
   glfwWindowHint(GLFW_SRGB_CAPABLE, true);
 
-  GLFWwindow* windowHandle = glfwCreateWindow(
-      shellParams_.viewportSize.x, shellParams_.viewportSize.y, "Hello igl", NULL, NULL);
+  int posX = 0;
+  int posY = 0;
+  int width = config.width;
+  int height = config.height;
+
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    // render full screen without overlapping the task bar
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+    glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
+  } else if (config.screenMode == shell::ScreenMode::Fullscreen) {
+    glfwWindowHint(GLFW_MAXIMIZED, true);
+  }
+
+  GLFWwindow* windowHandle =
+      glfwCreateWindow(width, height, config.displayName.c_str(), nullptr, nullptr);
   if (!windowHandle) {
     glfwTerminate();
     return nullptr;
   }
+
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    glfwSetWindowPos(windowHandle, posX, posY);
+  }
+
+  glfwGetFramebufferSize(windowHandle, &width, &height);
+  shellParams_.viewportSize.x = width;
+  shellParams_.viewportSize.y = height;
 
   int result = glfwGetWindowAttrib(windowHandle, GLFW_CLIENT_API);
 
@@ -136,6 +161,9 @@ GLFWwindow* initGLESWindow(uint32_t majorVersion, uint32_t minorVersion) {
 
   glfwSetKeyCallback(windowHandle,
                      [](GLFWwindow* window, int key, int scancode, int action, int mods) {
+                       if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+                         glfwSetWindowShouldClose(window, GLFW_TRUE);
+                       }
                        if (key == GLFW_KEY_SPACE && action == GLFW_RELEASE) {
                          angleBackend = !angleBackend;
                          IGL_LOG_INFO("%s\n", angleBackend ? "Angle" : "Vulkan");
@@ -168,14 +196,37 @@ igl::SurfaceTextures createSurfaceTextures(igl::IDevice& device) {
 int main(int argc, char* argv[]) {
   igl::shell::Platform::initializeCommandLineArgs(argc, argv);
 
+  auto factory = igl::shell::createDefaultRenderSessionFactory();
+
   uint32_t majorVersion = 3;
   uint32_t minorVersion = 1;
   if (argc == 2) {
     std::tie(majorVersion, minorVersion) = igl::opengl::parseVersionString(argv[1]);
   }
 
+  std::vector<shell::RenderSessionConfig> suggestedConfigs = {
+      {
+          .displayName =
+              "OpenGL ES " + std::to_string(majorVersion) + "." + std::to_string(minorVersion),
+          .backendVersion = {.flavor = BackendFlavor::OpenGL_ES,
+                             .majorVersion = static_cast<uint8_t>(majorVersion),
+                             .minorVersion = static_cast<uint8_t>(minorVersion)},
+          .colorFramebufferFormat = TextureFormat::RGBA_UNorm8,
+          .width = 1024,
+          .height = 768,
+          .screenMode = shell::ScreenMode::FullscreenNoTaskbar,
+      },
+  };
+
+  const auto requestedConfigs = factory->requestedConfigs(std::move(suggestedConfigs));
+  if (IGL_UNEXPECTED(requestedConfigs.size() != 1)) {
+    return -1;
+  }
+
+  IGL_ASSERT(requestedConfigs[0].backendVersion.flavor == BackendFlavor::OpenGL_ES);
+
   using WindowPtr = std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)>;
-  WindowPtr glesWindow(initGLESWindow(majorVersion, minorVersion), &glfwDestroyWindow);
+  WindowPtr glesWindow(initGLESWindow(requestedConfigs[0]), &glfwDestroyWindow);
   if (!glesWindow.get())
     return 0;
 
@@ -190,8 +241,9 @@ int main(int argc, char* argv[]) {
 #endif // IGL_ANGLE
   IGL_ASSERT(glesShellPlatform_);
 
-  glesSession_ = igl::shell::createDefaultRenderSession(glesShellPlatform_);
-  IGL_ASSERT_MSG(glesSession_, "createDefaultRenderSession() must return a valid session");
+  glesSession_ = factory->createRenderSession(glesShellPlatform_);
+  IGL_ASSERT_MSG(glesSession_,
+                 "IRenderSessionFactory::createRenderSession() must return a valid session");
   glesSession_->initialize();
 
   auto surfaceTextures = createSurfaceTextures(glesShellPlatform_->getDevice());

@@ -24,6 +24,7 @@
 #include <igl/Common.h>
 #include <igl/DepthStencilState.h>
 #include <igl/Texture.h>
+#include <igl/VertexInputState.h>
 #include <igl/vulkan/VulkanHelpers.h>
 
 // libc++'s implementation of std::format has a large binary size impact
@@ -158,14 +159,7 @@ struct VulkanContextConfig {
 
 Result getResultFromVkResult(VkResult result);
 void setResultFrom(Result* outResult, VkResult result);
-VkFormat textureFormatToVkFormat(igl::TextureFormat format);
-igl::TextureFormat vkFormatToTextureFormat(VkFormat format);
-igl::ColorSpace vkColorSpaceToColorSpace(VkColorSpaceKHR colorSpace);
-VkFormat invertRedAndBlue(VkFormat format);
-bool isTextureFormatRGB(VkFormat format);
-bool isTextureFormatBGR(VkFormat format);
 uint32_t getNumImagePlanes(VkFormat format);
-VkColorSpaceKHR colorSpaceToVkColorSpace(igl::ColorSpace colorSpace);
 VkMemoryPropertyFlags resourceStorageToVkMemoryPropertyFlags(igl::ResourceStorage resourceStorage);
 VkCompareOp compareFunctionToVkCompareOp(igl::CompareFunction func);
 VkStencilOp stencilOperationToVkStencilOp(igl::StencilOperation op);
@@ -194,6 +188,19 @@ void overrideImageLayout(ITexture* texture, VkImageLayout layout);
 /// @brief Ensures that all shader bindings are bound by checking the SPIR-V reflection. If the
 /// function doesn't assert at some point, the shader bindings are correct. Only for debugging.
 void ensureShaderModule(IShaderModule* sm);
+
+/// @brief Implements the igl::IDepthStencilState interface
+struct DepthStencilState final : public IDepthStencilState {
+  explicit DepthStencilState(const DepthStencilStateDesc& desc) : desc_(desc) {}
+  const DepthStencilStateDesc desc_;
+};
+
+/// @brief Implements the igl::IVertexInputState interface
+struct VertexInputState final : public IVertexInputState {
+ public:
+  explicit VertexInputState(const VertexInputStateDesc& desc) : desc_(desc) {}
+  const VertexInputStateDesc desc_;
+};
 
 } // namespace igl::vulkan
 

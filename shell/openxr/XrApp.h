@@ -266,8 +266,8 @@ class XrApp {
   [[nodiscard]] inline bool passthroughSupported() const noexcept;
   [[nodiscard]] inline bool passthroughEnabled() const noexcept;
 
-  [[nodiscard]] inline bool handsTrackingSupported() const noexcept;
-  [[nodiscard]] inline bool handsTrackingMeshSupported() const noexcept;
+  [[nodiscard]] inline bool handTrackingSupported() const noexcept;
+  [[nodiscard]] inline bool handTrackingMeshSupported() const noexcept;
   [[nodiscard]] inline bool refreshRateExtensionSupported() const noexcept;
   [[nodiscard]] inline bool instanceCreateInfoAndroidSupported() const noexcept;
   [[nodiscard]] inline bool alphaBlendCompositionSupported() const noexcept;
@@ -295,9 +295,13 @@ class XrApp {
       .next = nullptr,
   };
 
+  XrSystemHandTrackingPropertiesEXT handTrackingSystemProps_ = {
+      .type = XR_TYPE_SYSTEM_HAND_TRACKING_PROPERTIES_EXT,
+      .next = nullptr,
+  };
   XrSystemProperties systemProps_ = {
       .type = XR_TYPE_SYSTEM_PROPERTIES,
-      .next = nullptr,
+      .next = &handTrackingSystemProps_,
   };
 
 #if IGL_PLATFORM_ANDROID

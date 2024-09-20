@@ -19,10 +19,11 @@ namespace igl::shell {
 class ColorSession : public RenderSession {
   struct FragmentFormat {
     iglu::simdtypes::float3 color;
+    iglu::simdtypes::float4x4 mvp;
   };
 
  public:
-  ColorSession(std::shared_ptr<Platform> platform);
+  ColorSession(std::shared_ptr<Platform> platform) : RenderSession(std::move(platform)) {}
   // clang-tidy off
   void initialize() noexcept override;
   // clang-tidy on

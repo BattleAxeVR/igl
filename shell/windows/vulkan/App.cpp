@@ -23,11 +23,13 @@
 #include <memory>
 #include <shell/shared/platform/win/PlatformWin.h>
 #include <shell/shared/renderSession/AppParams.h>
-#include <shell/shared/renderSession/DefaultSession.h>
+#include <shell/shared/renderSession/DefaultRenderSessionFactory.h>
+#include <shell/shared/renderSession/IRenderSessionFactory.h>
+#include <shell/shared/renderSession/RenderSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
+#include <shell/shared/renderSession/transition/TransitionRenderSessionFactory.h>
 #include <sstream>
 #include <stdexcept>
-#include <stdio.h>
 
 using namespace igl;
 
@@ -73,41 +75,44 @@ igl::shell::MouseButton getIGLMouseButton(int button) {
 
 } // namespace
 
-GLFWwindow* initWindow() {
+GLFWwindow* initWindow(const shell::RenderSessionConfig& config) {
   glfwSetErrorCallback(glfwErrorHandler);
   if (!glfwInit())
     return nullptr;
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+  glfwWindowHint(GLFW_SRGB_CAPABLE, GLFW_TRUE);
 
-  const bool overrideDefaults = shellParams_.viewportSize == igl::shell::ShellParams().viewportSize;
+  int posX = 0;
+  int posY = 0;
+  int width = config.width;
+  int height = config.height;
 
-  int x = 0;
-  int y = 0;
-  int w = shellParams_.viewportSize.x;
-  int h = shellParams_.viewportSize.y;
-
-  if (overrideDefaults) {
-    // override defaults
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    // render full screen without overlapping the task bar
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    glfwGetMonitorWorkarea(monitor, &x, &y, &w, &h);
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+
+    glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
+  } else if (config.screenMode == shell::ScreenMode::Fullscreen) {
+    glfwWindowHint(GLFW_MAXIMIZED, true);
   }
 
-  GLFWwindow* windowHandle = glfwCreateWindow(w, h, "Hello IGL Vulkan", nullptr, nullptr);
+  GLFWwindow* windowHandle =
+      glfwCreateWindow(width, height, config.displayName.c_str(), nullptr, nullptr);
   if (!windowHandle) {
     glfwTerminate();
     return nullptr;
   }
 
-  int width, height;
+  if (config.screenMode == shell::ScreenMode::FullscreenNoTaskbar) {
+    glfwSetWindowPos(windowHandle, posX, posY);
+  }
+
   glfwGetFramebufferSize(windowHandle, &width, &height);
   shellParams_.viewportSize.x = width;
   shellParams_.viewportSize.y = height;
-
-  if (overrideDefaults) {
-    glfwSetWindowPos(windowHandle, x, y);
-  }
 
   glfwSetCursorPosCallback(windowHandle, [](GLFWwindow* window, double xpos, double ypos) {
     vulkanShellPlatform_->getInputDispatcher().queueEvent(
@@ -128,12 +133,28 @@ GLFWwindow* initWindow() {
             iglButton, action == GLFW_PRESS, (float)xpos, (float)ypos));
       });
 
-  glfwSetKeyCallback(windowHandle, [](GLFWwindow* window, int key, int, int action, int) {
+  glfwSetKeyCallback(windowHandle, [](GLFWwindow* window, int key, int, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
       glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
+    uint32_t modifiers = 0;
+    if (mods & GLFW_MOD_SHIFT) {
+      modifiers |= igl::shell::KeyEventModifierShift;
+    }
+    if (mods & GLFW_MOD_CONTROL) {
+      modifiers |= igl::shell::KeyEventModifierControl;
+    }
+    if (mods & GLFW_MOD_ALT) {
+      modifiers |= igl::shell::KeyEventModifierOption;
+    }
+    if (mods & GLFW_MOD_CAPS_LOCK) {
+      modifiers |= igl::shell::KeyEventModifierCapsLock;
+    }
+    if (mods & GLFW_MOD_NUM_LOCK) {
+      modifiers |= igl::shell::KeyEventModifierNumLock;
+    }
     vulkanShellPlatform_->getInputDispatcher().queueEvent(
-        igl::shell::KeyEvent(action == GLFW_PRESS, key));
+        igl::shell::KeyEvent(action == GLFW_PRESS, key, modifiers));
   });
 
   return windowHandle;
@@ -194,17 +215,38 @@ int main(int argc, char* argv[]) {
   shellParams_ = initShellParams();
   igl::shell::Platform::initializeCommandLineArgs(argc, argv);
 
+  auto factory = igl::shell::createDefaultRenderSessionFactory();
+
+  std::vector<shell::RenderSessionConfig> suggestedConfigs = {
+      {
+          .displayName = "Vulkan 1.1",
+          .backendVersion = {.flavor = BackendFlavor::Vulkan, .majorVersion = 1, .minorVersion = 1},
+          .colorFramebufferFormat = TextureFormat::BGRA_UNorm8,
+          .width = 1024,
+          .height = 768,
+          .screenMode = shell::ScreenMode::FullscreenNoTaskbar,
+      },
+  };
+
+  const auto requestedConfigs = factory->requestedConfigs(std::move(suggestedConfigs));
+  if (IGL_UNEXPECTED(requestedConfigs.size() != 1)) {
+    return -1;
+  }
+
+  IGL_ASSERT(requestedConfigs[0].backendVersion.flavor == BackendFlavor::Vulkan);
+
   using WindowPtr = std::unique_ptr<GLFWwindow, decltype(&glfwDestroyWindow)>;
 
-  WindowPtr vulkanWindow(initWindow(), &glfwDestroyWindow);
+  WindowPtr vulkanWindow(initWindow(requestedConfigs[0]), &glfwDestroyWindow);
   if (!vulkanWindow.get()) {
     return 0;
   }
 
   vulkanShellPlatform_ = createPlatform(vulkanWindow.get());
-  vulkanSession_ = igl::shell::createDefaultRenderSession(vulkanShellPlatform_);
+  vulkanSession_ = factory->createRenderSession(vulkanShellPlatform_);
 
-  IGL_ASSERT_MSG(vulkanSession_, "createDefaultRenderSession() must return a valid session");
+  IGL_ASSERT_MSG(vulkanSession_,
+                 "IRenderSessionFactory::createRenderSession() must return a valid session");
   vulkanSession_->setShellParams(shellParams_);
   vulkanSession_->initialize();
 

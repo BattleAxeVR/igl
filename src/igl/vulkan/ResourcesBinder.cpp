@@ -45,22 +45,20 @@ void ResourcesBinder::bindBuffer(uint32_t index,
   IGL_ASSERT_MSG(isUniformBuffer ||
                      ((buffer->getBufferType() & BufferDesc::BufferTypeBits::Storage) != 0),
                  "The buffer must be a uniform or storage buffer");
-#if 0
-  if (isUniformBuffer && bufferOffset) {
-    const uint32_t alignment = static_cast<uint32_t>(
-        ctx_.getVkPhysicalDeviceProperties().limits.minUniformBufferOffsetAlignment);
+  if (bufferOffset) {
+    const auto& limits = ctx_.getVkPhysicalDeviceProperties().limits;
+    const uint32_t alignment =
+        static_cast<uint32_t>(isUniformBuffer ? limits.minUniformBufferOffsetAlignment
+                                              : limits.minStorageBufferOffsetAlignment);
     if (!IGL_VERIFY((alignment == 0) || (bufferOffset % alignment == 0))) {
-      IGL_LOG_ERROR(
-          "`bufferOffset = %u` must be a multiple of "
-          "`VkPhysicalDeviceLimits::minUniformBufferOffsetAlignment = %u`",
-          static_cast<uint32_t>(bufferOffset),
-          alignment);
+      IGL_LOG_ERROR("`bufferOffset = %u` must be a multiple of `VkPhysicalDeviceLimits::%s = %u`",
+                    static_cast<uint32_t>(bufferOffset),
+                    isUniformBuffer ? "minUniformBufferOffsetAlignment"
+                                    : "minStorageBufferOffsetAlignment",
+                    alignment);
       return;
     }
   }
-#else
-  (void)isUniformBuffer;
-#endif
 
   VkBuffer buf = buffer ? buffer->getVkBuffer() : ctx_.dummyUniformBuffer_->getVkBuffer();
   VkDescriptorBufferInfo& slot = bindingsBuffers_.buffers[index];
