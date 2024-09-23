@@ -15,7 +15,6 @@
 #include <igl/vulkan/VulkanRenderPassBuilder.h>
 #include <igl/vulkan/VulkanSemaphore.h>
 #include <igl/vulkan/VulkanTexture.h>
-#include <igl/vulkan/util/TextureFormat.h>
 
 namespace {
 
@@ -36,10 +35,10 @@ bool isNativeSwapChainBGR(const std::vector<VkSurfaceFormatKHR>& formats) {
     // The preferred format should be the one which is closer to the beginning of the formats
     // container. If BGR is encountered earlier, it should be picked as the format of choice. If RGB
     // happens to be earlier, take it.
-    if (igl::vulkan::util::isTextureFormatRGB(format.format)) {
+    if (igl::vulkan::isTextureFormatRGB(format.format)) {
       return false;
     }
-    if (igl::vulkan::util::isTextureFormatBGR(format.format)) {
+    if (igl::vulkan::isTextureFormatBGR(format.format)) {
       return true;
     }
   }
@@ -52,10 +51,10 @@ VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>
   IGL_ASSERT(!formats.empty());
 
   const bool isNativeSwapchainBGR = isNativeSwapChainBGR(formats);
-  auto vulkanTextureFormat = igl::vulkan::util::textureFormatToVkFormat(textureFormat);
-  const bool isRequestedFormatBGR = igl::vulkan::util::isTextureFormatBGR(vulkanTextureFormat);
+  auto vulkanTextureFormat = igl::vulkan::textureFormatToVkFormat(textureFormat);
+  const bool isRequestedFormatBGR = igl::vulkan::isTextureFormatBGR(vulkanTextureFormat);
   if (isNativeSwapchainBGR != isRequestedFormatBGR) {
-    vulkanTextureFormat = igl::vulkan::util::invertRedAndBlue(vulkanTextureFormat);
+    vulkanTextureFormat = igl::vulkan::invertRedAndBlue(vulkanTextureFormat);
   }
   const auto preferred =
       VkSurfaceFormatKHR{vulkanTextureFormat, igl::vulkan::colorSpaceToVkColorSpace(colorSpace)};
@@ -130,11 +129,11 @@ VulkanSwapchain::VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t he
   surfaceFormat_ = chooseSwapSurfaceFormat(ctx.deviceSurfaceFormats_,
                                            ctx.config_.requestedSwapChainTextureFormat,
                                            ctx.config_.swapChainColorSpace);
-  IGL_LOG_DEBUG("Swapchain format: %s; colorSpace: %s\n",
-                TextureFormatProperties::fromTextureFormat(
-                    util::vkTextureFormatToTextureFormat(surfaceFormat_.format))
-                    .name,
-                colorSpaceToString(vkColorSpaceToColorSpace(surfaceFormat_.colorSpace)));
+  IGL_LOG_DEBUG(
+      "Swapchain format: %s; colorSpace: %s\n",
+      TextureFormatProperties::fromTextureFormat(vkFormatToTextureFormat(surfaceFormat_.format))
+          .name,
+      colorSpaceToString(vkColorSpaceToColorSpace(surfaceFormat_.colorSpace)));
 
   IGL_ASSERT_MSG(
       ctx.vkSurface_ != VK_NULL_HANDLE,

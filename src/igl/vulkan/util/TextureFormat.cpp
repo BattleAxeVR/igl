@@ -12,187 +12,90 @@
 
 namespace igl::vulkan::util {
 
-VkFormat textureFormatToVkFormat(igl::TextureFormat format) {
-  using TextureFormat = ::igl::TextureFormat;
-  switch (format) {
-  case TextureFormat::Invalid:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::A_UNorm8:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::L_UNorm8:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::R_UNorm8:
-    return VK_FORMAT_R8_UNORM;
-  case TextureFormat::R_UNorm16:
-    return VK_FORMAT_R16_UNORM;
-  case TextureFormat::R_F16:
-    return VK_FORMAT_R16_SFLOAT;
-  case TextureFormat::R_UInt16:
-    return VK_FORMAT_R16_UINT;
-  case TextureFormat::B5G5R5A1_UNorm:
-    return VK_FORMAT_B5G5R5A1_UNORM_PACK16;
-  case TextureFormat::B5G6R5_UNorm:
-    return VK_FORMAT_B5G6R5_UNORM_PACK16;
-  case TextureFormat::ABGR_UNorm4:
-    return VK_FORMAT_B4G4R4A4_UNORM_PACK16;
-  case TextureFormat::LA_UNorm8:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::RG_UNorm8:
-    return VK_FORMAT_R8G8_UNORM;
-  case TextureFormat::RG_UNorm16:
-    return VK_FORMAT_R16G16_UNORM;
-  case TextureFormat::R4G2B2_UNorm_Apple:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::R4G2B2_UNorm_Rev_Apple:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::R5G5B5A1_UNorm:
-    return VK_FORMAT_R5G5B5A1_UNORM_PACK16;
-  case TextureFormat::BGRA_UNorm8:
-    return VK_FORMAT_B8G8R8A8_UNORM;
-  case TextureFormat::BGRA_UNorm8_Rev:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::RGBA_UNorm8:
-  case TextureFormat::RGBX_UNorm8:
-    return VK_FORMAT_R8G8B8A8_UNORM;
-  case TextureFormat::RGBA_SRGB:
-    return VK_FORMAT_R8G8B8A8_SRGB;
-  case TextureFormat::BGRA_SRGB:
-    return VK_FORMAT_B8G8R8A8_SRGB;
-  case TextureFormat::RG_F16:
-    return VK_FORMAT_R16G16_SFLOAT;
-  case TextureFormat::RG_UInt16:
-    return VK_FORMAT_R16G16_UINT;
-  case TextureFormat::RGB10_A2_UNorm_Rev:
-    return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
-  case TextureFormat::RGB10_A2_Uint_Rev:
-    return VK_FORMAT_A2R10G10B10_UINT_PACK32;
-  case TextureFormat::BGR10_A2_Unorm:
-    return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-  case TextureFormat::R_F32:
-    return VK_FORMAT_R32_SFLOAT;
-  case TextureFormat::RG_F32:
-    return VK_FORMAT_R32G32_SFLOAT;
-  case TextureFormat::RGB_F16:
-    return VK_FORMAT_R16G16B16_SFLOAT;
-  case TextureFormat::RGBA_F16:
-    return VK_FORMAT_R16G16B16A16_SFLOAT;
-  case TextureFormat::RGB_F32:
-    return VK_FORMAT_R32G32B32_SFLOAT;
-  case TextureFormat::RGBA_UInt32:
-    return VK_FORMAT_R32G32B32A32_UINT;
-  case TextureFormat::RGBA_F32:
-    return VK_FORMAT_R32G32B32A32_SFLOAT;
-  case TextureFormat::RGBA_ASTC_4x4:
-    return VK_FORMAT_ASTC_4x4_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_4x4:
-    return VK_FORMAT_ASTC_4x4_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_5x4:
-    return VK_FORMAT_ASTC_5x4_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_5x4:
-    return VK_FORMAT_ASTC_5x4_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_5x5:
-    return VK_FORMAT_ASTC_5x5_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_5x5:
-    return VK_FORMAT_ASTC_5x5_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_6x5:
-    return VK_FORMAT_ASTC_6x5_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_6x5:
-    return VK_FORMAT_ASTC_6x5_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_6x6:
-    return VK_FORMAT_ASTC_6x6_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_6x6:
-    return VK_FORMAT_ASTC_6x6_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_8x5:
-    return VK_FORMAT_ASTC_8x5_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_8x5:
-    return VK_FORMAT_ASTC_8x5_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_8x6:
-    return VK_FORMAT_ASTC_8x6_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_8x6:
-    return VK_FORMAT_ASTC_8x6_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_8x8:
-    return VK_FORMAT_ASTC_8x8_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_8x8:
-    return VK_FORMAT_ASTC_8x8_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_10x5:
-    return VK_FORMAT_ASTC_10x5_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_10x5:
-    return VK_FORMAT_ASTC_10x5_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_10x6:
-    return VK_FORMAT_ASTC_10x6_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_10x6:
-    return VK_FORMAT_ASTC_10x6_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_10x8:
-    return VK_FORMAT_ASTC_10x8_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_10x8:
-    return VK_FORMAT_ASTC_10x8_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_10x10:
-    return VK_FORMAT_ASTC_10x10_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_10x10:
-    return VK_FORMAT_ASTC_10x10_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_12x10:
-    return VK_FORMAT_ASTC_12x10_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_12x10:
-    return VK_FORMAT_ASTC_12x10_SRGB_BLOCK;
-  case TextureFormat::RGBA_ASTC_12x12:
-    return VK_FORMAT_ASTC_12x12_UNORM_BLOCK;
-  case TextureFormat::SRGB8_A8_ASTC_12x12:
-    return VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
-  case TextureFormat::RGBA_PVRTC_2BPPV1:
-    return VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG;
-  case TextureFormat::RGB_PVRTC_2BPPV1:
-    return VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG;
-  case TextureFormat::RGBA_PVRTC_4BPPV1:
-    return VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG;
-  case TextureFormat::RGB_PVRTC_4BPPV1:
-    return VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG;
-  case TextureFormat::RGB8_ETC1:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::RGB8_ETC2:
-    return VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK;
-  case TextureFormat::SRGB8_ETC2:
-    return VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK;
-  case TextureFormat::RGB8_Punchthrough_A1_ETC2:
-    return VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK;
-  case TextureFormat::SRGB8_Punchthrough_A1_ETC2:
-    return VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK;
-  case TextureFormat::RGBA8_EAC_ETC2:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::SRGB8_A8_EAC_ETC2:
-    return VK_FORMAT_UNDEFINED;
-  case TextureFormat::RG_EAC_UNorm:
-    return VK_FORMAT_EAC_R11G11_UNORM_BLOCK;
-  case TextureFormat::RG_EAC_SNorm:
-    return VK_FORMAT_EAC_R11G11_SNORM_BLOCK;
-  case TextureFormat::R_EAC_UNorm:
-    return VK_FORMAT_EAC_R11_UNORM_BLOCK;
-  case TextureFormat::R_EAC_SNorm:
-    return VK_FORMAT_EAC_R11_SNORM_BLOCK;
-  case TextureFormat::RGBA_BC7_UNORM_4x4:
-    return VK_FORMAT_BC7_UNORM_BLOCK;
-  case TextureFormat::RGBA_BC7_SRGB_4x4:
-    return VK_FORMAT_BC7_SRGB_BLOCK;
-  case TextureFormat::Z_UNorm16:
-    return VK_FORMAT_D16_UNORM;
-  case TextureFormat::Z_UNorm24:
-    return VK_FORMAT_D24_UNORM_S8_UINT;
-  case TextureFormat::Z_UNorm32:
-    return VK_FORMAT_D32_SFLOAT;
-  case TextureFormat::S8_UInt_Z24_UNorm:
-    return VK_FORMAT_D24_UNORM_S8_UINT;
-  case TextureFormat::S8_UInt_Z32_UNorm:
-    return VK_FORMAT_D32_SFLOAT_S8_UINT;
-  case TextureFormat::S_UInt8:
-    return VK_FORMAT_S8_UINT;
-  case TextureFormat::YUV_NV12:
-    return VK_FORMAT_G8_B8R8_2PLANE_420_UNORM;
-  case TextureFormat::YUV_420p:
-    return VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM;
-  }
-  IGL_UNREACHABLE_RETURN(VK_FORMAT_UNDEFINED)
-}
+// @fb-only
 
-TextureFormat vkTextureFormatToTextureFormat(VkFormat vkFormat) {
+// Vulkan Defines
+#define VK_FORMAT_UNDEFINED 0
+#define VK_FORMAT_R8_UNORM 9
+#define VK_FORMAT_R16_UNORM 70
+#define VK_FORMAT_R16_SFLOAT 76
+#define VK_FORMAT_R16_UINT 74
+#define VK_FORMAT_B5G5R5A1_UNORM_PACK16 7
+#define VK_FORMAT_B5G6R5_UNORM_PACK16 5
+#define VK_FORMAT_B4G4R4A4_UNORM_PACK16 3
+#define VK_FORMAT_R8G8_UNORM 16
+#define VK_FORMAT_R5G5B5A1_UNORM_PACK16 6
+#define VK_FORMAT_B8G8R8A8_UNORM 44
+#define VK_FORMAT_R8G8B8A8_UNORM 37
+#define VK_FORMAT_R8G8B8A8_SRGB 43
+#define VK_FORMAT_B8G8R8A8_SRGB 50
+#define VK_FORMAT_R16G16_UNORM 77
+#define VK_FORMAT_R16G16_SFLOAT 83
+#define VK_FORMAT_R16G16_UINT 81
+#define VK_FORMAT_A2R10G10B10_UNORM_PACK32 58
+#define VK_FORMAT_A2R10G10B10_UINT_PACK32 62
+#define VK_FORMAT_A2B10G10R10_UNORM_PACK32 64
+#define VK_FORMAT_R32_SFLOAT 100
+#define VK_FORMAT_R32G32_SFLOAT 103
+#define VK_FORMAT_R16G16B16_SFLOAT 90
+#define VK_FORMAT_R16G16B16A16_SFLOAT 97
+#define VK_FORMAT_R32G32B32_SFLOAT 106
+#define VK_FORMAT_R32G32B32A32_UINT 107
+#define VK_FORMAT_R32G32B32A32_SFLOAT 109
+#define VK_FORMAT_ASTC_4x4_UNORM_BLOCK 157
+#define VK_FORMAT_ASTC_4x4_SRGB_BLOCK 158
+#define VK_FORMAT_ASTC_5x4_UNORM_BLOCK 159
+#define VK_FORMAT_ASTC_5x4_SRGB_BLOCK 160
+#define VK_FORMAT_ASTC_5x5_UNORM_BLOCK 161
+#define VK_FORMAT_ASTC_5x5_SRGB_BLOCK 162
+#define VK_FORMAT_ASTC_6x5_UNORM_BLOCK 163
+#define VK_FORMAT_ASTC_6x5_SRGB_BLOCK 164
+#define VK_FORMAT_ASTC_6x6_UNORM_BLOCK 165
+#define VK_FORMAT_ASTC_6x6_SRGB_BLOCK 166
+#define VK_FORMAT_ASTC_8x5_UNORM_BLOCK 167
+#define VK_FORMAT_ASTC_8x5_SRGB_BLOCK 168
+#define VK_FORMAT_ASTC_8x6_UNORM_BLOCK 169
+#define VK_FORMAT_ASTC_8x6_SRGB_BLOCK 170
+#define VK_FORMAT_ASTC_8x8_UNORM_BLOCK 171
+#define VK_FORMAT_ASTC_8x8_SRGB_BLOCK 172
+#define VK_FORMAT_ASTC_10x5_UNORM_BLOCK 173
+#define VK_FORMAT_ASTC_10x5_SRGB_BLOCK 174
+#define VK_FORMAT_ASTC_10x6_UNORM_BLOCK 175
+#define VK_FORMAT_ASTC_10x6_SRGB_BLOCK 176
+#define VK_FORMAT_ASTC_10x8_UNORM_BLOCK 177
+#define VK_FORMAT_ASTC_10x8_SRGB_BLOCK 178
+#define VK_FORMAT_ASTC_10x10_UNORM_BLOCK 179
+#define VK_FORMAT_ASTC_10x10_SRGB_BLOCK 180
+#define VK_FORMAT_ASTC_12x10_UNORM_BLOCK 181
+#define VK_FORMAT_ASTC_12x10_SRGB_BLOCK 182
+#define VK_FORMAT_ASTC_12x12_UNORM_BLOCK 183
+#define VK_FORMAT_ASTC_12x12_SRGB_BLOCK 184
+#define VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG 1000054000
+#define VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG 1000054001
+#define VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG 1000054002
+#define VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG 1000054003
+#define VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG 1000054004
+#define VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG 1000054005
+#define VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG 1000054006
+#define VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG 1000054007
+#define VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK 147
+#define VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK 148
+#define VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK 149
+#define VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK 150
+#define VK_FORMAT_EAC_R11G11_UNORM_BLOCK 155
+#define VK_FORMAT_EAC_R11G11_SNORM_BLOCK 156
+#define VK_FORMAT_EAC_R11_UNORM_BLOCK 153
+#define VK_FORMAT_EAC_R11_SNORM_BLOCK 154
+#define VK_FORMAT_D16_UNORM 124
+#define VK_FORMAT_BC7_UNORM_BLOCK 145
+#define VK_FORMAT_BC7_SRGB_BLOCK 146
+#define VK_FORMAT_X8_D24_UNORM_PACK32 125
+#define VK_FORMAT_D24_UNORM_S8_UINT 129
+#define VK_FORMAT_S8_UINT 127
+#define VK_FORMAT_D32_SFLOAT_S8_UINT 130
+#define VK_FORMAT_D32_SFLOAT 126
+
+TextureFormat vkTextureFormatToTextureFormat(int32_t vkFormat) {
   switch (vkFormat) {
   case VK_FORMAT_UNDEFINED:
     return TextureFormat::Invalid;
@@ -345,26 +248,6 @@ TextureFormat vkTextureFormatToTextureFormat(VkFormat vkFormat) {
   }
 
   return TextureFormat::Invalid;
-}
-
-VkFormat invertRedAndBlue(VkFormat format) {
-  switch (format) {
-  case VK_FORMAT_B8G8R8A8_UNORM:
-    return VK_FORMAT_R8G8B8A8_UNORM;
-  case VK_FORMAT_R8G8B8A8_UNORM:
-    return VK_FORMAT_B8G8R8A8_UNORM;
-  case VK_FORMAT_R8G8B8A8_SRGB:
-    return VK_FORMAT_B8G8R8A8_SRGB;
-  case VK_FORMAT_B8G8R8A8_SRGB:
-    return VK_FORMAT_R8G8B8A8_SRGB;
-  case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
-    return VK_FORMAT_A2B10G10R10_UNORM_PACK32;
-  case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-    return VK_FORMAT_A2R10G10B10_UNORM_PACK32;
-  default:
-    IGL_ASSERT_NOT_REACHED();
-    return format;
-  }
 }
 
 } // namespace igl::vulkan::util
