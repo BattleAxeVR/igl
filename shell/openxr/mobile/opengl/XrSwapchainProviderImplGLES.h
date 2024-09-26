@@ -15,11 +15,11 @@
 namespace igl::shell::openxr::mobile {
 class XrSwapchainProviderImplGLES final : public impl::XrSwapchainProviderImpl {
  public:
+  XrSwapchainProviderImplGLES(const igl::IDevice& device, igl::TextureFormat preferredColorFormat);
+
   // NOLINTNEXTLINE(bugprone-exception-escape)
   [[nodiscard]] std::vector<int64_t> preferredColorFormats() const noexcept final {
-    return {GL_SRGB8_ALPHA8};
-    //return {GL_R11F_G11F_B10F};
-    //return {GL_RGBA16F};
+    return {preferredColorFormat_};
   }
   // NOLINTNEXTLINE(bugprone-exception-escape)
   [[nodiscard]] std::vector<int64_t> preferredDepthFormats() const noexcept final {
@@ -40,6 +40,7 @@ class XrSwapchainProviderImplGLES final : public impl::XrSwapchainProviderImpl {
       uint8_t numViews) noexcept final;
 
  private:
+  int64_t preferredColorFormat_;
   std::vector<uint32_t> colorImages_;
   std::vector<uint32_t> depthImages_;
 };

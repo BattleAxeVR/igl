@@ -30,7 +30,7 @@
 #endif
 #include <shell/shared/platform/mac/PlatformMac.h>
 #include <shell/shared/renderSession/AppParams.h>
-#include <shell/shared/renderSession/DefaultSession.h>
+#include <shell/shared/renderSession/RenderSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
 // @fb-only
 // @fb-only
@@ -48,7 +48,8 @@
 using namespace igl;
 
 @interface ViewController () {
-  igl::BackendVersion backendVersion_;
+  igl::shell::IRenderSessionFactory* factory_;
+  igl::shell::RenderSessionConfig config_;
   igl::shell::ShellParams shellParams_;
   CGRect frame_;
   CVDisplayLinkRef displayLink_; // For OpenGL only
@@ -66,16 +67,19 @@ using namespace igl;
 /// MARK: - Init
 ///--------------------------------------
 
-- (instancetype)initWithFrame:(CGRect)frame backendVersion:(igl::BackendVersion)backendVersion {
+- (instancetype)initWithFrame:(CGRect)frame
+                      factory:(igl::shell::IRenderSessionFactory&)factory
+                       config:(igl::shell::RenderSessionConfig)config {
   self = [super initWithNibName:nil bundle:nil];
   if (!self) {
     return self;
   }
 
-  backendVersion_ = backendVersion;
+  config_ = std::move(config);
+  factory_ = &factory;
   shellParams_ = igl::shell::ShellParams();
-  frame.size.width = shellParams_.viewportSize.x;
-  frame.size.height = shellParams_.viewportSize.y;
+  shellParams_.viewportSize.x = frame.size.width;
+  shellParams_.viewportSize.y = frame.size.height;
   frame_ = frame;
   kMouseSpeed_ = 0.05f;
   currentDrawable_ = nil;
@@ -109,7 +113,7 @@ using namespace igl;
   shellPlatform_->getInputDispatcher().processEvents();
 
   igl::SurfaceTextures surfaceTextures;
-  if (backendVersion_.flavor != igl::BackendFlavor::Invalid &&
+  if (config_.backendVersion.flavor != igl::BackendFlavor::Invalid &&
       shellPlatform_->getDevicePtr() != nullptr) {
 // @fb-only
     // @fb-only
@@ -150,7 +154,7 @@ using namespace igl;
   // return something that works
   HWDeviceQueryDesc queryDesc(HWDeviceType::Unknown);
 
-  switch (backendVersion_.flavor) {
+  switch (config_.backendVersion.flavor) {
   case igl::BackendFlavor::Invalid: {
     auto headlessView = [[HeadlessView alloc] initWithFrame:frame_];
     self.view = headlessView;
@@ -178,7 +182,7 @@ using namespace igl;
     metalView.delegate = self;
 
     metalView.colorPixelFormat =
-        metal::Texture::textureFormatToMTLPixelFormat(shellParams_.defaultColorFramebufferFormat);
+        metal::Texture::textureFormatToMTLPixelFormat(config_.colorFramebufferFormat);
     metalView.colorspace = metal::colorSpaceToCGColorSpace(shellParams_.swapchainColorSpace);
 
     metalView.framebufferOnly = NO;
@@ -192,7 +196,7 @@ using namespace igl;
 #if IGL_BACKEND_OPENGL
   case igl::BackendFlavor::OpenGL: {
     NSOpenGLPixelFormat* pixelFormat;
-    if (backendVersion_.majorVersion == 4 && backendVersion_.minorVersion == 1) {
+    if (config_.backendVersion.majorVersion == 4 && config_.backendVersion.minorVersion == 1) {
       static NSOpenGLPixelFormatAttribute attributes[] = {
           NSOpenGLPFADoubleBuffer,
           NSOpenGLPFAAllowOfflineRenderers,
@@ -212,7 +216,8 @@ using namespace igl;
       };
       pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
       IGL_ASSERT_MSG(pixelFormat, "Requested attributes not supported");
-    } else if (backendVersion_.majorVersion == 3 && backendVersion_.minorVersion == 2) {
+    } else if (config_.backendVersion.majorVersion == 3 &&
+               config_.backendVersion.minorVersion == 2) {
       static NSOpenGLPixelFormatAttribute attributes[] = {
           NSOpenGLPFADoubleBuffer,
           NSOpenGLPFAAllowOfflineRenderers,
@@ -231,7 +236,8 @@ using namespace igl;
           0,
       };
       pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
-    } else if (backendVersion_.majorVersion == 2 && backendVersion_.minorVersion == 1) {
+    } else if (config_.backendVersion.majorVersion == 2 &&
+               config_.backendVersion.minorVersion == 1) {
       static NSOpenGLPixelFormatAttribute attributes[] = {
           NSOpenGLPFADoubleBuffer,
           NSOpenGLPFAAllowOfflineRenderers,
@@ -253,8 +259,8 @@ using namespace igl;
     } else {
       IGL_ASSERT_MSG(false,
                      "Unsupported OpenGL version: %u.%u\n",
-                     backendVersion_.majorVersion,
-                     backendVersion_.minorVersion);
+                     config_.backendVersion.majorVersion,
+                     config_.backendVersion.minorVersion);
     }
     auto openGLView = [[GLView alloc] initWithFrame:frame_ pixelFormat:pixelFormat];
     igl::Result result;
@@ -282,8 +288,7 @@ using namespace igl;
     vulkanContextConfig.enableBufferDeviceAddress = true;
 
     vulkanContextConfig.swapChainColorSpace = shellParams_.swapchainColorSpace;
-    vulkanContextConfig.requestedSwapChainTextureFormat =
-        shellParams_.defaultColorFramebufferFormat;
+    vulkanContextConfig.requestedSwapChainTextureFormat = config_.colorFramebufferFormat;
 
     auto context =
         igl::vulkan::HWDevice::createContext(vulkanContextConfig, (__bridge void*)vulkanView);
@@ -330,7 +335,7 @@ using namespace igl;
   }
   }
 
-  session_ = igl::shell::createDefaultRenderSession(shellPlatform_);
+  session_ = factory_->createRenderSession(shellPlatform_);
   IGL_ASSERT_MSG(session_, "createDefaultRenderSession() must return a valid session");
   // Get initial native surface dimensions
   shellParams_.nativeSurfaceDimensions = glm::ivec2(2048, 1536);
@@ -374,7 +379,7 @@ using namespace igl;
 }
 
 - (std::shared_ptr<igl::ITexture>)createTextureFromNativeDrawable {
-  switch (backendVersion_.flavor) {
+  switch (config_.backendVersion.flavor) {
 #if IGL_BACKEND_METAL
   case igl::BackendFlavor::Metal: {
     auto& device = shellPlatform_->getDevice();
@@ -424,7 +429,7 @@ using namespace igl;
 }
 
 - (std::shared_ptr<igl::ITexture>)createTextureFromNativeDepth {
-  switch (backendVersion_.flavor) {
+  switch (config_.backendVersion.flavor) {
 #if IGL_BACKEND_METAL
   case igl::BackendFlavor::Metal: {
     auto& device = shellPlatform_->getDevice();

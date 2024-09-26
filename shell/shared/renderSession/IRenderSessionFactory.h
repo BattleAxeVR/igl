@@ -9,6 +9,8 @@
 
 #include <memory>
 #include <shell/shared/renderSession/RenderSessionConfig.h>
+#include <shell/shared/renderSession/RenderSessionWindowConfig.h>
+#include <shell/shared/renderSession/ShellType.h>
 #include <vector>
 
 namespace igl::shell {
@@ -20,9 +22,25 @@ class IRenderSessionFactory {
  public:
   virtual ~IRenderSessionFactory() noexcept = default;
 
-  virtual std::vector<RenderSessionConfig> requestedConfigs(
+  // Used on desktop platforms to configure the window hosting render sessions
+  virtual RenderSessionWindowConfig requestedWindowConfig(
+      ShellType /* shellType */,
+      RenderSessionWindowConfig suggestedConfig) {
+    return suggestedConfig;
+  }
+
+  // Used to configure individual render sessions
+  virtual std::vector<RenderSessionConfig> requestedSessionConfigs(
+      ShellType /* shellType */,
       std::vector<RenderSessionConfig> suggestedConfigs) {
-    return suggestedConfigs;
+    std::vector<RenderSessionConfig> requestedConfigs;
+    requestedConfigs.reserve(suggestedConfigs.size());
+    for (auto& suggestedConfig : suggestedConfigs) {
+      if (suggestedConfig.backendVersion.flavor != igl::BackendFlavor::Invalid) {
+        requestedConfigs.push_back(suggestedConfig);
+      }
+    }
+    return requestedConfigs;
   }
 
   virtual std::unique_ptr<RenderSession> createRenderSession(

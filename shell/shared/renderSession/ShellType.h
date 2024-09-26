@@ -7,15 +7,14 @@
 
 #pragma once
 
-#include <igl/DeviceFeatures.h>
-#include <string>
-
 namespace igl::shell {
 
-struct RenderSessionConfig {
-  std::string displayName;
-  BackendVersion backendVersion;
-  igl::TextureFormat colorFramebufferFormat = igl::TextureFormat::BGRA_UNorm8;
+enum class ShellType {
+  Mac,
+  iOS,
+  Android,
+  OpenXR,
+  Windows,
 };
 
 } // namespace igl::shell

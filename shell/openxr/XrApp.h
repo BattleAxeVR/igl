@@ -9,21 +9,23 @@
 
 #pragma once
 
-#include <igl/Macros.h>
-
 #include <array>
-#include <string>
-#include <unordered_set>
-#include <vector>
-
+#include <glm/glm.hpp>
+#include <igl/IGL.h>
+#include <igl/Macros.h>
 #include <shell/openxr/XrComposition.h>
 #include <shell/openxr/XrPlatform.h>
 #include <shell/openxr/XrRefreshRate.h>
-#include <glm/glm.hpp>
 
+#include <glm/glm.hpp>
 #include <igl/IGL.h>
+
 #include <shell/shared/platform/Platform.h>
 #include <shell/shared/renderSession/RenderSession.h>
+#include <shell/shared/renderSession/RenderSessionConfig.h>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 #ifndef ENABLE_META_OPENXR_FEATURES
 #define ENABLE_META_OPENXR_FEATURES 1
@@ -372,6 +374,7 @@ class XrApp {
   std::shared_ptr<igl::shell::Platform> platform_;
   std::unique_ptr<igl::shell::RenderSession> renderSession_;
 
+  igl::shell::RenderSessionConfig sessionConfig_;
   std::unique_ptr<igl::shell::ShellParams> shellParams_;
 };
 } // namespace igl::shell::openxr

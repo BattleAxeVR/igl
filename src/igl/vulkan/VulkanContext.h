@@ -209,6 +209,8 @@ class VulkanContext final {
     return deviceSurfaceCaps_;
   }
 
+  void ensureCurrentContextThread() const;
+
 #if defined(IGL_WITH_TRACY_GPU)
   TracyVkCtx tracyCtx_ = nullptr;
   std::unique_ptr<VulkanCommandPool> profilingCommandPool_;
