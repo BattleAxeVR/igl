@@ -261,22 +261,7 @@ bool XrApp::createInstance() {
                XR_VERSION_MINOR(instanceProps_.runtimeVersion),
                XR_VERSION_PATCH(instanceProps_.runtimeVersion));
 
-#if ENABLE_META_OPENXR_FEATURES && 0
-  if (refreshRateExtensionSupported()) {
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrGetDisplayRefreshRateFB",
-                                   (PFN_xrVoidFunction*)(&xrGetDisplayRefreshRateFB_)));
-    IGL_ASSERT(xrGetDisplayRefreshRateFB_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrEnumerateDisplayRefreshRatesFB",
-                                   (PFN_xrVoidFunction*)(&xrEnumerateDisplayRefreshRatesFB_)));
-    IGL_ASSERT(xrEnumerateDisplayRefreshRatesFB_ != nullptr);
-    XR_CHECK(xrGetInstanceProcAddr(instance_,
-                                   "xrRequestDisplayRefreshRateFB",
-                                   (PFN_xrVoidFunction*)(&xrRequestDisplayRefreshRateFB_)));
-    IGL_ASSERT(xrRequestDisplayRefreshRateFB_ != nullptr);
-  }
-
+#if ENABLE_META_OPENXR_FEATURES
   if (simultaneousHandsAndControllersSupported()) {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrResumeSimultaneousHandsAndControllersTrackingMETA",
@@ -1729,7 +1714,7 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
 }
 
 bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
-    if (!simultaneousHandsAndControllersSupported() || (enabled == simultaneousHandsAndControllersEnabled_)) {
+    if (!simultaneousHandsAndControllersSupported() || (enabled == simultaneousHandsAndControllersEnabled_) || !xrResumeSimultaneousHandsAndControllersTrackingMETA_ || !xrPauseSimultaneousHandsAndControllersTrackingMETA_) {
         return false;
     }
 
