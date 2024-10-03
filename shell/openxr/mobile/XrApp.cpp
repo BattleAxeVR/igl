@@ -34,6 +34,7 @@
 #include <shell/shared/platform/win/PlatformWin.h>
 #endif
 
+#include <shell/shared/input/InputDispatcher.h>
 #include <shell/shared/input/IntentListener.h>
 #include <shell/shared/renderSession/AppParams.h>
 #include <shell/shared/renderSession/DefaultRenderSessionFactory.h>
