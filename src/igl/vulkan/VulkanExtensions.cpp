@@ -115,6 +115,17 @@ void VulkanExtensions::enableCommonExtensions(ExtensionType extensionType,
       enable(VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME, ExtensionType::Instance);
     }
 #endif
+    if (config.headless) {
+#if defined(VK_EXT_headless_surface)
+      const bool enabledExtension =
+          enable(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME, ExtensionType::Instance);
+#else
+      const bool enabledExtension = false;
+#endif // VK_EXT_headless_surface
+      if (!enabledExtension) {
+        IGL_LOG_ERROR("VK_EXT_headless_surface extension not supported");
+      }
+    }
     if (config.swapChainColorSpace != igl::ColorSpace::SRGB_NONLINEAR) {
 #if defined(VK_EXT_swapchain_colorspace)
       const bool enabledExtension =
@@ -149,16 +160,17 @@ void VulkanExtensions::enableCommonExtensions(ExtensionType extensionType,
 #endif // VK_KHR_driver_properties
 #if defined(VK_KHR_shader_non_semantic_info)
 #if !IGL_PLATFORM_ANDROID || !IGL_DEBUG
-    // On Android, vkEnumerateInstanceExtensionProperties crashes when validation layers are enabled
-    // for DEBUG builds. https://issuetracker.google.com/issues/209835779?pli=1 Hence, don't enable
-    // some extensions on Android which are not present and no way to check without crashing.
+    // On Android, vkEnumerateInstanceExtensionProperties crashes when validation layers are
+    // enabled for DEBUG builds. https://issuetracker.google.com/issues/209835779?pli=1 Hence,
+    // don't enable some extensions on Android which are not present and no way to check without
+    // crashing.
     enable(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME, ExtensionType::Device);
 #endif // !IGL_PLATFORM_ANDROID || !IGL_DEBUG
 #endif // VK_KHR_shader_non_semantic_info
     enable(VK_KHR_SWAPCHAIN_EXTENSION_NAME, ExtensionType::Device);
 
 #if IGL_PLATFORM_MACOS
-    IGL_VERIFY(enable("VK_KHR_portability_subset", ExtensionType::Device));
+    std::ignore = IGL_DEBUG_VERIFY(enable("VK_KHR_portability_subset", ExtensionType::Device));
 #endif
 
 #if IGL_PLATFORM_WIN
@@ -174,7 +186,7 @@ void VulkanExtensions::enableCommonExtensions(ExtensionType extensionType,
     enable(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME, ExtensionType::Device);
 #endif
   } else {
-    IGL_ASSERT_MSG(false, "Unrecognized extension type when enabling common extensions.");
+    IGL_DEBUG_ABORT("Unrecognized extension type when enabling common extensions.");
   }
 }
 

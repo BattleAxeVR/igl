@@ -53,7 +53,7 @@ NSColorSpace* colorSpaceToNSColorSpace(igl::ColorSpace colorSpace) {
   case igl::ColorSpace::BT601_NONLINEAR:
   case igl::ColorSpace::BT2100_HLG_NONLINEAR:
   case igl::ColorSpace::BT2100_PQ_NONLINEAR:
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return [NSColorSpace sRGBColorSpace];
   }
   IGL_UNREACHABLE_RETURN([NSColorSpace sRGBColorSpace]);
@@ -151,8 +151,8 @@ NSColorSpace* colorSpaceToNSColorSpace(igl::ColorSpace colorSpace) {
   const auto requestedWindowConfig =
       self.factory->requestedWindowConfig(igl::shell::ShellType::Mac, suggestedWindowConfig);
 
-  IGL_ASSERT(requestedWindowConfig.windowMode == igl::shell::WindowMode::Window ||
-             requestedWindowConfig.windowMode == igl::shell::WindowMode::MaximizedWindow);
+  IGL_DEBUG_ASSERT(requestedWindowConfig.windowMode == igl::shell::WindowMode::Window ||
+                   requestedWindowConfig.windowMode == igl::shell::WindowMode::MaximizedWindow);
 
   CGRect frame = requestedWindowConfig.windowMode == igl::shell::WindowMode::Window
                      ? [self.window frame]
@@ -200,7 +200,7 @@ NSColorSpace* colorSpaceToNSColorSpace(igl::ColorSpace colorSpace) {
     supported = true;
   }
 #endif
-  if (!IGL_VERIFY(supported)) {
+  if (!IGL_DEBUG_VERIFY(supported)) {
     return;
   }
 

@@ -57,8 +57,8 @@ void OpenGLTextureAccessor::requestBytes(igl::ICommandQueue& commandQueue,
                                          std::shared_ptr<igl::ITexture> texture) {
   dataCopied_ = false;
   if (texture) {
-    IGL_ASSERT(textureWidth_ == texture->getDimensions().width &&
-               textureHeight_ == texture->getDimensions().height);
+    IGL_DEBUG_ASSERT(textureWidth_ == texture->getDimensions().width &&
+                     textureHeight_ == texture->getDimensions().height);
     texture_ = std::move(texture);
     frameBuffer_->updateDrawable(texture_);
     textureAttached_ = false;
@@ -113,7 +113,7 @@ RequestStatus OpenGLTextureAccessor::getRequestStatus() {
     int result;
     int valuesLength;
     context.getSynciv(sync_, GL_SYNC_STATUS, 1, &valuesLength, &result);
-    IGL_ASSERT(valuesLength == 1);
+    IGL_DEBUG_ASSERT(valuesLength == 1);
     status_ = result == GL_SIGNALED ? RequestStatus::Ready : RequestStatus::InProgress;
     if (status_ == RequestStatus::Ready) {
       context.deleteSync(sync_);
@@ -140,7 +140,7 @@ size_t OpenGLTextureAccessor::copyBytes(unsigned char* ptr, size_t length) {
     context.bindBuffer(GL_PIXEL_PACK_BUFFER, pboId_);
     auto* bytes =
         context.mapBufferRange(GL_PIXEL_PACK_BUFFER, 0, textureBytesPerImage_, GL_MAP_READ_BIT);
-    if (IGL_VERIFY(bytes)) {
+    if (IGL_DEBUG_VERIFY(bytes)) {
       checked_memcpy_robust(ptr, length, bytes, textureBytesPerImage_, textureBytesPerImage_);
       length = textureBytesPerImage_;
       dataCopied_ = true;

@@ -120,7 +120,7 @@ const char* getOpenGLESFragmentShaderSource() {
 static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return nullptr;
   case igl::BackendType::Vulkan:
     return igl::ShaderStagesCreator::fromModuleStringInput(device,
@@ -165,7 +165,7 @@ static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& de
       return igl::ShaderStagesCreator::fromModuleStringInput(
           device, codeVS2.c_str(), "main", "", codeFS.c_str(), "main", "", nullptr);
     } else {
-      IGL_ASSERT_MSG(0, "This sample is incompatible with OpenGL 2.1");
+      IGL_DEBUG_ABORT("This sample is incompatible with OpenGL 2.1");
       return nullptr;
     }
 #else
@@ -195,7 +195,7 @@ void HelloWorldSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
 
   const auto dimensions = surfaceTextures.color->getDimensions();
   framebuffer_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, nullptr);
-  IGL_ASSERT(framebuffer_);
+  IGL_DEBUG_ASSERT(framebuffer_);
 
   if (!renderPipelineState_Triangle_) {
     RenderPipelineDesc desc;
@@ -214,7 +214,7 @@ void HelloWorldSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
 
     desc.shaderStages = getShaderStagesForBackend(getPlatform().getDevice());
     renderPipelineState_Triangle_ = getPlatform().getDevice().createRenderPipeline(desc, nullptr);
-    IGL_ASSERT(renderPipelineState_Triangle_);
+    IGL_DEBUG_ASSERT(renderPipelineState_Triangle_);
   }
 
   framebuffer_->updateDrawable(surfaceTextures.color);

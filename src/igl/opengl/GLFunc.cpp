@@ -4,6 +4,7 @@
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
+// @fb-only
 
 #include <igl/opengl/GLFunc.h>
 
@@ -33,15 +34,15 @@ extern "C" void glQueryCounterEXT(GLuint, GLenum) {}
 #define GLEXTENSION_DIRECT_CALL_WITH_RETURN(funcName, funcType, returnOnError, ...) \
   return funcName(__VA_ARGS__);
 
-#define GLEXTENSION_LOAD_AND_CALL(funcName, funcType, ...)           \
-  static funcType funcAddr = nullptr;                                \
-  if (funcAddr == nullptr) {                                         \
-    funcAddr = (funcType)IGL_GET_PROC_ADDRESS(#funcName);            \
-  }                                                                  \
-  if (funcAddr != nullptr) {                                         \
-    funcAddr(__VA_ARGS__);                                           \
-  } else {                                                           \
-    IGL_ASSERT_MSG(0, "Extension function " #funcName " not found"); \
+#define GLEXTENSION_LOAD_AND_CALL(funcName, funcType, ...)         \
+  static funcType funcAddr = nullptr;                              \
+  if (funcAddr == nullptr) {                                       \
+    funcAddr = (funcType)IGL_GET_PROC_ADDRESS(#funcName);          \
+  }                                                                \
+  if (funcAddr != nullptr) {                                       \
+    funcAddr(__VA_ARGS__);                                         \
+  } else {                                                         \
+    IGL_DEBUG_ABORT("Extension function " #funcName " not found"); \
   }
 #define GLEXTENSION_LOAD_AND_CALL_WITH_RETURN(funcName, funcType, returnOnError, ...) \
   static funcType funcAddr = nullptr;                                                 \
@@ -51,14 +52,14 @@ extern "C" void glQueryCounterEXT(GLuint, GLenum) {}
   if (funcAddr != nullptr) {                                                          \
     return funcAddr(__VA_ARGS__);                                                     \
   } else {                                                                            \
-    IGL_ASSERT_MSG(0, "Extension function " #funcName " not found");                  \
+    IGL_DEBUG_ABORT("Extension function " #funcName " not found");                    \
     return returnOnError;                                                             \
   }
 
 #define GLEXTENSION_UNAVAILABLE(funcName, funcType, ...) \
-  IGL_ASSERT_MSG(0, "Extension function " #funcName " not found");
+  IGL_DEBUG_ABORT("Extension function " #funcName " not found");
 #define GLEXTENSION_UNAVAILABLE_WITH_RETURN(funcName, funcType, returnOnError, ...) \
-  IGL_ASSERT_MSG(0, "Extension function " #funcName " not found");                  \
+  IGL_DEBUG_ABORT("Extension function " #funcName " not found");                    \
   return returnOnError;
 
 #if IGL_EGL || IGL_WGL

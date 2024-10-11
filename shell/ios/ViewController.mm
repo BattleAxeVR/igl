@@ -64,7 +64,7 @@
   currentDrawable_ = view.currentDrawable;
   depthStencilTexture_ = view.depthStencilTexture;
 
-  IGL_ASSERT(renderSessionController_);
+  IGL_DEBUG_ASSERT(renderSessionController_);
   [renderSessionController_ tick];
 }
 
@@ -91,7 +91,7 @@
 }
 
 - (void)initRenderSessionController {
-  IGL_ASSERT(renderSessionController_);
+  IGL_DEBUG_ASSERT(renderSessionController_);
 
 // @fb-only
   // @fb-only
@@ -105,7 +105,7 @@
 
 - (igl::shell::Platform*)platform {
   IglShellPlatformAdapter* adapter = [renderSessionController_ adapter];
-  IGL_ASSERT(adapter);
+  IGL_DEBUG_ASSERT(adapter);
   return adapter->platform;
 }
 
@@ -116,7 +116,7 @@
 #if IGL_BACKEND_METAL
   case igl::BackendFlavor::Metal: {
     auto *platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     return igl::SurfaceTextures{
         .color = platformDevice->createTextureFromNativeDrawable(currentDrawable_, nullptr),
         .depth = platformDevice->createTextureFromNativeDepth(depthStencilTexture_, nullptr),
@@ -127,7 +127,7 @@
 #if IGL_BACKEND_OPENGL
   case igl::BackendFlavor::OpenGL_ES: {
     auto *platformDevice = device.getPlatformDevice<igl::opengl::ios::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     return igl::SurfaceTextures{
         .color = platformDevice->createTextureFromNativeDrawable((CAEAGLLayer*)layer_, nullptr),
         .depth = platformDevice->createTextureFromNativeDepth((CAEAGLLayer*)layer_, igl::TextureFormat::Z_UNorm16, nullptr),
@@ -147,7 +147,7 @@
 // @fb-only
 
   default: {
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return igl::SurfaceTextures{};
   }
   }
@@ -163,7 +163,7 @@
 - (void)loadView {
   switch (config_.backendVersion.flavor) {
   case igl::BackendFlavor::Invalid:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     break;
   case igl::BackendFlavor::Metal: {
 #if IGL_BACKEND_METAL
@@ -191,10 +191,10 @@
     break;
   }
   case igl::BackendFlavor::OpenGL:
-    IGL_ASSERT_MSG(0, "IGL Samples not set up for Desktop OpenGL backend");
+    IGL_DEBUG_ABORT("IGL Samples not set up for Desktop OpenGL backend");
     break;
   case igl::BackendFlavor::Vulkan:
-    IGL_ASSERT_MSG(0, "IGL Samples not set up for Vulkan backend");
+    IGL_DEBUG_ABORT("IGL Samples not set up for Vulkan backend");
     break;
   // @fb-only
     // @fb-only
@@ -217,7 +217,7 @@
   // @fb-only
 // @fb-only
   if (config_.backendVersion.flavor != igl::BackendFlavor::Metal) {
-    IGL_ASSERT(renderSessionController_);
+    IGL_DEBUG_ASSERT(renderSessionController_);
     [renderSessionController_ start];
   }
 }
@@ -229,7 +229,7 @@
 // @fb-only
 
   if (config_.backendVersion.flavor != igl::BackendFlavor::Metal) {
-    IGL_ASSERT(renderSessionController_);
+    IGL_DEBUG_ASSERT(renderSessionController_);
     [renderSessionController_ stop];
   }
 }

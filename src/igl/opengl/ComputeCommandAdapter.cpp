@@ -35,7 +35,7 @@ ComputeCommandAdapter::ComputeCommandAdapter(IContext& context) :
 void ComputeCommandAdapter::clearTextures() {}
 
 void ComputeCommandAdapter::setTexture(ITexture* texture, uint32_t index) {
-  if (!IGL_VERIFY(index < IGL_TEXTURE_SAMPLERS_MAX)) {
+  if (!IGL_DEBUG_VERIFY(index < IGL_TEXTURE_SAMPLERS_MAX)) {
     return;
   }
   textureStates_[index] = texture;
@@ -47,8 +47,8 @@ void ComputeCommandAdapter::clearBuffers() {
 }
 
 void ComputeCommandAdapter::setBuffer(Buffer* buffer, size_t offset, uint32_t index) {
-  IGL_ASSERT_MSG(index < IGL_VERTEX_BUFFER_MAX,
-                 "Buffer index is beyond max, may want to increase limit");
+  IGL_DEBUG_ASSERT(index < IGL_VERTEX_BUFFER_MAX,
+                   "Buffer index is beyond max, may want to increase limit");
   if (index < uniformAdapter_.getMaxUniforms() && buffer) {
     buffers_[index] = {std::move(buffer), offset};
     SET_DIRTY(buffersDirty_, index);
@@ -97,7 +97,7 @@ void ComputeCommandAdapter::willDispatch() {
   Result ret;
   auto* pipelineState = static_cast<ComputePipelineState*>(pipelineState_.get());
 
-  IGL_ASSERT_MSG(pipelineState, "ComputePipelineState is nullptr");
+  IGL_DEBUG_ASSERT(pipelineState, "ComputePipelineState is nullptr");
   if (pipelineState == nullptr) {
     return;
   }
@@ -146,7 +146,7 @@ void ComputeCommandAdapter::didDispatch() {
     return;
   }
   auto* pipelineState = static_cast<ComputePipelineState*>(pipelineState_.get());
-  IGL_ASSERT_MSG(pipelineState, "ComputePipelineState is nullptr");
+  IGL_DEBUG_ASSERT(pipelineState, "ComputePipelineState is nullptr");
   if (pipelineState == nullptr) {
     return;
   }

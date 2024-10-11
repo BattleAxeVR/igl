@@ -30,12 +30,12 @@ uint32_t Texture::getSamples() const {
 
 void Texture::generateMipmap(ICommandQueue& /* unused */,
                              const TextureRangeDesc* IGL_NULLABLE /* unused */) const {
-  IGL_ASSERT_MSG(0, "Can only generate mipmap for R/W texture (eg. TextureBuffer).");
+  IGL_DEBUG_ABORT("Can only generate mipmap for R/W texture (eg. TextureBuffer).");
 }
 
 void Texture::generateMipmap(ICommandBuffer& /* unused */,
                              const TextureRangeDesc* IGL_NULLABLE /* unused */) const {
-  IGL_ASSERT_MSG(0, "Can only generate mipmap for R/W texture (eg. TextureBuffer).");
+  IGL_DEBUG_ABORT("Can only generate mipmap for R/W texture (eg. TextureBuffer).");
 }
 
 uint32_t Texture::getNumMipLevels() const {
@@ -48,7 +48,7 @@ bool Texture::isRequiredGenerateMipmap() const {
 
 uint64_t Texture::getTextureId() const {
   // this requires ARB_bindless_texture
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
   return 0;
 }
 
@@ -62,9 +62,9 @@ Result Texture::create(const TextureDesc& desc, bool hasStorageAlready) {
     return Result{Result::Code::Unsupported,
                   "Array textures are only supported when type is TwoDArray."};
   }
-  if (IGL_VERIFY(!isCreated_)) {
+  if (IGL_DEBUG_VERIFY(!isCreated_)) {
     isCreated_ = true;
-    IGL_ASSERT(desc.format != TextureFormat::Invalid && desc.format == getFormat());
+    IGL_DEBUG_ASSERT(desc.format != TextureFormat::Invalid && desc.format == getFormat());
     const bool isSampled = (desc.usage & TextureDesc::TextureUsageBits::Sampled) != 0;
 
     if (isSampled && hasStorageAlready) {
@@ -102,7 +102,7 @@ Result Texture::create(const TextureDesc& desc, bool hasStorageAlready) {
 // padding that is not 8, 4, 2, or 1 byte aligned to the actual pixel data
 
 GLint Texture::getAlignment(uint32_t stride, uint32_t mipLevel, uint32_t widthAtMipLevel) const {
-  IGL_ASSERT(mipLevel < numMipLevels_);
+  IGL_DEBUG_ASSERT(mipLevel < numMipLevels_);
 
   if (getProperties().isCompressed()) {
     return 1;
@@ -112,13 +112,13 @@ GLint Texture::getAlignment(uint32_t stride, uint32_t mipLevel, uint32_t widthAt
   const auto maxWidthAtMipLevel = std::max(getDimensions().width >> mipLevel, 1u);
   if (widthAtMipLevel == 0) {
     widthAtMipLevel = maxWidthAtMipLevel;
-  } else if (IGL_UNEXPECTED(widthAtMipLevel > maxWidthAtMipLevel)) {
+  } else if (IGL_DEBUG_VERIFY_NOT(widthAtMipLevel > maxWidthAtMipLevel)) {
     widthAtMipLevel = maxWidthAtMipLevel;
   }
 
   const auto pixelBytesPerRow = getProperties().getBytesPerRow(widthAtMipLevel);
 
-  if (stride == 0 || !IGL_VERIFY(pixelBytesPerRow <= stride)) {
+  if (stride == 0 || !IGL_DEBUG_VERIFY(pixelBytesPerRow <= stride)) {
     return 1;
   } else if (stride % 8 == 0) {
     return 8;
@@ -159,7 +159,7 @@ GLenum Texture::toGLTarget(TextureType type) const {
   case TextureType::Invalid:
     break;
   }
-  IGL_ASSERT_MSG(0, "Unsupported OGL Texture Type: %d", type);
+  IGL_DEBUG_ABORT("Unsupported OGL Texture Type: %d", type);
 
   return 0;
 }

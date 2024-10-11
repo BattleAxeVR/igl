@@ -31,25 +31,25 @@ Result Texture::create(const TextureDesc& desc) {
                                 : textureFormatToVkFormat(desc_.format);
 
   const igl::TextureType type = desc_.type;
-  if (!IGL_VERIFY(type == TextureType::TwoD || type == TextureType::TwoDArray ||
-                  type == TextureType::Cube || type == TextureType::ThreeD)) {
-    IGL_ASSERT_MSG(false, "Only 1D, 1D array, 2D, 2D array, 3D and cubemap textures are supported");
+  if (!IGL_DEBUG_VERIFY(type == TextureType::TwoD || type == TextureType::TwoDArray ||
+                        type == TextureType::Cube || type == TextureType::ThreeD)) {
+    IGL_DEBUG_ABORT("Only 1D, 1D array, 2D, 2D array, 3D and cubemap textures are supported");
     return Result(Result::Code::Unimplemented);
   }
 
   if (desc_.numMipLevels == 0) {
-    IGL_ASSERT_MSG(false, "The number of mip levels specified must be greater than 0");
+    IGL_DEBUG_ABORT("The number of mip levels specified must be greater than 0");
     desc_.numMipLevels = 1;
   }
 
   if (desc.numSamples > 1 && desc_.numMipLevels != 1) {
-    IGL_ASSERT_MSG(false, "The number of mip levels for multisampled images should be 1");
+    IGL_DEBUG_ABORT("The number of mip levels for multisampled images should be 1");
     return Result(Result::Code::ArgumentOutOfRange,
                   "The number of mip levels for multisampled images should be 1");
   }
 
   if (desc.numSamples > 1 && type == TextureType::ThreeD) {
-    IGL_ASSERT_MSG(false, "Multisampled 3D images are not supported");
+    IGL_DEBUG_ABORT("Multisampled 3D images are not supported");
     return Result(Result::Code::ArgumentOutOfRange, "Multisampled 3D images are not supported");
   }
 
@@ -58,15 +58,15 @@ Result Texture::create(const TextureDesc& desc) {
                   "Array textures are only supported when type is TwoDArray."};
   }
 
-  if (!IGL_VERIFY(desc_.numMipLevels <=
-                  TextureDesc::calcNumMipLevels(desc_.width, desc_.height, desc_.height))) {
+  if (!IGL_DEBUG_VERIFY(desc_.numMipLevels <=
+                        TextureDesc::calcNumMipLevels(desc_.width, desc_.height, desc_.height))) {
     return Result(Result::Code::ArgumentOutOfRange,
                   "The number of specified mip levels is greater than the maximum possible "
                   "number of mip levels.");
   }
 
   if (desc_.usage == 0) {
-    IGL_ASSERT_MSG(false, "Texture usage flags are not set");
+    IGL_DEBUG_ABORT("Texture usage flags are not set");
     desc_.usage = TextureDesc::TextureUsageBits::Sampled;
   }
   // a simple heuristic to determine proper storage as the storage type is almost never provided by
@@ -90,7 +90,7 @@ Result Texture::create(const TextureDesc& desc) {
     usageFlags |= VK_IMAGE_USAGE_SAMPLED_BIT;
   }
   if (desc_.usage & TextureDesc::TextureUsageBits::Storage) {
-    IGL_ASSERT_MSG(desc_.numSamples <= 1, "Storage images cannot be multisampled");
+    IGL_DEBUG_ASSERT(desc_.numSamples <= 1, "Storage images cannot be multisampled");
     usageFlags |= VK_IMAGE_USAGE_STORAGE_BIT;
   }
   if (desc_.usage & TextureDesc::TextureUsageBits::Attachment) {
@@ -108,7 +108,7 @@ Result Texture::create(const TextureDesc& desc) {
     usageFlags |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
   }
 
-  IGL_ASSERT_MSG(usageFlags != 0, "Invalid usage flags");
+  IGL_DEBUG_ASSERT(usageFlags != 0, "Invalid usage flags");
 
   const VkMemoryPropertyFlags memFlags = resourceStorageToVkMemoryPropertyFlags(desc_.storage);
 
@@ -144,7 +144,7 @@ Result Texture::create(const TextureDesc& desc) {
     samples = getVulkanSampleCountFlags(desc_.numSamples);
     break;
   default:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return Result(Result::Code::Unimplemented, "Unimplemented or unsupported texture type.");
   }
 
@@ -154,11 +154,11 @@ Result Texture::create(const TextureDesc& desc) {
 
   if (getProperties().numPlanes > 1) {
     // some constraints for multiplanar image formats
-    IGL_ASSERT(imageType == VK_IMAGE_TYPE_2D);
-    IGL_ASSERT(samples == VK_SAMPLE_COUNT_1_BIT);
-    IGL_ASSERT(tiling == VK_IMAGE_TILING_OPTIMAL);
-    IGL_ASSERT(desc.numLayers == 1);
-    IGL_ASSERT(desc.numMipLevels == 1);
+    IGL_DEBUG_ASSERT(imageType == VK_IMAGE_TYPE_2D);
+    IGL_DEBUG_ASSERT(samples == VK_SAMPLE_COUNT_1_BIT);
+    IGL_DEBUG_ASSERT(tiling == VK_IMAGE_TILING_OPTIMAL);
+    IGL_DEBUG_ASSERT(desc.numLayers == 1);
+    IGL_DEBUG_ASSERT(desc.numMipLevels == 1);
     createFlags |= VK_IMAGE_CREATE_DISJOINT_BIT | VK_IMAGE_CREATE_ALIAS_BIT |
                    VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
   }
@@ -177,10 +177,10 @@ Result Texture::create(const TextureDesc& desc) {
       samples,
       &result,
       debugNameImage.c_str());
-  if (!IGL_VERIFY(result.isOk())) {
+  if (!IGL_DEBUG_VERIFY(result.isOk())) {
     return result;
   }
-  if (!IGL_VERIFY(image.valid())) {
+  if (!IGL_DEBUG_VERIFY(image.valid())) {
     return Result(Result::Code::InvalidOperation, "Cannot create VulkanImage");
   }
 
@@ -204,7 +204,7 @@ Result Texture::create(const TextureDesc& desc) {
                                                     arrayLayerCount,
                                                     debugNameImageView.c_str());
 
-  if (!IGL_VERIFY(imageView.valid())) {
+  if (!IGL_DEBUG_VERIFY(imageView.valid())) {
     return Result(Result::Code::InvalidOperation, "Cannot create VulkanImageView");
   }
 
@@ -252,7 +252,7 @@ Dimensions Texture::getDimensions() const {
 }
 
 VkFormat Texture::getVkFormat() const {
-  IGL_ASSERT(texture_);
+  IGL_DEBUG_ASSERT(texture_);
   return texture_ ? texture_->getVulkanImage().imageFormat_ : VK_FORMAT_UNDEFINED;
 }
 
@@ -302,8 +302,8 @@ bool Texture::isRequiredGenerateMipmap() const {
 
 uint64_t Texture::getTextureId() const {
   const auto& config = device_.getVulkanContext().config_;
-  IGL_ASSERT_MSG(config.enableDescriptorIndexing,
-                 "Make sure config.enableDescriptorIndexing is enabled.");
+  IGL_DEBUG_ASSERT(config.enableDescriptorIndexing,
+                   "Make sure config.enableDescriptorIndexing is enabled.");
   return texture_ && config.enableDescriptorIndexing ? texture_->getTextureId() : 0;
 }
 
@@ -364,7 +364,7 @@ void Texture::clearColorTexture(const igl::Color& rgba) {
   }
 
   const igl::vulkan::VulkanImage& img = texture_->getVulkanImage();
-  IGL_ASSERT(img.valid());
+  IGL_DEBUG_ASSERT(img.valid());
 
   const auto& wrapper = img.ctx_->stagingDevice_->immediate_->acquire();
 

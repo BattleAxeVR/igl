@@ -90,7 +90,7 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
 
   const auto result = buffer->create(desc);
 
-  if (!IGL_VERIFY(result.isOk())) {
+  if (!IGL_DEBUG_VERIFY(result.isOk())) {
     return nullptr;
   }
 
@@ -99,7 +99,7 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
   }
 
   const auto uploadResult = buffer->upload(desc.data, BufferRange(desc.length, 0u));
-  IGL_ASSERT(uploadResult.isOk());
+  IGL_DEBUG_ASSERT(uploadResult.isOk());
   Result::setResult(outResult, uploadResult);
 
   return buffer;
@@ -187,15 +187,15 @@ std::shared_ptr<IComputePipelineState> Device::createComputePipeline(
 
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
-  if (IGL_UNEXPECTED(desc.shaderStages == nullptr)) {
+  if (IGL_DEBUG_VERIFY_NOT(desc.shaderStages == nullptr)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing shader stages");
     return nullptr;
   }
-  if (!IGL_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Compute)) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Compute)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Shader stages not for compute");
     return nullptr;
   }
-  if (!IGL_VERIFY(desc.shaderStages->getComputeModule())) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getComputeModule())) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing compute shader");
     return nullptr;
   }
@@ -211,11 +211,11 @@ std::shared_ptr<IRenderPipelineState> Device::createRenderPipeline(const RenderP
 
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
-  if (IGL_UNEXPECTED(desc.shaderStages == nullptr)) {
+  if (IGL_DEBUG_VERIFY_NOT(desc.shaderStages == nullptr)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing shader stages");
     return nullptr;
   }
-  if (!IGL_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Render)) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Render)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Shader stages not for render");
     return nullptr;
   }
@@ -223,17 +223,17 @@ std::shared_ptr<IRenderPipelineState> Device::createRenderPipeline(const RenderP
   const bool hasColorAttachments = !desc.targetDesc.colorAttachments.empty();
   const bool hasDepthAttachment = desc.targetDesc.depthAttachmentFormat != TextureFormat::Invalid;
   const bool hasAnyAttachments = hasColorAttachments || hasDepthAttachment;
-  if (!IGL_VERIFY(hasAnyAttachments)) {
+  if (!IGL_DEBUG_VERIFY(hasAnyAttachments)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Need at least one attachment");
     return nullptr;
   }
 
-  if (!IGL_VERIFY(desc.shaderStages->getVertexModule())) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getVertexModule())) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing vertex shader");
     return nullptr;
   }
 
-  if (!IGL_VERIFY(desc.shaderStages->getFragmentModule())) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getFragmentModule())) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing fragment shader");
     return nullptr;
   }
@@ -278,7 +278,7 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(const void* IGL_N
 
 #if IGL_SHADER_DUMP && IGL_DEBUG
   uint64_t hash = 0;
-  IGL_ASSERT(length % sizeof(uint32_t) == 0);
+  IGL_DEBUG_ASSERT(length % sizeof(uint32_t) == 0);
   auto words = reinterpret_cast<const uint32_t*>(data);
   for (int i = 0; i < (length / sizeof(uint32_t)); i++) {
     hash ^= std::hash<uint32_t>()(words[i]);
@@ -335,8 +335,8 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
 
   VkDevice device = ctx_->device_->getVkDevice();
   const VkShaderStageFlagBits vkStage = shaderStageToVkShaderStage(stage);
-  IGL_ASSERT(vkStage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
-  IGL_ASSERT(source);
+  IGL_DEBUG_ASSERT(vkStage != VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM);
+  IGL_DEBUG_ASSERT(source);
 
   std::string sourcePatched;
 
@@ -459,7 +459,7 @@ std::unique_ptr<igl::IShaderLibrary> Device::createShaderLibrary(const ShaderLib
 
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
-  if (IGL_UNEXPECTED(desc.moduleInfo.empty())) {
+  if (IGL_DEBUG_VERIFY_NOT(desc.moduleInfo.empty())) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid);
     return nullptr;
   }
@@ -470,7 +470,7 @@ std::unique_ptr<igl::IShaderLibrary> Device::createShaderLibrary(const ShaderLib
         createShaderModule(desc.input.data, desc.input.length, desc.debugName, &result);
   } else {
     if (desc.moduleInfo.size() > 1) {
-      IGL_ASSERT_NOT_IMPLEMENTED();
+      IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
       Result::setResult(outResult, Result::Code::Unsupported);
       return nullptr;
     }
@@ -595,7 +595,7 @@ bool Device::hasFeature(DeviceFeatures feature) const {
     return ctx_->areValidationLayersEnabled();
   }
 
-  IGL_ASSERT_MSG(0, "DeviceFeatures value not handled: %d", (int)feature);
+  IGL_DEBUG_ABORT("DeviceFeatures value not handled: %d", (int)feature);
 
   return false;
 }
@@ -676,7 +676,7 @@ bool Device::getFeatureLimits(DeviceFeatureLimits featureLimits, size_t& result)
     return true;
   }
 
-  IGL_ASSERT_MSG(0, "DeviceFeatureLimits value not handled: %d", (int)featureLimits);
+  IGL_DEBUG_ABORT("DeviceFeatureLimits value not handled: %d", (int)featureLimits);
   result = 0;
   return false;
 }
@@ -752,8 +752,8 @@ Holder<igl::BindGroupTextureHandle> Device::createBindGroup(const igl::BindGroup
                                                                 compatiblePipeline,
                                                             Result* IGL_NULLABLE outResult) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
-  IGL_ASSERT(ctx_);
-  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+  IGL_DEBUG_ASSERT(ctx_);
+  IGL_DEBUG_ASSERT(!desc.debugName.empty(), "Each bind group should have a debug name");
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
   return {this, ctx_->createBindGroup(desc, compatiblePipeline, outResult)};
@@ -762,8 +762,8 @@ Holder<igl::BindGroupTextureHandle> Device::createBindGroup(const igl::BindGroup
 Holder<igl::BindGroupBufferHandle> Device::createBindGroup(const igl::BindGroupBufferDesc& desc,
                                                            Result* IGL_NULLABLE outResult) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
-  IGL_ASSERT(ctx_);
-  IGL_ASSERT_MSG(!desc.debugName.empty(), "Each bind group should have a debug name");
+  IGL_DEBUG_ASSERT(ctx_);
+  IGL_DEBUG_ASSERT(!desc.debugName.empty(), "Each bind group should have a debug name");
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
   return {this, ctx_->createBindGroup(desc, outResult)};
@@ -771,7 +771,7 @@ Holder<igl::BindGroupBufferHandle> Device::createBindGroup(const igl::BindGroupB
 
 void Device::destroy(igl::BindGroupTextureHandle handle) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DESTROY);
-  IGL_ASSERT(ctx_);
+  IGL_DEBUG_ASSERT(ctx_);
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
   ctx_->destroy(handle);
@@ -779,7 +779,7 @@ void Device::destroy(igl::BindGroupTextureHandle handle) {
 
 void Device::destroy(igl::BindGroupBufferHandle handle) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DESTROY);
-  IGL_ASSERT(ctx_);
+  IGL_DEBUG_ASSERT(ctx_);
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
   ctx_->destroy(handle);
@@ -787,7 +787,7 @@ void Device::destroy(igl::BindGroupBufferHandle handle) {
 
 void Device::setCurrentThread() {
   IGL_PROFILER_FUNCTION();
-  IGL_ASSERT(ctx_);
+  IGL_DEBUG_ASSERT(ctx_);
 
   ctx_->setCurrentContextThread();
 }

@@ -5,7 +5,7 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-// @MARK:COVERAGE_EXCLUDE_FILE
+// @fb-only
 
 #include <igl/vulkan/EnhancedShaderDebuggingStore.h>
 
@@ -96,8 +96,8 @@ std::string EnhancedShaderDebuggingStore::recordLineShaderCode(bool includeFunct
 }
 
 void EnhancedShaderDebuggingStore::initializeBuffer() const {
-  IGL_ASSERT_MSG(device_ != nullptr,
-                 "Device is null. This object needs to be initialized to be used");
+  IGL_DEBUG_ASSERT(device_ != nullptr,
+                   "Device is null. This object needs to be initialized to be used");
 
   constexpr size_t lineStructureSizeBytes = sizeof(Line);
   constexpr size_t bufferSizeBytes = lineStructureSizeBytes * kNumberOfLines;
@@ -144,8 +144,8 @@ igl::RenderPassDesc EnhancedShaderDebuggingStore::renderPassDesc(
   for (auto index = 0; index <= *max; ++index) {
     const auto colorAttachment = framebuffer->getColorAttachment(index);
     if (colorAttachment) {
-      IGL_ASSERT_MSG(!framebuffer->getResolveColorAttachment(index),
-                     "Shader lines drawing does not work with multisampled framebuffers");
+      IGL_DEBUG_ASSERT(!framebuffer->getResolveColorAttachment(index),
+                       "Shader lines drawing does not work with multisampled framebuffers");
       desc.colorAttachments[index].loadAction = LoadAction::Load;
       desc.colorAttachments[index].storeAction = StoreAction::Store;
     }
@@ -173,7 +173,7 @@ const std::shared_ptr<igl::IFramebuffer>& EnhancedShaderDebuggingStore::framebuf
   framebufferDesc.colorAttachments[0].texture = resolveAttachment;
   framebuffers_[resolveAttachment] = device.createFramebuffer(framebufferDesc, &result);
 
-  if (!IGL_VERIFY(result.isOk())) {
+  if (!IGL_DEBUG_VERIFY(result.isOk())) {
     IGL_LOG_INFO("Error creating a framebuffer for drawing debug lines from shaders");
   }
 
@@ -207,7 +207,7 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
   }
 
   const auto attachments = framebuffer->getColorAttachmentIndices();
-  IGL_ASSERT(!attachments.empty());
+  IGL_DEBUG_ASSERT(!attachments.empty());
 
   RenderPipelineDesc desc;
 
@@ -239,7 +239,7 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
 
   // Create a shader stage, along with a vertex and fragment shader modules, if they haven't been
   // created yet
-  if (shaderStage_ == nullptr) {
+  if (shaderStage_ == nullptr && device.getVulkanContext().config_.enableBufferDeviceAddress) {
     const auto vscode = renderLineVSCode();
     const auto fscode = renderLineFSCode();
 
@@ -262,8 +262,8 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
 }
 
 void EnhancedShaderDebuggingStore::initializeDepthState() const {
-  IGL_ASSERT_MSG(device_ != nullptr,
-                 "Device is null. This object needs to be initialized to be used");
+  IGL_DEBUG_ASSERT(device_ != nullptr,
+                   "Device is null. This object needs to be initialized to be used");
 
   DepthStencilStateDesc desc;
   desc.isDepthWriteEnabled = kDepthWriteEnabled;

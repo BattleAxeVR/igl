@@ -22,7 +22,7 @@ VkFilter samplerMinMagFilterToVkFilter(igl::SamplerMinMagFilter filter) {
   case igl::SamplerMinMagFilter::Linear:
     return VK_FILTER_LINEAR;
   }
-  IGL_ASSERT_MSG(false, "SamplerMinMagFilter value not handled: %d", (int)filter);
+  IGL_DEBUG_ABORT("SamplerMinMagFilter value not handled: %d", (int)filter);
   return VK_FILTER_LINEAR;
 }
 
@@ -34,7 +34,7 @@ VkSamplerMipmapMode samplerMipFilterToVkSamplerMipmapMode(igl::SamplerMipFilter 
   case igl::SamplerMipFilter::Linear:
     return VK_SAMPLER_MIPMAP_MODE_LINEAR;
   }
-  IGL_ASSERT_MSG(false, "SamplerMipFilter value not handled: %d", (int)filter);
+  IGL_DEBUG_ABORT("SamplerMipFilter value not handled: %d", (int)filter);
   return VK_SAMPLER_MIPMAP_MODE_NEAREST;
 }
 
@@ -47,16 +47,16 @@ VkSamplerAddressMode samplerAddressModeToVkSamplerAddressMode(igl::SamplerAddres
   case igl::SamplerAddressMode::MirrorRepeat:
     return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
   }
-  IGL_ASSERT_MSG(false, "SamplerAddressMode value not handled: %d", (int)mode);
+  IGL_DEBUG_ABORT("SamplerAddressMode value not handled: %d", (int)mode);
   return VK_SAMPLER_ADDRESS_MODE_REPEAT;
 }
 
 VkSamplerCreateInfo samplerStateDescToVkSamplerCreateInfo(const igl::SamplerStateDesc& desc,
                                                           const VkPhysicalDeviceLimits& limits) {
-  IGL_ASSERT_MSG(desc.mipLodMax >= desc.mipLodMin,
-                 "mipLodMax (%d) must be greater than or equal to mipLodMin (%d)",
-                 (int)desc.mipLodMax,
-                 (int)desc.mipLodMin);
+  IGL_DEBUG_ASSERT(desc.mipLodMax >= desc.mipLodMin,
+                   "mipLodMax (%d) must be greater than or equal to mipLodMin (%d)",
+                   (int)desc.mipLodMax,
+                   (int)desc.mipLodMin);
 
   VkSamplerCreateInfo ci =
       ivkGetSamplerCreateInfo(samplerMinMagFilterToVkFilter(desc.minFilter),
@@ -74,8 +74,8 @@ VkSamplerCreateInfo samplerStateDescToVkSamplerCreateInfo(const igl::SamplerStat
 
   if (desc.maxAnisotropic > 1) {
     const bool isAnisotropicFilteringSupported = limits.maxSamplerAnisotropy > 1;
-    IGL_ASSERT_MSG(isAnisotropicFilteringSupported,
-                   "Anisotropic filtering is not supported by the device.");
+    IGL_DEBUG_ASSERT(isAnisotropicFilteringSupported,
+                     "Anisotropic filtering is not supported by the device.");
     ci.anisotropyEnable = isAnisotropicFilteringSupported ? VK_TRUE : VK_FALSE;
 
 #ifdef IGL_VULKAN_DEBUG_SAMPLER_STATE
@@ -116,7 +116,7 @@ Result SamplerState::create(const SamplerStateDesc& desc) {
       &result,
       desc_.debugName.c_str());
 
-  if (!IGL_VERIFY(result.isOk())) {
+  if (!IGL_DEBUG_VERIFY(result.isOk())) {
     return result;
   }
 

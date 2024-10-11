@@ -159,6 +159,15 @@ bool GlfwShell::createWindow() noexcept {
     }
     shell->platform_->getInputDispatcher().queueEvent(
         igl::shell::KeyEvent(action == GLFW_PRESS, key, modifiers));
+    shell->platform_->getInputDispatcher().queueEvent(key <= 256 ? CharEvent{static_cast<char>(key)}
+                                                                 : CharEvent{});
+  });
+
+  glfwSetCharCallback(windowHandle, [](GLFWwindow* window, unsigned int codepoint) {
+    auto* shell = static_cast<GlfwShell*>(glfwGetWindowUserPointer(window));
+
+    shell->platform_->getInputDispatcher().queueEvent(
+        CharEvent{.character = static_cast<char>(codepoint)});
   });
 
   didCreateWindow();
@@ -178,9 +187,9 @@ bool GlfwShell::initialize(int argc,
       factory->requestedWindowConfig(igl::shell::ShellType::Windows, suggestedWindowConfig);
   const auto requestedConfigs =
       factory->requestedSessionConfigs(igl::shell::ShellType::Windows, {suggestedSessionConfig});
-  if (IGL_UNEXPECTED(requestedConfigs.size() != 1) ||
-      IGL_UNEXPECTED(suggestedSessionConfig.backendVersion.flavor !=
-                     requestedConfigs[0].backendVersion.flavor)) {
+  if (IGL_DEBUG_VERIFY_NOT(requestedConfigs.size() != 1) ||
+      IGL_DEBUG_VERIFY_NOT(suggestedSessionConfig.backendVersion.flavor !=
+                           requestedConfigs[0].backendVersion.flavor)) {
     return false;
   }
 
@@ -191,11 +200,11 @@ bool GlfwShell::initialize(int argc,
   }
 
   platform_ = createPlatform();
-  if (IGL_UNEXPECTED(!platform_)) {
+  if (IGL_DEBUG_VERIFY_NOT(!platform_)) {
     return false;
   }
   session_ = factory->createRenderSession(platform_);
-  if (IGL_UNEXPECTED(!session_)) {
+  if (IGL_DEBUG_VERIFY_NOT(!session_)) {
     return false;
   }
 
@@ -209,7 +218,7 @@ void GlfwShell::run() noexcept {
   while (!glfwWindowShouldClose(window_.get()) && !session_->appParams().exitRequested) {
     willTick();
     auto surfaceTextures = createSurfaceTextures();
-    IGL_ASSERT(surfaceTextures.color != nullptr && surfaceTextures.depth != nullptr);
+    IGL_DEBUG_ASSERT(surfaceTextures.color != nullptr && surfaceTextures.depth != nullptr);
 
     platform_->getInputDispatcher().processEvents();
     session_->update(std::move(surfaceTextures));

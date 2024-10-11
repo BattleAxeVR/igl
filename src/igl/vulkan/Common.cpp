@@ -111,7 +111,7 @@ VkStencilOp stencilOperationToVkStencilOp(igl::StencilOperation op) {
   case igl::StencilOperation::DecrementWrap:
     return VK_STENCIL_OP_DECREMENT_AND_WRAP;
   }
-  IGL_ASSERT_NOT_REACHED();
+  IGL_DEBUG_ASSERT_NOT_REACHED();
   return VK_STENCIL_OP_KEEP;
 }
 
@@ -314,7 +314,7 @@ VkMemoryPropertyFlags resourceStorageToVkMemoryPropertyFlags(igl::ResourceStorag
 
   switch (resourceStorage) {
   case ResourceStorage::Invalid:
-    IGL_ASSERT_MSG(false, "Invalid storage type");
+    IGL_DEBUG_ABORT("Invalid storage type");
     break;
   case ResourceStorage::Private:
     memFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -352,7 +352,7 @@ VkCompareOp compareFunctionToVkCompareOp(igl::CompareFunction func) {
   case igl::CompareFunction::AlwaysPass:
     return VK_COMPARE_OP_ALWAYS;
   }
-  IGL_ASSERT_MSG(false, "CompareFunction value not handled: %d", (int)func);
+  IGL_DEBUG_ABORT("CompareFunction value not handled: %d", (int)func);
   return VK_COMPARE_OP_ALWAYS;
 }
 
@@ -397,7 +397,7 @@ void transitionToGeneral(VkCommandBuffer cmdBuf, ITexture* texture) {
   const vulkan::VulkanImage& img = tex.getVulkanTexture().getVulkanImage();
 
   if (!img.isStorageImage()) {
-    IGL_ASSERT_MSG(false, "Did you forget to specify TextureUsageBits::Storage on your texture?");
+    IGL_DEBUG_ABORT("Did you forget to specify TextureUsageBits::Storage on your texture?");
     return;
   }
 
@@ -425,14 +425,14 @@ void transitionToColorAttachment(VkCommandBuffer cmdBuf, ITexture* colorTex) {
 
   const auto& vkTex = static_cast<Texture&>(*colorTex);
   const auto& img = vkTex.getVulkanTexture().getVulkanImage();
-  if (IGL_UNEXPECTED(img.isDepthFormat_ || img.isStencilFormat_)) {
-    IGL_ASSERT_MSG(false, "Color attachments cannot have depth/stencil formats");
+  if (IGL_DEBUG_VERIFY_NOT(img.isDepthFormat_ || img.isStencilFormat_)) {
+    IGL_DEBUG_ABORT("Color attachments cannot have depth/stencil formats");
     IGL_LOG_ERROR("Color attachments cannot have depth/stencil formats");
     return;
   }
-  IGL_ASSERT_MSG(img.imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid color attachment format");
-  if (!IGL_VERIFY((img.usageFlags_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0)) {
-    IGL_ASSERT_MSG(false, "Did you forget to specify TextureUsageBit::Attachment usage bit?");
+  IGL_DEBUG_ASSERT(img.imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid color attachment format");
+  if (!IGL_DEBUG_VERIFY((img.usageFlags_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0)) {
+    IGL_DEBUG_ABORT("Did you forget to specify TextureUsageBit::Attachment usage bit?");
     IGL_LOG_ERROR("Did you forget to specify TextureUsageBit::Attachment usage bit?");
   }
   if (img.usageFlags_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
@@ -458,14 +458,14 @@ void transitionToDepthStencilAttachment(VkCommandBuffer cmdBuf, ITexture* depthS
 
   const auto& vkTex = static_cast<Texture&>(*depthStencilTex);
   const auto& img = vkTex.getVulkanTexture().getVulkanImage();
-  if (IGL_UNEXPECTED(!img.isDepthFormat_ && !img.isStencilFormat_)) {
-    IGL_ASSERT_MSG(false, "Only depth/stencil formats are accepted");
+  if (IGL_DEBUG_VERIFY_NOT(!img.isDepthFormat_ && !img.isStencilFormat_)) {
+    IGL_DEBUG_ABORT("Only depth/stencil formats are accepted");
     IGL_LOG_ERROR("Only depth/stencil formats are accepted");
     return;
   }
-  IGL_ASSERT_MSG(img.imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid color attachment format");
-  if (!IGL_VERIFY((img.usageFlags_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)) {
-    IGL_ASSERT_MSG(false, "Did you forget to specify TextureUsageBit::Attachment usage bit?");
+  IGL_DEBUG_ASSERT(img.imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid color attachment format");
+  if (!IGL_DEBUG_VERIFY((img.usageFlags_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) != 0)) {
+    IGL_DEBUG_ABORT("Did you forget to specify TextureUsageBit::Attachment usage bit?");
     IGL_LOG_ERROR("Did you forget to specify TextureUsageBit::Attachment usage bit?");
   }
   if (img.usageFlags_ & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) {
@@ -524,13 +524,13 @@ void overrideImageLayout(ITexture* texture, VkImageLayout layout) {
 }
 
 void ensureShaderModule(IShaderModule* sm) {
-  IGL_ASSERT(sm);
+  IGL_DEBUG_ASSERT(sm);
 
   const igl::vulkan::util::SpvModuleInfo& info =
       static_cast<igl::vulkan::ShaderModule*>(sm)->getVulkanShaderModule().getSpvModuleInfo();
 
   for (const auto& t : info.textures) {
-    if (!IGL_VERIFY(t.descriptorSet == kBindPoint_CombinedImageSamplers)) {
+    if (!IGL_DEBUG_VERIFY(t.descriptorSet == kBindPoint_CombinedImageSamplers)) {
       IGL_LOG_ERROR(
           "Missing descriptor set id for textures: the shader should contain \"layout(set = "
           "%u, ...)\"",
@@ -539,7 +539,7 @@ void ensureShaderModule(IShaderModule* sm) {
     }
   }
   for (const auto& b : info.buffers) {
-    if (!IGL_VERIFY(b.descriptorSet == kBindPoint_Buffers)) {
+    if (!IGL_DEBUG_VERIFY(b.descriptorSet == kBindPoint_Buffers)) {
       IGL_LOG_ERROR(
           "Missing descriptor set id for buffers: the shader should contain \"layout(set = "
           "%u, ...)\"",
@@ -601,18 +601,18 @@ PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() {
 
 void initialize(VulkanFunctionTable& table) {
   table.vkGetInstanceProcAddr = getVkGetInstanceProcAddr();
-  IGL_ASSERT(table.vkGetInstanceProcAddr != nullptr);
+  IGL_DEBUG_ASSERT(table.vkGetInstanceProcAddr != nullptr);
 
   loadVulkanLoaderFunctions(&table, table.vkGetInstanceProcAddr);
 }
 
 void loadInstanceFunctions(VulkanFunctionTable& table, VkInstance instance) {
-  IGL_ASSERT(table.vkGetInstanceProcAddr != nullptr);
+  IGL_DEBUG_ASSERT(table.vkGetInstanceProcAddr != nullptr);
   loadVulkanInstanceFunctions(&table, instance, table.vkGetInstanceProcAddr);
 }
 
 void loadDeviceFunctions(VulkanFunctionTable& table, VkDevice device) {
-  IGL_ASSERT(table.vkGetDeviceProcAddr != nullptr);
+  IGL_DEBUG_ASSERT(table.vkGetDeviceProcAddr != nullptr);
   loadVulkanDeviceFunctions(&table, device, table.vkGetDeviceProcAddr);
 }
 

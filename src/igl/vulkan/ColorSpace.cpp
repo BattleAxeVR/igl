@@ -48,7 +48,7 @@ VkColorSpaceKHR colorSpaceToVkColorSpace(igl::ColorSpace colorSpace) {
   case ColorSpace::BT601_NONLINEAR:
   case ColorSpace::BT2100_HLG_NONLINEAR:
   case ColorSpace::BT2100_PQ_NONLINEAR:
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return VkColorSpaceKHR::VK_COLOR_SPACE_BT709_NONLINEAR_EXT;
   }
   IGL_UNREACHABLE_RETURN(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
@@ -89,7 +89,7 @@ igl::ColorSpace vkColorSpaceToColorSpace(VkColorSpaceKHR colorSpace) {
   case VK_COLOR_SPACE_DISPLAY_NATIVE_AMD:
     return ColorSpace::DISPLAY_NATIVE_AMD;
   default:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return ColorSpace::SRGB_NONLINEAR;
   }
 }

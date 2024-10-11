@@ -243,7 +243,7 @@ void main() {
 static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return nullptr;
 
 #if IGL_BACKEND_VULKAN
@@ -285,14 +285,14 @@ static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& de
       return igl::ShaderStagesCreator::fromModuleStringInput(
           device, codeVS2.c_str(), "main", "", codeFS.c_str(), "main", "", nullptr);
     } else {
-      IGL_ASSERT_MSG(0, "This sample is incompatible with OpenGL 2.1");
+      IGL_DEBUG_ABORT("This sample is incompatible with OpenGL 2.1");
       return nullptr;
     }
   }
 #endif // IGL_BACKEND_OPENGL
 
   default:
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return nullptr;
   }
 }
@@ -413,8 +413,8 @@ void TinyMeshSession::initialize() noexcept {
                                 &texHeight,
                                 &channels,
                                 4);
-    IGL_ASSERT_MSG(pixels,
-                   "Cannot load textures. Run `deploy_content.py` before running this app.");
+    IGL_DEBUG_ASSERT(pixels,
+                     "Cannot load textures. Run `deploy_content.py` before running this app.");
     const TextureDesc desc = TextureDesc::new2D(igl::TextureFormat::RGBA_SRGB,
                                                 texWidth,
                                                 texHeight,
@@ -457,13 +457,13 @@ std::shared_ptr<ITexture> TinyMeshSession::getVulkanNativeDepth() {
   if (device_->getBackendType() == BackendType::Vulkan) {
     const auto& vkPlatformDevice = device_->getPlatformDevice<igl::vulkan::PlatformDevice>();
 
-    IGL_ASSERT(vkPlatformDevice != nullptr);
+    IGL_DEBUG_ASSERT(vkPlatformDevice != nullptr);
 
     Result ret;
     std::shared_ptr<ITexture> drawable =
         vkPlatformDevice->createTextureFromNativeDepth(width_, height_, &ret);
 
-    IGL_ASSERT(ret.isOk());
+    IGL_DEBUG_ASSERT(ret.isOk());
     return drawable;
   }
 #endif // IGL_BACKEND_VULKAN
@@ -488,7 +488,7 @@ void TinyMeshSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
     framebufferDesc_.depthAttachment.texture = getVulkanNativeDepth();
 #endif // TINY_TEST_USE_DEPTH_BUFFER
     framebuffer_ = device_->createFramebuffer(framebufferDesc_, nullptr);
-    IGL_ASSERT(framebuffer_);
+    IGL_DEBUG_ASSERT(framebuffer_);
 
     RenderPipelineDesc desc;
 
@@ -584,13 +584,12 @@ void TinyMeshSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
   frameIndex_ = (frameIndex_ + 1) % kNumBufferedFrames;
 }
 
-bool TinyMeshSession::Listener::process(const KeyEvent& event) {
-  if (!event.isDown) {
-    if (event.key == 84) { // VK_T
-      session.texture1_.reset();
-    }
+bool TinyMeshSession::Listener::process(const CharEvent& event) {
+  if (event.character == 't') {
+    session.texture1_.reset();
+    return true;
   }
-  return true;
+  return false;
 }
 
 } // namespace igl::shell

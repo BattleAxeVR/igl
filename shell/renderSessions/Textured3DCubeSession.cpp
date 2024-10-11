@@ -162,7 +162,7 @@ static const char* getVulkanVertexShaderSource() {
 static std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
-    IGL_ASSERT_NOT_REACHED();
+    IGL_DEBUG_ASSERT_NOT_REACHED();
     return nullptr;
   case igl::BackendType::Vulkan:
     return igl::ShaderStagesCreator::fromModuleStringInput(device,
@@ -356,8 +356,8 @@ void Textured3DCubeSession::update(igl::SurfaceTextures surfaceTextures) noexcep
     framebufferDesc.depthAttachment.texture = surfaceTextures.depth;
 
     framebuffer_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, &ret);
-    IGL_ASSERT(ret.isOk());
-    IGL_ASSERT(framebuffer_ != nullptr);
+    IGL_DEBUG_ASSERT(ret.isOk());
+    IGL_DEBUG_ASSERT(framebuffer_ != nullptr);
   } else {
     framebuffer_->updateDrawable(surfaceTextures.color);
   }
@@ -412,7 +412,7 @@ void Textured3DCubeSession::update(igl::SurfaceTextures surfaceTextures) noexcep
 
   const std::shared_ptr<iglu::ManagedUniformBuffer> vertUniformBuffer =
       std::make_shared<iglu::ManagedUniformBuffer>(device, info);
-  IGL_ASSERT(vertUniformBuffer->result.isOk());
+  IGL_DEBUG_ASSERT(vertUniformBuffer->result.isOk());
   *static_cast<VertexFormat*>(vertUniformBuffer->getData()) = vertexParameters_;
   vertUniformBuffer->bind(device, *pipelineState_, *commands);
 

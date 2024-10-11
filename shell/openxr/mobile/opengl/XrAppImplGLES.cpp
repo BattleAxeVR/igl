@@ -79,7 +79,7 @@ std::unique_ptr<igl::IDevice> XrAppImplGLES::initIGL(XrInstance instance, XrSyst
   Result result;
   const igl::HWDeviceQueryDesc queryDesc(HWDeviceType::Unknown);
   auto hwDevices = hwDevice.queryDevices(queryDesc, &result);
-  IGL_ASSERT(result.isOk());
+  IGL_DEBUG_ASSERT(result.isOk());
   return hwDevice.create(hwDevices[0], kRenderingApi, nullptr, &result);
 }
 
@@ -87,7 +87,7 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
                                        XrSystemId systemId,
                                        igl::IDevice& device,
                                        const RenderSessionConfig& sessionConfig) {
-  IGL_ASSERT(sessionConfig.backendVersion.flavor == igl::BackendFlavor::OpenGL_ES);
+  IGL_DEBUG_ASSERT(sessionConfig.backendVersion.flavor == igl::BackendFlavor::OpenGL_ES);
   sessionConfig_ = sessionConfig;
   device_ = &device;
   const auto& glDevice = static_cast<igl::opengl::Device&>(device); // Downcast is safe here
@@ -132,7 +132,7 @@ XrSession XrAppImplGLES::initXrSession(XrInstance instance,
 }
 
 std::unique_ptr<impl::XrSwapchainProviderImpl> XrAppImplGLES::createSwapchainProviderImpl() const {
-  if (IGL_VERIFY(device_)) {
+  if (IGL_DEBUG_VERIFY(device_)) {
     return std::make_unique<XrSwapchainProviderImplGLES>(*device_,
                                                          sessionConfig_.colorFramebufferFormat);
   }

@@ -35,7 +35,7 @@ class ITrackedResource {
    */
   void initResourceTracker(std::shared_ptr<IResourceTracker> tracker,
                            const std::string& name = "") {
-    if (IGL_VERIFY(!resourceTracker_)) {
+    if (IGL_DEBUG_VERIFY(!resourceTracker_)) {
       resourceTracker_ = std::move(tracker);
       resourceName_ = name;
       if (resourceTracker_) {
@@ -54,8 +54,8 @@ class ITrackedResource {
   //  return static_cast<T*>(this);
   // So we prevent UBSan by turning off vptr sanitizer on this function
   //
-  // So we prevent UBSan from analyzing pointers that are never dereferenced anyway, by //@fb-only
-  // We are not seeing actual undefined behavior  //@fb-only
+  // @fb-only
+  // @fb-only
   // @fb-only
   // @fb-only
 #if defined(__clang__)

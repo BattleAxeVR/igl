@@ -59,7 +59,7 @@ BufferOffsets getBufferOffsets(igl::TextureFormat format) {
   }
 
   default:
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return {.r = 0, .g = 1, .b = 2};
   }
 }
@@ -83,9 +83,9 @@ bool isSupportedBitmapTextureFormat(igl::TextureFormat format) {
 void writeBitmap(const char* filename,
                  std::shared_ptr<igl::ITexture> texture,
                  igl::IDevice& device) {
-  IGL_ASSERT(texture);
-  IGL_ASSERT(texture->getType() == igl::TextureType::TwoD);
-  IGL_ASSERT(isSupportedBitmapTextureFormat(texture->getFormat()));
+  IGL_DEBUG_ASSERT(texture);
+  IGL_DEBUG_ASSERT(texture->getType() == igl::TextureType::TwoD);
+  IGL_DEBUG_ASSERT(isSupportedBitmapTextureFormat(texture->getFormat()));
 
   const auto textureAccessor =
       ::iglu::textureaccessor::TextureAccessorFactory::createTextureAccessor(
@@ -94,7 +94,7 @@ void writeBitmap(const char* filename,
   const igl::CommandQueueDesc desc{igl::CommandQueueType::Graphics};
   igl::Result result;
   const auto commandQueue = device.createCommandQueue(desc, &result);
-  if (!IGL_VERIFY(result.isOk()) || !IGL_VERIFY(commandQueue)) {
+  if (!IGL_DEBUG_VERIFY(result.isOk()) || !IGL_DEBUG_VERIFY(commandQueue)) {
     return;
   }
 
@@ -110,7 +110,7 @@ void writeBitmap(const char* filename,
   std::vector<uint8_t> imageData;
   imageData.reserve(size.width * size.height * 3);
 
-  IGL_ASSERT(buffer.size() == size.height * bytesPerRow);
+  IGL_DEBUG_ASSERT(buffer.size() == size.height * bytesPerRow);
 
   const auto bufferOffsets = getBufferOffsets(texture->getFormat());
   const bool flipY = shouldFlipY(device);
@@ -135,7 +135,7 @@ void writeBitmap(const char* filename,
 void writeBitmap(const char* filename, const uint8_t* imageData, uint32_t width, uint32_t height) {
   std::ofstream file;
   file.open(filename, std::ios::out | std::ios::binary);
-  if (!IGL_VERIFY(file)) {
+  if (!IGL_DEBUG_VERIFY(file)) {
     return;
   }
 

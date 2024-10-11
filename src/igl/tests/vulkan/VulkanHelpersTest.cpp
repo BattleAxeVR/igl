@@ -23,6 +23,110 @@ namespace igl::tests {
 // Unit tests for functions in VulkanHelpers.{h|c}.
 //
 
+// ivkGetVulkanResultString **********************************************************************
+class GetVulkanResultString : public ::testing::Test {};
+TEST_F(GetVulkanResultString, VulkanHelpersTest) {
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_SUCCESS), "VK_SUCCESS") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_NOT_READY), "VK_NOT_READY") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_TIMEOUT), "VK_TIMEOUT") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_EVENT_SET), "VK_EVENT_SET") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_EVENT_RESET), "VK_EVENT_RESET") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_INCOMPLETE), "VK_INCOMPLETE") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_OUT_OF_HOST_MEMORY),
+                     "VK_ERROR_OUT_OF_HOST_MEMORY") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_OUT_OF_DEVICE_MEMORY),
+                     "VK_ERROR_OUT_OF_DEVICE_MEMORY") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INITIALIZATION_FAILED),
+                     "VK_ERROR_INITIALIZATION_FAILED") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_DEVICE_LOST), "VK_ERROR_DEVICE_LOST") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_MEMORY_MAP_FAILED),
+                     "VK_ERROR_MEMORY_MAP_FAILED") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_LAYER_NOT_PRESENT),
+                     "VK_ERROR_LAYER_NOT_PRESENT") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_EXTENSION_NOT_PRESENT),
+                     "VK_ERROR_EXTENSION_NOT_PRESENT") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_FEATURE_NOT_PRESENT),
+                     "VK_ERROR_FEATURE_NOT_PRESENT") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INCOMPATIBLE_DRIVER),
+                     "VK_ERROR_INCOMPATIBLE_DRIVER") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_TOO_MANY_OBJECTS),
+                     "VK_ERROR_TOO_MANY_OBJECTS") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_FORMAT_NOT_SUPPORTED),
+                     "VK_ERROR_FORMAT_NOT_SUPPORTED") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_SURFACE_LOST_KHR),
+                     "VK_ERROR_SURFACE_LOST_KHR") == 0);
+  EXPECT_TRUE(
+      strcmp(ivkGetVulkanResultString(VK_ERROR_OUT_OF_DATE_KHR), "VK_ERROR_OUT_OF_DATE_KHR") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR),
+                     "VK_ERROR_INCOMPATIBLE_DISPLAY_KHR") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR),
+                     "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VALIDATION_FAILED_EXT),
+                     "VK_ERROR_VALIDATION_FAILED_EXT") == 0);
+  EXPECT_TRUE(
+      strcmp(ivkGetVulkanResultString(VK_ERROR_FRAGMENTED_POOL), "VK_ERROR_FRAGMENTED_POOL") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_UNKNOWN), "VK_ERROR_UNKNOWN") == 0);
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_OUT_OF_POOL_MEMORY),
+                     "VK_ERROR_OUT_OF_POOL_MEMORY") == 0); // 1.1
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INVALID_EXTERNAL_HANDLE),
+                     "VK_ERROR_INVALID_EXTERNAL_HANDLE") == 0); // 1.1
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_FRAGMENTATION), "VK_ERROR_FRAGMENTATION") ==
+              0); // 1.2
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS),
+                     "VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS") == 0); // 1.2
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_SUBOPTIMAL_KHR), "VK_SUBOPTIMAL_KHR") ==
+              0); // VK_KHR_swapchain
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_INVALID_SHADER_NV),
+                     "VK_ERROR_INVALID_SHADER_NV") == 0); // VK_NV_glsl_shader
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+                                                          // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR") == 0);
+#endif
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+  // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR") == 0);
+#endif
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+  // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR") == 0);
+#endif
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+  // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR") == 0);
+#endif
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+  // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR") == 0);
+#endif
+#ifdef VK_ENABLE_BETA_EXTENSIONS
+  // Provided by VK_KHR_video_queue
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR),
+                     "VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR") == 0);
+#endif
+  EXPECT_TRUE(
+      strcmp(ivkGetVulkanResultString(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT),
+             "VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT") ==
+      0); // VK_EXT_image_drm_format_modifier
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_NOT_PERMITTED_KHR),
+                     "VK_ERROR_NOT_PERMITTED_KHR") == 0); // VK_KHR_global_priority
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT),
+                     "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT") ==
+              0); // VK_EXT_full_screen_exclusive
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_THREAD_IDLE_KHR), "VK_THREAD_IDLE_KHR") ==
+              0); // VK_KHR_deferred_host_operations
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_THREAD_DONE_KHR), "VK_THREAD_DONE_KHR") ==
+              0); // VK_KHR_deferred_host_operations
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_OPERATION_DEFERRED_KHR),
+                     "VK_OPERATION_DEFERRED_KHR") == 0); // VK_KHR_deferred_host_operations
+  EXPECT_TRUE(strcmp(ivkGetVulkanResultString(VK_OPERATION_NOT_DEFERRED_KHR),
+                     "VK_OPERATION_NOT_DEFERRED_KHR") == 0); // VK_KHR_deferred_host_operations
+}
+
 // ivkGetSamplerCreateInfo ***********************************************************************
 class GetSamplerCreateInfoTest
   : public ::testing::TestWithParam<
@@ -169,6 +273,62 @@ INSTANTIATE_TEST_SUITE_P(
           std::to_string(std::get<6>(info.param));
       return name;
     });
+
+// ivkGetAttachmentDescriptionColor **************************************************************
+class AttachmentDescriptionColorTest
+  : public ::testing::TestWithParam<
+        std::tuple<VkFormat, VkAttachmentLoadOp, VkAttachmentStoreOp, VkImageLayout>> {};
+
+TEST_P(AttachmentDescriptionColorTest, GetAttachmentDescriptionColor) {
+  const VkFormat format = std::get<0>(GetParam());
+  const VkAttachmentLoadOp loadOp = std::get<1>(GetParam());
+  const VkAttachmentStoreOp storeOp = std::get<2>(GetParam());
+  const VkImageLayout initialLayout = std::get<3>(GetParam());
+  const auto finalLayout = static_cast<VkImageLayout>(initialLayout + 1);
+
+  const auto attachmentDescriptionColor =
+      ivkGetAttachmentDescriptionColor(format, loadOp, storeOp, initialLayout, finalLayout);
+
+  EXPECT_EQ(attachmentDescriptionColor.sType, VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2);
+  EXPECT_EQ(attachmentDescriptionColor.format, format);
+  EXPECT_EQ(attachmentDescriptionColor.samples, VK_SAMPLE_COUNT_1_BIT);
+  EXPECT_EQ(attachmentDescriptionColor.loadOp, loadOp);
+  EXPECT_EQ(attachmentDescriptionColor.storeOp, storeOp);
+  EXPECT_EQ(attachmentDescriptionColor.stencilLoadOp, VK_ATTACHMENT_LOAD_OP_DONT_CARE);
+  EXPECT_EQ(attachmentDescriptionColor.stencilStoreOp, VK_ATTACHMENT_STORE_OP_DONT_CARE);
+  EXPECT_EQ(attachmentDescriptionColor.initialLayout, initialLayout);
+  EXPECT_EQ(attachmentDescriptionColor.finalLayout, finalLayout);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    AllCombinations,
+    AttachmentDescriptionColorTest,
+    ::testing::Combine(
+        ::testing::Values(VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_R8G8B8A8_SRGB),
+        ::testing::Values(VK_ATTACHMENT_LOAD_OP_CLEAR, VK_ATTACHMENT_LOAD_OP_LOAD),
+        ::testing::Values(VK_ATTACHMENT_STORE_OP_DONT_CARE, VK_ATTACHMENT_STORE_OP_STORE),
+        ::testing::Values(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)),
+    [](const testing::TestParamInfo<AttachmentDescriptionColorTest::ParamType>& info) {
+      const std::string name = std::to_string(std::get<0>(info.param)) + "_" +
+                               std::to_string(std::get<1>(info.param)) + "_" +
+                               std::to_string(std::get<2>(info.param)) + "_" +
+                               std::to_string(std::get<3>(info.param));
+      return name;
+    });
+
+// ivkGetAttachmentReferenceColor **************************************************************
+class AttachmentReferenceColorTest : public ::testing::Test {};
+
+TEST_F(AttachmentReferenceColorTest, GetAttachmentReferenceColor) {
+  for (uint32_t i = 0; i < 2; ++i) {
+    const auto attachmentRef = ivkGetAttachmentReferenceColor(i);
+    EXPECT_EQ(attachmentRef.sType, VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2);
+    EXPECT_EQ(attachmentRef.pNext, nullptr);
+    EXPECT_EQ(attachmentRef.attachment, i);
+    EXPECT_EQ(attachmentRef.layout, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    EXPECT_EQ(attachmentRef.aspectMask, VK_IMAGE_ASPECT_COLOR_BIT);
+  }
+}
 
 // ivkGetDescriptorSetLayoutBinding **************************************************************
 class DescriptorSetLayoutTest

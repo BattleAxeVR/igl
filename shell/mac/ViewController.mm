@@ -129,7 +129,7 @@ using namespace igl;
     // surface textures
     surfaceTextures = igl::SurfaceTextures{[self createTextureFromNativeDrawable],
                                            [self createTextureFromNativeDepth]};
-    IGL_ASSERT(surfaceTextures.color != nullptr && surfaceTextures.depth != nullptr);
+    IGL_DEBUG_ASSERT(surfaceTextures.color != nullptr && surfaceTextures.depth != nullptr);
     const auto& dims = surfaceTextures.color->getDimensions();
     shellParams_.nativeSurfaceDimensions = glm::ivec2{dims.width, dims.height};
 
@@ -216,7 +216,7 @@ using namespace igl;
           0,
       };
       pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
-      IGL_ASSERT_MSG(pixelFormat, "Requested attributes not supported");
+      IGL_DEBUG_ASSERT(pixelFormat, "Requested attributes not supported");
     } else if (config_.backendVersion.majorVersion == 3 &&
                config_.backendVersion.minorVersion == 2) {
       static NSOpenGLPixelFormatAttribute attributes[] = {
@@ -258,15 +258,14 @@ using namespace igl;
       };
       pixelFormat = [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes];
     } else {
-      IGL_ASSERT_MSG(false,
-                     "Unsupported OpenGL version: %u.%u\n",
-                     config_.backendVersion.majorVersion,
-                     config_.backendVersion.minorVersion);
+      IGL_DEBUG_ABORT("Unsupported OpenGL version: %u.%u\n",
+                      config_.backendVersion.majorVersion,
+                      config_.backendVersion.minorVersion);
     }
     auto openGLView = [[GLView alloc] initWithFrame:frame_ pixelFormat:pixelFormat];
     igl::Result result;
     auto context = igl::opengl::macos::Context::createContext(openGLView.openGLContext, &result);
-    IGL_ASSERT(result.isOk());
+    IGL_DEBUG_ASSERT(result.isOk());
     shellPlatform_ = std::make_shared<igl::shell::PlatformMac>(
         opengl::macos::HWDevice().createWithContext(std::move(context), nullptr));
     self.view = openGLView;
@@ -331,13 +330,13 @@ using namespace igl;
 // @fb-only
 
   default: {
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     break;
   }
   }
 
   session_ = factory_->createRenderSession(shellPlatform_);
-  IGL_ASSERT_MSG(session_, "createDefaultRenderSession() must return a valid session");
+  IGL_DEBUG_ASSERT(session_, "createDefaultRenderSession() must return a valid session");
   // Get initial native surface dimensions
   shellParams_.nativeSurfaceDimensions = glm::ivec2(2048, 1536);
   session_->initialize();
@@ -385,8 +384,8 @@ using namespace igl;
   case igl::BackendFlavor::Metal: {
     auto& device = shellPlatform_->getDevice();
     auto* platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
-    IGL_ASSERT(currentDrawable_ != nil);
+    IGL_DEBUG_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(currentDrawable_ != nil);
     auto texture = platformDevice->createTextureFromNativeDrawable(currentDrawable_, nullptr);
     return texture;
   }
@@ -396,7 +395,7 @@ using namespace igl;
   case igl::BackendFlavor::OpenGL: {
     auto& device = shellPlatform_->getDevice();
     auto* platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDrawable(nullptr);
     return texture;
   }
@@ -406,7 +405,7 @@ using namespace igl;
   case igl::BackendFlavor::Vulkan: {
     auto& device = shellPlatform_->getDevice();
     auto* platformDevice = device.getPlatformDevice<igl::vulkan::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDrawable(nullptr);
     return texture;
   }
@@ -423,7 +422,7 @@ using namespace igl;
 // @fb-only
 
   default: {
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return nullptr;
   }
   }
@@ -435,7 +434,7 @@ using namespace igl;
   case igl::BackendFlavor::Metal: {
     auto& device = shellPlatform_->getDevice();
     auto* platformDevice = device.getPlatformDevice<igl::metal::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDepth(depthStencilTexture_, nullptr);
     return texture;
   }
@@ -445,7 +444,7 @@ using namespace igl;
   case igl::BackendFlavor::OpenGL: {
     auto& device = shellPlatform_->getDevice();
     auto* platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     auto texture = platformDevice->createTextureFromNativeDepth(nullptr);
     return texture;
   }
@@ -458,7 +457,7 @@ using namespace igl;
     auto* platformDevice =
         shellPlatform_->getDevice().getPlatformDevice<igl::vulkan::PlatformDevice>();
 
-    IGL_ASSERT(platformDevice);
+    IGL_DEBUG_ASSERT(platformDevice);
     auto texture =
         platformDevice->createTextureFromNativeDepth(extents.width, extents.height, nullptr);
     return texture;
@@ -475,7 +474,7 @@ using namespace igl;
 // @fb-only
 
   default: {
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     return nullptr;
   }
   }
@@ -523,7 +522,11 @@ static uint32_t getModifiers(NSEvent* event) {
 
 - (void)keyDown:(NSEvent*)event {
   shellPlatform_->getInputDispatcher().queueEvent(
-      igl::shell::KeyEvent(true, event.keyCode, getModifiers(event)));
+      igl::shell::KeyEvent(false, event.keyCode, getModifiers(event)));
+  std::string characters([event.characters UTF8String]);
+  for (const auto& c : characters) {
+    shellPlatform_->getInputDispatcher().queueEvent(igl::shell::CharEvent{.character = c});
+  }
 }
 
 - (void)mouseDown:(NSEvent*)event {

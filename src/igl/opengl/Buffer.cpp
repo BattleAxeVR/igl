@@ -73,7 +73,7 @@ void ArrayBuffer::initialize(const BufferDesc& desc, Result* outResult) {
     if (getContext().deviceFeatures().hasFeature(DeviceFeatures::Compute)) {
       target_ = GL_SHADER_STORAGE_BUFFER;
     } else {
-      IGL_ASSERT_NOT_IMPLEMENTED();
+      IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     }
   } else if (desc.type & BufferDesc::BufferTypeBits::Uniform) {
     target_ = GL_UNIFORM_BUFFER;
@@ -84,7 +84,7 @@ void ArrayBuffer::initialize(const BufferDesc& desc, Result* outResult) {
   } else if (desc.type & BufferDesc::BufferTypeBits::Indirect) {
     target_ = GL_DRAW_INDIRECT_BUFFER;
   } else {
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
   }
 
   size_ = desc.length;
@@ -144,7 +144,7 @@ void* ArrayBuffer::map(const BufferRange& range, Result* outResult) {
 
   void* srcData = nullptr;
   srcData = getContext().mapBufferRange(target_, range.offset, range.size, GL_MAP_READ_BIT);
-  IGL_ASSERT(srcData != nullptr);
+  IGL_DEBUG_ASSERT(srcData != nullptr);
   if (srcData == nullptr) {
     Result::setResult(outResult, Result::Code::InvalidOperation);
     return nullptr;
@@ -171,7 +171,7 @@ void ArrayBuffer::unbind() {
 void ArrayBuffer::bindBase(IGL_MAYBE_UNUSED size_t index, Result* outResult) {
   if (target_ != GL_SHADER_STORAGE_BUFFER) {
     static const char* kErrorMsg = "Buffer should be GL_SHADER_STORAGE_BUFFER";
-    IGL_REPORT_ERROR_MSG(1, kErrorMsg);
+    IGL_SOFT_ASSERT_MSG(1, kErrorMsg);
     Result::setResult(outResult, Result::Code::InvalidOperation, kErrorMsg);
     return;
   }
@@ -192,7 +192,7 @@ void UniformBlockBuffer::bindBase(size_t index, Result* outResult) {
   if (getContext().deviceFeatures().hasFeature(DeviceFeatures::UniformBlocks)) {
     if (target_ != GL_UNIFORM_BUFFER) {
       static const char* kErrorMsg = "Buffer should be GL_UNIFORM_BUFFER";
-      IGL_REPORT_ERROR_MSG(1, kErrorMsg);
+      IGL_SOFT_ASSERT_MSG(1, kErrorMsg);
       Result::setResult(outResult, Result::Code::InvalidOperation, kErrorMsg);
       return;
     }
@@ -200,7 +200,7 @@ void UniformBlockBuffer::bindBase(size_t index, Result* outResult) {
     Result::setOk(outResult);
   } else {
     static const char* kErrorMsg = "Uniform Blocks are not supported";
-    IGL_REPORT_ERROR_MSG(1, kErrorMsg);
+    IGL_SOFT_ASSERT_MSG(1, kErrorMsg);
     Result::setResult(outResult, Result::Code::Unimplemented, kErrorMsg);
   }
 }
@@ -209,19 +209,19 @@ void UniformBlockBuffer::bindRange(size_t index, size_t offset, Result* outResul
   if (getContext().deviceFeatures().hasFeature(DeviceFeatures::UniformBlocks)) {
     if (target_ != GL_UNIFORM_BUFFER) {
       static const char* kErrorMsg = "Buffer should be GL_UNIFORM_BUFFER";
-      IGL_REPORT_ERROR_MSG(1, kErrorMsg);
+      IGL_SOFT_ASSERT_MSG(1, kErrorMsg);
       Result::setResult(outResult, Result::Code::InvalidOperation, kErrorMsg);
       return;
     }
     getContext().bindBuffer(target_, iD_);
-    IGL_ASSERT_MSG(
+    IGL_DEBUG_ASSERT(
         offset < getSizeInBytes(), "Offset is invalid! (%d %d)", offset, getSizeInBytes());
     getContext().bindBufferRange(
         target_, (GLuint)index, iD_, (GLintptr)offset, getSizeInBytes() - offset);
     Result::setOk(outResult);
   } else {
     static const char* kErrorMsg = "Uniform Blocks are not supported";
-    IGL_REPORT_ERROR_MSG(1, kErrorMsg);
+    IGL_SOFT_ASSERT_MSG(1, kErrorMsg);
     Result::setResult(outResult, Result::Code::Unimplemented, kErrorMsg);
   }
 }

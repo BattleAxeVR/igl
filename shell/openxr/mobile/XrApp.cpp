@@ -364,7 +364,7 @@ bool XrApp::enumerateViewConfigurations() {
     XR_CHECK(xrEnumerateViewConfigurationViews(
         instance_, systemId_, viewConfigType, 0, &numViewports, nullptr));
 
-    if (!IGL_VERIFY(numViewports == XrComposition::kNumViews)) {
+    if (!IGL_DEBUG_VERIFY(numViewports == XrComposition::kNumViews)) {
       IGL_LOG_ERROR(
           "numViewports must be %d. Make sure XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO is used.\n",
           XrComposition::kNumViews);
@@ -407,7 +407,7 @@ bool XrApp::enumerateViewConfigurations() {
     break;
   }
 
-  IGL_ASSERT_MSG(
+  IGL_DEBUG_ASSERT(
       foundViewConfig, "XrViewConfigurationType %d not found.", kSupportedViewConfigType);
 
   return true;
@@ -549,7 +549,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     hands_->updateMeshes(shellParams_->handMeshes);
   }
 
-  IGL_ASSERT(renderSession_ != nullptr);
+  IGL_DEBUG_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
 
   if (useQuadLayerComposition_) {
@@ -630,7 +630,7 @@ void XrApp::updateQuadComposition() noexcept {
 void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr) {
 #if IGL_PLATFORM_ANDROID
   platform_ = std::make_shared<igl::shell::PlatformAndroid>(std::move(device));
-  IGL_ASSERT(platform_ != nullptr);
+  IGL_DEBUG_ASSERT(platform_ != nullptr);
   static_cast<igl::shell::ImageLoaderAndroid&>(platform_->getImageLoader())
       .setAssetManager(assetMgr);
   static_cast<igl::shell::FileLoaderAndroid&>(platform_->getFileLoader()).setAssetManager(assetMgr);
@@ -643,7 +643,7 @@ void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManag
   auto factory = igl::shell::createDefaultRenderSessionFactory();
   const auto requestedSessionConfigs =
       factory->requestedSessionConfigs(shell::ShellType::OpenXR, {impl_->suggestedSessionConfig()});
-  if (IGL_UNEXPECTED(requestedSessionConfigs.size() != 1)) {
+  if (IGL_DEBUG_VERIFY_NOT(requestedSessionConfigs.size() != 1)) {
     return;
   }
   sessionConfig_ = requestedSessionConfigs[0];

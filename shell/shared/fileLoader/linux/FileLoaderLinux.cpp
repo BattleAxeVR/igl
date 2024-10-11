@@ -12,6 +12,7 @@
 #include <igl/Common.h>
 #include <iterator>
 #include <string>
+// @fb-only
 
 namespace {
 
@@ -83,6 +84,7 @@ std::string FileLoaderLinux::fullPath(const std::string& fileName) const {
       "samples/resources/fonts/",
       "samples/resources/fonts/optimistic",
       // @fb-only
+      // @fb-only
   };
 
   // find folders somewhere above our current directory
@@ -92,7 +94,13 @@ std::string FileLoaderLinux::fullPath(const std::string& fileName) const {
     }
   }
 
-  IGL_ASSERT_NOT_REACHED();
+  // @fb-only
+      // @fb-only
+  // @fb-only
+    // @fb-only
+  // @fb-only
+
+  IGL_DEBUG_ASSERT_NOT_REACHED();
   return "";
 }
 
