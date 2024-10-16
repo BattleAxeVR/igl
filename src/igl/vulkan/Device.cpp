@@ -142,7 +142,7 @@ std::shared_ptr<ISamplerState> Device::createSamplerState(const SamplerStateDesc
 
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
 
-  auto samplerState = std::make_shared<vulkan::SamplerState>(*this);
+  auto samplerState = std::make_shared<vulkan::SamplerState>(const_cast<Device&>(*this));
 
   Result::setResult(outResult, samplerState->create(desc));
 
@@ -778,6 +778,14 @@ void Device::destroy(igl::BindGroupTextureHandle handle) {
 }
 
 void Device::destroy(igl::BindGroupBufferHandle handle) {
+  IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DESTROY);
+  IGL_DEBUG_ASSERT(ctx_);
+  IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
+
+  ctx_->destroy(handle);
+}
+
+void Device::destroy(igl::SamplerHandle handle) {
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DESTROY);
   IGL_DEBUG_ASSERT(ctx_);
   IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);

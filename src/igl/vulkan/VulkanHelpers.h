@@ -135,22 +135,6 @@ VkResult ivkCreateSwapchain(const struct VulkanFunctionTable* vt,
                             uint32_t height,
                             VkSwapchainKHR* outSwapchain);
 
-/// @brief Creates a Vulkan Sampler object with default values
-VkResult ivkCreateSampler(const struct VulkanFunctionTable* vt,
-                          VkDevice device,
-                          VkSampler* outSampler);
-
-VkSamplerCreateInfo ivkGetSamplerCreateInfo(VkFilter minFilter,
-                                            VkFilter magFilter,
-                                            VkSamplerMipmapMode mipmapMode,
-                                            VkSamplerAddressMode addressModeU,
-                                            VkSamplerAddressMode addressModeV,
-                                            VkSamplerAddressMode addressModeW,
-                                            float minLod,
-                                            float maxLod);
-
-VkSamplerYcbcrConversionCreateInfo ivkGetSamplerYcbcrCreateInfo(VkFormat format);
-
 /// @brief Returns VkImageViewCreateInfo with the R, G, B, and A components mapped to themselves
 /// (identity)
 VkImageViewCreateInfo ivkGetImageViewCreateInfo(VkImage image,
@@ -305,12 +289,6 @@ VkResult ivkCreateDescriptorPool(const struct VulkanFunctionTable* vt,
                                  uint32_t numPoolSizes,
                                  const VkDescriptorPoolSize* poolSizes,
                                  VkDescriptorPool* outDescriptorPool);
-
-/// @brief Starts recording a command buffer that will be submitted only once (i.e. it cannot be
-/// reused)
-VkResult ivkBeginCommandBuffer(const struct VulkanFunctionTable* vt, VkCommandBuffer buffer);
-
-VkResult ivkEndCommandBuffer(const struct VulkanFunctionTable* vt, VkCommandBuffer buffer);
 
 /// @brief Creates a VkSubmitInfo structure with an optional semaphore, used to signal when the
 /// command buffer for this batch have completed execution

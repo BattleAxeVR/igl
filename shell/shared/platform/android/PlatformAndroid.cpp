@@ -11,15 +11,15 @@
 #include <shell/shared/imageLoader/android/ImageLoaderAndroid.h>
 #include <shell/shared/imageWriter/ImageWriter.h>
 #include <shell/shared/imageWriter/android/ImageWriterAndroid.h>
-#include <shell/shared/platform/DisplayContext.h>
 
 #if IGL_BACKEND_VULKAN
+#include <glm/ext.hpp>
+#include <glm/glm.hpp>
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/HWDevice.h>
 #include <igl/vulkan/VulkanContext.h>
+#include <shell/shared/platform/DisplayContext.h>
 #endif
-
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace igl::shell {
 

@@ -550,85 +550,6 @@ VkResult ivkCreateHeadlessSurface(const struct VulkanFunctionTable* vt,
   return vt->vkCreateHeadlessSurfaceEXT(instance, &ci, NULL, outSurface);
 }
 
-VkResult ivkCreateSampler(const struct VulkanFunctionTable* vt,
-                          VkDevice device,
-                          VkSampler* outSampler) {
-  const VkSamplerCreateInfo ci = {
-      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-      .pNext = NULL,
-      .flags = 0,
-      .magFilter = VK_FILTER_LINEAR,
-      .minFilter = VK_FILTER_LINEAR,
-      .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-      .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .mipLodBias = 0.0f,
-      .anisotropyEnable = VK_FALSE,
-      .maxAnisotropy = 0.0f,
-      .compareEnable = VK_FALSE,
-      .compareOp = VK_COMPARE_OP_ALWAYS,
-      .minLod = 0.0f,
-      .maxLod = 0.0f,
-      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-      .unnormalizedCoordinates = VK_FALSE,
-  };
-  return vt->vkCreateSampler(device, &ci, NULL, outSampler);
-}
-
-VkSamplerCreateInfo ivkGetSamplerCreateInfo(VkFilter minFilter,
-                                            VkFilter magFilter,
-                                            VkSamplerMipmapMode mipmapMode,
-                                            VkSamplerAddressMode addressModeU,
-                                            VkSamplerAddressMode addressModeV,
-                                            VkSamplerAddressMode addressModeW,
-                                            float minLod,
-                                            float maxLod) {
-  const VkSamplerCreateInfo ci = {
-      .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-      .pNext = NULL,
-      .flags = 0,
-      .magFilter = magFilter,
-      .minFilter = minFilter,
-      .mipmapMode = mipmapMode,
-      .addressModeU = addressModeU,
-      .addressModeV = addressModeV,
-      .addressModeW = addressModeW,
-      .mipLodBias = 0.0f,
-      .anisotropyEnable = VK_FALSE,
-      .maxAnisotropy = 0.0f,
-      .compareEnable = VK_FALSE,
-      .compareOp = VK_COMPARE_OP_ALWAYS,
-      .minLod = minLod,
-      .maxLod = maxLod,
-      .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-      .unnormalizedCoordinates = VK_FALSE,
-  };
-  return ci;
-}
-
-VkSamplerYcbcrConversionCreateInfo ivkGetSamplerYcbcrCreateInfo(VkFormat format) {
-  const VkSamplerYcbcrConversionCreateInfo ci = {
-      .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO,
-      .pNext = NULL,
-      .format = format,
-      .ycbcrModel = VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709,
-      .ycbcrRange = VK_SAMPLER_YCBCR_RANGE_ITU_FULL,
-      .components =
-          {
-              VK_COMPONENT_SWIZZLE_IDENTITY,
-              VK_COMPONENT_SWIZZLE_IDENTITY,
-              VK_COMPONENT_SWIZZLE_IDENTITY,
-              VK_COMPONENT_SWIZZLE_IDENTITY,
-          },
-      .xChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
-      .yChromaOffset = VK_CHROMA_LOCATION_MIDPOINT,
-      .chromaFilter = VK_FILTER_LINEAR,
-      .forceExplicitReconstruction = VK_FALSE,
-  };
-  return ci;
-}
-
 VkImageViewCreateInfo ivkGetImageViewCreateInfo(VkImage image,
                                                 VkImageViewType type,
                                                 VkFormat imageFormat,
@@ -858,19 +779,6 @@ VkResult ivkCreateDescriptorPool(const struct VulkanFunctionTable* vt,
       .pPoolSizes = poolSizes,
   };
   return vt->vkCreateDescriptorPool(device, &ci, NULL, outDescriptorPool);
-}
-
-VkResult ivkBeginCommandBuffer(const struct VulkanFunctionTable* vt, VkCommandBuffer buffer) {
-  const VkCommandBufferBeginInfo bi = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .pNext = NULL,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-  };
-  return vt->vkBeginCommandBuffer(buffer, &bi);
-}
-
-VkResult ivkEndCommandBuffer(const struct VulkanFunctionTable* vt, VkCommandBuffer buffer) {
-  return vt->vkEndCommandBuffer(buffer);
 }
 
 VkSubmitInfo ivkGetSubmitInfo(const VkCommandBuffer* buffer,
