@@ -266,12 +266,10 @@ bool XrApp::createInstance() {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrResumeSimultaneousHandsAndControllersTrackingMETA",
                                    (PFN_xrVoidFunction*)(&xrResumeSimultaneousHandsAndControllersTrackingMETA_)));
-      //XR_CHECK(xrResumeSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
 
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrPauseSimultaneousHandsAndControllersTrackingMETA",
                                    (PFN_xrVoidFunction*)(&xrPauseSimultaneousHandsAndControllersTrackingMETA_)));
-      //XR_CHECK(xrPauseSimultaneousHandsAndControllersTrackingMETA_ != nullptr);
 }
 
 #endif
