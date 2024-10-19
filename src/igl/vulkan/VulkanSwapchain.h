@@ -24,19 +24,19 @@ class VulktanTexture;
 
 class VulkanSwapchain final {
  public:
-  VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint32_t height);
+  VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t height);
   ~VulkanSwapchain();
 
   Result acquireNextImage();
   Result present(VkSemaphore waitSemaphore);
   VkImage getCurrentVkImage() const {
-    if (IGL_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
+    if (IGL_DEBUG_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
       return swapchainTextures_[currentImageIndex_]->getVulkanImage().getVkImage();
     }
     return VK_NULL_HANDLE;
   }
   VkImageView getCurrentVkImageView() const {
-    if (IGL_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
+    if (IGL_DEBUG_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
       return swapchainTextures_[currentImageIndex_]->getVulkanImageView().getVkImageView();
     }
     return VK_NULL_HANDLE;
@@ -56,7 +56,7 @@ class VulkanSwapchain final {
       getNextImage_ = false;
     }
 
-    if (IGL_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
+    if (IGL_DEBUG_VERIFY(currentImageIndex_ < numSwapchainImages_)) {
       return swapchainTextures_[currentImageIndex_];
     }
 

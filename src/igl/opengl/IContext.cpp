@@ -82,36 +82,36 @@ void logSource(const int count, const char** string, const int* length) {
 #define APILOG_SOURCE(count, string, length) static_cast<void>(0)
 #endif // defined(IGL_API_LOG) && (IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS))
 
-#define GLCALL(funcName)                                         \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup()); \
-  callCounter_++;                                                \
+#define GLCALL(funcName)                                        \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup()); \
+  callCounter_++;                                               \
   gl##funcName
 
-#define IGLCALL(funcName)                                        \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup()); \
-  callCounter_++;                                                \
+#define IGLCALL(funcName)                                       \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup()); \
+  callCounter_++;                                               \
   igl##funcName
 
-#define GLCALL_WITH_RETURN(ret, funcName)                        \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup()); \
-  callCounter_++;                                                \
+#define GLCALL_WITH_RETURN(ret, funcName)                       \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup()); \
+  callCounter_++;                                               \
   ret = gl##funcName
 
-#define IGLCALL_WITH_RETURN(ret, funcName)                       \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup()); \
-  callCounter_++;                                                \
+#define IGLCALL_WITH_RETURN(ret, funcName)                      \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup()); \
+  callCounter_++;                                               \
   ret = igl##funcName
 
-#define GLCALL_PROC(funcPtr, ...)                                \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup()); \
-  if (IGL_VERIFY(funcPtr)) {                                     \
-    callCounter_++;                                              \
-    (*funcPtr)(__VA_ARGS__);                                     \
+#define GLCALL_PROC(funcPtr, ...)                               \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup()); \
+  if (IGL_DEBUG_VERIFY(funcPtr)) {                              \
+    callCounter_++;                                             \
+    (*funcPtr)(__VA_ARGS__);                                    \
   }
 
 #define GLCALL_PROC_WITH_RETURN(ret, funcPtr, returnOnError, ...) \
-  IGL_REPORT_ERROR(isCurrentContext() || isCurrentSharegroup());  \
-  if (IGL_VERIFY(funcPtr)) {                                      \
+  IGL_SOFT_ASSERT(isCurrentContext() || isCurrentSharegroup());   \
+  if (IGL_DEBUG_VERIFY(funcPtr)) {                                \
     callCounter_++;                                               \
     ret = (*funcPtr)(__VA_ARGS__);                                \
   } else {                                                        \
@@ -126,12 +126,12 @@ void logSource(const int count, const char** string, const int* length) {
     }                                         \
   } while (false)
 #define GL_ASSERT_ERROR(condition, callerName, lineNum, errorCode) \
-  IGL_ASSERT_MSG((condition),                                      \
-                 "[IGL] OpenGL error [%s:%zu] 0x%04X: %s\n",       \
-                 callerName,                                       \
-                 lineNum,                                          \
-                 errorCode,                                        \
-                 GL_ERROR_TO_STRING(errorCode))
+  IGL_DEBUG_ASSERT((condition),                                    \
+                   "[IGL] OpenGL error [%s:%zu] 0x%04X: %s\n",     \
+                   callerName,                                     \
+                   lineNum,                                        \
+                   errorCode,                                      \
+                   GL_ERROR_TO_STRING(errorCode))
 #else
 #define GLCHECK_ERRORS() static_cast<void>(0)
 #define GL_ASSERT_ERROR(condition, callerName, lineNum, errorCode) static_cast<void>(0)
@@ -711,9 +711,9 @@ IContext::IContext() : deviceFeatureSet_(*this) {
 }
 
 IContext::~IContext() {
-  IGL_REPORT_ERROR_MSG(refCount_ == 0,
-                       "Dangling IContext reference left behind."
-                       // @fb-only
+  IGL_SOFT_ASSERT(refCount_ == 0,
+                  "Dangling IContext reference left behind."
+                  // @fb-only
   );
   // Clear the zombie guard explicitly so our "secret" stays secret.
   zombieGuard_ = 0;
@@ -737,7 +737,7 @@ void IContext::registerContext(void* glContext, IContext* context) {
 #if IGL_PLATFORM_ANDROID
     IGL_LOG_ERROR(errorMessage);
 #else
-    IGL_ASSERT_MSG(0, errorMessage);
+    IGL_DEBUG_ABORT(errorMessage);
 #endif
   }
   IContext::getExistingContexts().insert({glContext, context});
@@ -841,7 +841,7 @@ void IContext::bindImageTexture(GLuint unit,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::ShaderImageLoadStore)) {
       bindImageTexturerProc_ = iglBindImageTexture;
     }
-    IGL_ASSERT_MSG(bindImageTexturerProc_, "No supported function for glBindImageTexture\n");
+    IGL_DEBUG_ASSERT(bindImageTexturerProc_, "No supported function for glBindImageTexture\n");
   }
   GLCALL_PROC(bindImageTexturerProc_, unit, texture, level, layered, layer, access, format);
   APILOG("glBindImageTexture(%u, %u, %i, %s, %i %s %s)\n",
@@ -864,7 +864,7 @@ void IContext::bindVertexArray(GLuint vao) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::VertexArrayObject)) {
       bindVertexArrayProc_ = iglBindVertexArray;
     }
-    IGL_ASSERT_MSG(bindVertexArrayProc_, "No supported function for glBindVertexArray\n");
+    IGL_DEBUG_ASSERT(bindVertexArrayProc_, "No supported function for glBindVertexArray\n");
   }
   GLCALL_PROC(bindVertexArrayProc_, vao);
   APILOG("glBindVertexArray(%u)\n", vao);
@@ -925,7 +925,7 @@ void IContext::blitFramebuffer(GLint srcX0,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::FramebufferBlit)) {
       blitFramebufferProc_ = iglBlitFramebuffer;
     }
-    IGL_ASSERT_MSG(blitFramebufferProc_, "No supported function for glBlitFramebuffer\n");
+    IGL_DEBUG_ASSERT(blitFramebufferProc_, "No supported function for glBlitFramebuffer\n");
   }
   GLCALL_PROC(
       blitFramebufferProc_, srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
@@ -990,7 +990,7 @@ void IContext::clearDepthf(GLfloat depth) {
     } else {
       clearDepthfProc_ = iglClearDepth;
     }
-    IGL_ASSERT_MSG(clearDepthfProc_, "No supported function for glClearDepthf\n");
+    IGL_DEBUG_ASSERT(clearDepthfProc_, "No supported function for glClearDepthf\n");
   }
 
   GLCALL_PROC(clearDepthfProc_, depth);
@@ -1039,7 +1039,7 @@ void IContext::compressedTexImage1D(IGL_MAYBE_UNUSED GLenum target,
          data);
   GLCHECK_ERRORS();
 #else
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 #endif
 }
 
@@ -1084,7 +1084,8 @@ void IContext::compressedTexImage3D(GLenum target,
         compressedTexImage3DProc_ = iglCompressedTexImage3D;
       }
     }
-    IGL_ASSERT_MSG(compressedTexImage3DProc_, "No supported function for glCompressedTexImage3D\n");
+    IGL_DEBUG_ASSERT(compressedTexImage3DProc_,
+                     "No supported function for glCompressedTexImage3D\n");
   }
   GLCALL_PROC(compressedTexImage3DProc_,
               target,
@@ -1128,7 +1129,7 @@ void IContext::compressedTexSubImage1D(IGL_MAYBE_UNUSED GLenum target,
          data);
   GLCHECK_ERRORS();
 #else
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 #endif
 }
 
@@ -1177,8 +1178,8 @@ void IContext::compressedTexSubImage3D(GLenum target,
         compressedTexSubImage3DProc_ = iglCompressedTexSubImage3D;
       }
     }
-    IGL_ASSERT_MSG(compressedTexSubImage3DProc_,
-                   "No supported function for glCompressedTexSubImage3D\n");
+    IGL_DEBUG_ASSERT(compressedTexSubImage3DProc_,
+                     "No supported function for glCompressedTexSubImage3D\n");
   }
   GLCALL_PROC(compressedTexSubImage3DProc_,
               target,
@@ -1293,7 +1294,8 @@ void IContext::debugMessageCallback(PFNIGLDEBUGPROC callback, const void* userPa
         debugMessageCallbackProc_ = iglDebugMessageCallback;
       }
     }
-    IGL_ASSERT_MSG(debugMessageCallbackProc_, "No supported function for glDebugMessageCallback\n");
+    IGL_DEBUG_ASSERT(debugMessageCallbackProc_,
+                     "No supported function for glDebugMessageCallback\n");
   }
 
   GLCALL_PROC(debugMessageCallbackProc_, callback, userParam);
@@ -1319,7 +1321,7 @@ void IContext::debugMessageInsert(GLenum source,
         debugMessageInsertProc_ = iglDebugMessageInsert;
       }
     }
-    IGL_ASSERT_MSG(debugMessageInsertProc_, "No supported function for glDebugMessageInsert\n");
+    IGL_DEBUG_ASSERT(debugMessageInsertProc_, "No supported function for glDebugMessageInsert\n");
   }
 
   GLCALL_PROC(debugMessageInsertProc_, source, type, id, severity, length, buf);
@@ -1334,7 +1336,7 @@ void IContext::debugMessageInsert(GLenum source,
 }
 
 void IContext::deleteBuffers(GLsizei n, const GLuint* buffers) {
-  if (isDestructionAllowed() && IGL_VERIFY(buffers != nullptr)) {
+  if (isDestructionAllowed() && IGL_DEBUG_VERIFY(buffers != nullptr)) {
     if (shouldQueueAPI()) {
       deletionQueues_.queueDeleteBuffers(n, buffers);
     } else {
@@ -1360,7 +1362,7 @@ void IContext::unbindBuffer(GLenum target) {
 }
 
 void IContext::deleteFramebuffers(GLsizei n, const GLuint* framebuffers) {
-  if (isDestructionAllowed() && IGL_VERIFY(framebuffers != nullptr)) {
+  if (isDestructionAllowed() && IGL_DEBUG_VERIFY(framebuffers != nullptr)) {
     if (shouldQueueAPI()) {
       deletionQueues_.queueDeleteFramebuffers(n, framebuffers);
     } else {
@@ -1384,7 +1386,7 @@ void IContext::deleteProgram(GLuint program) {
 }
 
 void IContext::deleteRenderbuffers(GLsizei n, const GLuint* renderbuffers) {
-  if (isDestructionAllowed() && IGL_VERIFY(renderbuffers != nullptr)) {
+  if (isDestructionAllowed() && IGL_DEBUG_VERIFY(renderbuffers != nullptr)) {
     if (shouldQueueAPI()) {
       deletionQueues_.queueDeleteRenderbuffers(n, renderbuffers);
     } else {
@@ -1404,9 +1406,9 @@ void IContext::deleteVertexArrays(GLsizei n, const GLuint* vertexArrays) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::VertexArrayObject)) {
       deleteVertexArraysProc_ = iglDeleteVertexArrays;
     }
-    IGL_ASSERT_MSG(deleteVertexArraysProc_, "No supported function for glDeleteVertexArrays\n");
+    IGL_DEBUG_ASSERT(deleteVertexArraysProc_, "No supported function for glDeleteVertexArrays\n");
   }
-  if (isDestructionAllowed() && IGL_VERIFY(vertexArrays != nullptr)) {
+  if (isDestructionAllowed() && IGL_DEBUG_VERIFY(vertexArrays != nullptr)) {
     if (shouldQueueAPI()) {
       deletionQueues_.queueDeleteVertexArrays(n, vertexArrays);
     } else {
@@ -1438,7 +1440,7 @@ void IContext::deleteSync(GLsync sync) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::Sync)) {
       deleteSyncProc_ = iglDeleteSync;
     }
-    IGL_ASSERT_MSG(deleteSyncProc_, "No supported function for glDeleteSync\n");
+    IGL_DEBUG_ASSERT(deleteSyncProc_, "No supported function for glDeleteSync\n");
   }
 
   GLCALL_PROC(deleteSyncProc_, sync);
@@ -1542,7 +1544,7 @@ void IContext::drawBuffers(GLsizei n, GLenum* buffers) {
         drawBuffersProc_ = iglDrawBuffers;
       }
     }
-    IGL_ASSERT_MSG(drawBuffersProc_, "No supported function for glDrawBuffers\n");
+    IGL_DEBUG_ASSERT(drawBuffersProc_, "No supported function for glDrawBuffers\n");
   }
   IGL_PROFILER_ZONE_GPU_COLOR_OGL("drawBuffers()", IGL_PROFILER_COLOR_DRAW);
 
@@ -1623,7 +1625,7 @@ GLsync IContext::fenceSync(GLenum condition, GLbitfield flags) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::Sync)) {
       fenceSyncProc_ = iglFenceSync;
     }
-    IGL_ASSERT_MSG(fenceSyncProc_, "No supported function for glFenceSync\n");
+    IGL_DEBUG_ASSERT(fenceSyncProc_, "No supported function for glFenceSync\n");
   }
 
   GLsync sync;
@@ -1689,8 +1691,8 @@ void IContext::framebufferTexture2DMultisample(GLenum target,
     } else if (deviceFeatureSet_.hasExtension(Extensions::MultiSampleImg)) {
       framebufferTexture2DMultisampleProc_ = iglFramebufferTexture2DMultisampleIMG;
     }
-    IGL_ASSERT_MSG(framebufferTexture2DMultisampleProc_,
-                   "No supported function for glFramebufferTexture2DMultisample\n");
+    IGL_DEBUG_ASSERT(framebufferTexture2DMultisampleProc_,
+                     "No supported function for glFramebufferTexture2DMultisample\n");
   }
 
   if (maxSamples_ == -1 && framebufferTexture2DMultisampleProc_ != nullptr) {
@@ -1759,7 +1761,7 @@ void IContext::polygonFillMode(IGL_MAYBE_UNUSED GLenum mode) {
   APILOG("glPolygonMode(%s)\n", GL_ENUM_TO_STRING(mode));
   GLCHECK_ERRORS();
 #else
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 #endif
 }
 
@@ -1808,7 +1810,7 @@ void IContext::genVertexArrays(GLsizei n, GLuint* vertexArrays) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::VertexArrayObject)) {
       genVertexArraysProc_ = iglGenVertexArrays;
     }
-    IGL_ASSERT_MSG(genVertexArraysProc_, "No supported function for glGenVertexArrays\n");
+    IGL_DEBUG_ASSERT(genVertexArraysProc_, "No supported function for glGenVertexArrays\n");
   }
   GLCALL_PROC(genVertexArraysProc_, n, vertexArrays);
   APILOG("glGenVertexArrays(%u, %p) = %u\n",
@@ -1978,7 +1980,7 @@ GLuint IContext::getDebugMessageLog(GLuint count,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::DebugMessageCallback)) {
       getDebugMessageLogProc_ = iglGetDebugMessageLog;
     }
-    IGL_ASSERT_MSG(getDebugMessageLogProc_, "No supported function for glGetDebugMessageLog\n");
+    IGL_DEBUG_ASSERT(getDebugMessageLogProc_, "No supported function for glGetDebugMessageLog\n");
   }
   GLuint ret = 0;
   GLCALL_PROC_WITH_RETURN(ret,
@@ -2243,7 +2245,7 @@ void IContext::getSynciv(GLsync sync,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::Sync)) {
       getSyncivProc_ = iglGetSynciv;
     }
-    IGL_ASSERT_MSG(getSyncivProc_, "No supported function for glGetSynciv\n");
+    IGL_DEBUG_ASSERT(getSyncivProc_, "No supported function for glGetSynciv\n");
   }
   GLCALL_PROC(getSyncivProc_, sync, pname, bufSize, length, values);
   APILOG("glGetSynciv(%p, %s, %u, %p, %p) = %d\n",
@@ -2359,8 +2361,8 @@ void IContext::invalidateFramebuffer(IGL_MAYBE_UNUSED GLenum target,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::InvalidateFramebuffer)) {
       invalidateFramebufferProc_ = iglInvalidateFramebuffer;
     }
-    IGL_ASSERT_MSG(invalidateFramebufferProc_,
-                   "No supported function for glInvalidateFramebuffer\n");
+    IGL_DEBUG_ASSERT(invalidateFramebufferProc_,
+                     "No supported function for glInvalidateFramebuffer\n");
   }
   GLCALL_PROC(invalidateFramebufferProc_, target, numAttachments, attachments);
   APILOG("glInvalidateFramebuffer(%s, %u, %p)\n",
@@ -2485,7 +2487,7 @@ void* IContext::mapBufferRange(GLenum target,
     } else if (deviceFeatureSet_.hasFeature(DeviceFeatures::MapBufferRange)) {
       mapBufferRangeProc_ = iglMapBufferRange;
     }
-    IGL_ASSERT_MSG(mapBufferRangeProc_, "No supported function for glMapBufferRange\n");
+    IGL_DEBUG_ASSERT(mapBufferRangeProc_, "No supported function for glMapBufferRange\n");
   }
   void* ret = nullptr;
   GLCALL_PROC_WITH_RETURN(ret, mapBufferRangeProc_, nullptr, target, offset, length, access);
@@ -2510,7 +2512,7 @@ void IContext::objectLabel(GLenum identifier, GLuint name, GLsizei length, const
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::DebugLabel)) {
       objectLabelProc_ = iglObjectLabel;
     }
-    IGL_ASSERT_MSG(objectLabelProc_, "No supported function for glObjectLabel\n");
+    IGL_DEBUG_ASSERT(objectLabelProc_, "No supported function for glObjectLabel\n");
   }
   GLCALL_PROC(objectLabelProc_, identifier, name, length, label);
   APILOG("glObjectLabel(%s, %u, %u, %s)\n", GL_ENUM_TO_STRING(identifier), name, length, label);
@@ -2546,7 +2548,7 @@ void IContext::pushDebugGroup(GLenum source, GLuint id, GLsizei length, const GL
         getIntegerv(GL_MAX_DEBUG_GROUP_STACK_DEPTH, &maxDebugStackSize_);
       }
     }
-    IGL_ASSERT_MSG(pushDebugGroupProc_, "No supported function for glPushDebugGroup\n");
+    IGL_DEBUG_ASSERT(pushDebugGroupProc_, "No supported function for glPushDebugGroup\n");
   }
 
   if (++debugStackSize_ < maxDebugStackSize_) {
@@ -2572,7 +2574,7 @@ void IContext::popDebugGroup() {
         popDebugGroupProc_ = iglPopDebugGroup;
       }
     }
-    IGL_ASSERT_MSG(popDebugGroupProc_, "No supported function for glPopDebugGroup\n");
+    IGL_DEBUG_ASSERT(popDebugGroupProc_, "No supported function for glPopDebugGroup\n");
   }
 
   if (debugStackSize_ < maxDebugStackSize_ && maxDebugStackSize_ > 0) {
@@ -2645,8 +2647,8 @@ void IContext::renderbufferStorageMultisample(GLenum target,
         renderbufferStorageMultisampleProc_ = iglRenderbufferStorageMultisampleAPPLE;
       }
     }
-    IGL_ASSERT_MSG(renderbufferStorageMultisampleProc_,
-                   "No supported function for glRenderbufferStorageMultisampleProc\n");
+    IGL_DEBUG_ASSERT(renderbufferStorageMultisampleProc_,
+                     "No supported function for glRenderbufferStorageMultisampleProc\n");
   }
 
   GLCALL_PROC(renderbufferStorageMultisampleProc_, target, samples, internalformat, width, height);
@@ -2812,7 +2814,7 @@ void IContext::texImage1D(IGL_MAYBE_UNUSED GLenum target,
          data);
   GLCHECK_ERRORS();
 #else
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 #endif
 }
 
@@ -2835,7 +2837,7 @@ void IContext::texSubImage1D(IGL_MAYBE_UNUSED GLenum target,
          pixels);
   GLCHECK_ERRORS();
 #else
-  IGL_ASSERT_NOT_IMPLEMENTED();
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 #endif
 }
 
@@ -2871,7 +2873,7 @@ void IContext::texStorage1D(GLenum target, GLsizei levels, GLenum internalformat
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::TexStorage)) {
       texStorage1DProc_ = iglTexStorage1D;
     }
-    IGL_ASSERT_MSG(texStorage1DProc_, "No supported function for glTexStorage1D\n");
+    IGL_DEBUG_ASSERT(texStorage1DProc_, "No supported function for glTexStorage1D\n");
   }
 
   GLCALL_PROC(texStorage1DProc_, target, levels, internalformat, width);
@@ -2896,7 +2898,7 @@ void IContext::texStorage2D(GLenum target,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::TexStorage)) {
       texStorage2DProc_ = iglTexStorage2D;
     }
-    IGL_ASSERT_MSG(texStorage2DProc_, "No supported function for glTexStorage2D\n");
+    IGL_DEBUG_ASSERT(texStorage2DProc_, "No supported function for glTexStorage2D\n");
   }
 
   GLCALL_PROC(texStorage2DProc_, target, levels, internalformat, width, height);
@@ -2923,7 +2925,7 @@ void IContext::texStorage3D(GLenum target,
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::TexStorage)) {
       texStorage3DProc_ = iglTexStorage3D;
     }
-    IGL_ASSERT_MSG(texStorage3DProc_, "No supported function for glTexStorage3D\n");
+    IGL_DEBUG_ASSERT(texStorage3DProc_, "No supported function for glTexStorage3D\n");
   }
   GLCALL_PROC(texStorage3DProc_, target, levels, internalformat, width, height, depth);
   APILOG("glTexStorage3D(%s, %u, %s, %u, %u, %u)\n",
@@ -2996,7 +2998,7 @@ void IContext::texImage3D(GLenum target,
         texImage3DProc_ = iglTexImage3D;
       }
     }
-    IGL_ASSERT_MSG(texImage3DProc_, "No supported function for glTexImage3D\n");
+    IGL_DEBUG_ASSERT(texImage3DProc_, "No supported function for glTexImage3D\n");
   }
 
   GLCALL_PROC(texImage3DProc_,
@@ -3105,7 +3107,7 @@ void IContext::texSubImage3D(GLenum target,
         texSubImage3DProc_ = iglTexSubImage3D;
       }
     }
-    IGL_ASSERT_MSG(texSubImage3DProc_, "No supported function for glTexSubImage3D\n");
+    IGL_DEBUG_ASSERT(texSubImage3DProc_, "No supported function for glTexSubImage3D\n");
   }
 
   GLCALL_PROC(texSubImage3DProc_,
@@ -3355,7 +3357,7 @@ void IContext::unmapBuffer(GLenum target) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::UnmapBuffer)) {
       unmapBufferProc_ = iglUnmapBuffer;
     }
-    IGL_ASSERT_MSG(unmapBufferProc_, "No supported function for glUnmapBuffer\n");
+    IGL_DEBUG_ASSERT(unmapBufferProc_, "No supported function for glUnmapBuffer\n");
   }
   GLCALL_PROC(unmapBufferProc_, target);
   APILOG("glUnmapBuffer(%s)\n", GL_ENUM_TO_STRING(target));
@@ -3450,7 +3452,7 @@ GLuint64 IContext::getTextureHandle(GLuint texture) {
     } else if (deviceFeatureSet_.hasExtension(Extensions::BindlessTextureNv)) {
       getTextureHandleProc_ = iglGetTextureHandleNV;
     }
-    IGL_ASSERT_MSG(getTextureHandleProc_, "No supported function for glGetTextureHandle\n");
+    IGL_DEBUG_ASSERT(getTextureHandleProc_, "No supported function for glGetTextureHandle\n");
   }
 
   GLuint64 ret;
@@ -3467,8 +3469,8 @@ void IContext::makeTextureHandleResident(GLuint64 handle) {
     } else if (deviceFeatureSet_.hasExtension(Extensions::BindlessTextureNv)) {
       makeTextureHandleResidentProc_ = iglMakeTextureHandleResidentNV;
     }
-    IGL_ASSERT_MSG(makeTextureHandleResidentProc_,
-                   "No supported function for glMakeTextureHandleResidentARB\n");
+    IGL_DEBUG_ASSERT(makeTextureHandleResidentProc_,
+                     "No supported function for glMakeTextureHandleResidentARB\n");
   }
 
   GLCALL_PROC(makeTextureHandleResidentProc_, handle);
@@ -3483,8 +3485,8 @@ void IContext::makeTextureHandleNonResident(GLuint64 handle) {
     } else if (deviceFeatureSet_.hasExtension(Extensions::BindlessTextureNv)) {
       makeTextureHandleNonResidentProc_ = iglMakeTextureHandleNonResidentNV;
     }
-    IGL_ASSERT_MSG(makeTextureHandleNonResidentProc_,
-                   "No supported function for glMakeTextureHandleNonResidentARB\n");
+    IGL_DEBUG_ASSERT(makeTextureHandleNonResidentProc_,
+                     "No supported function for glMakeTextureHandleNonResidentARB\n");
   }
 
   GLCALL_PROC(makeTextureHandleNonResidentProc_, handle);
@@ -3507,7 +3509,7 @@ void IContext::memoryBarrier(GLbitfield barriers) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::ShaderImageLoadStore)) {
       memoryBarrierProc_ = iglMemoryBarrier;
     }
-    IGL_ASSERT_MSG(memoryBarrierProc_, "No supported function for glMemoryBarrier\n");
+    IGL_DEBUG_ASSERT(memoryBarrierProc_, "No supported function for glMemoryBarrier\n");
   }
   GLCALL_PROC(memoryBarrierProc_, barriers);
   APILOG("glMemoryBarrier(0x%x)\n", barriers);
@@ -3540,7 +3542,7 @@ void IContext::vertexAttribDivisor(GLuint index, GLuint divisor) {
     } else if (deviceFeatureSet_.hasInternalFeature(InternalFeatures::VertexAttribDivisor)) {
       vertexAttribDivisorProc_ = iglVertexAttribDivisor;
     }
-    IGL_ASSERT_MSG(vertexAttribDivisorProc_, "No supported function for glVertexAttribDivisor\n");
+    IGL_DEBUG_ASSERT(vertexAttribDivisorProc_, "No supported function for glVertexAttribDivisor\n");
   }
 
   GLCALL_PROC(vertexAttribDivisorProc_, index, divisor);
@@ -3575,7 +3577,7 @@ GLenum IContext::checkForErrors(IGL_MAYBE_UNUSED const char* callerName,
       const GLuint count = getDebugMessageLog(
           1, messageLength, &source, &type, &id, &severity, &length, messageBuffer.data());
 
-      if (IGL_VERIFY(count == 1)) {
+      if (IGL_DEBUG_VERIFY(count == 1)) {
         logDebugMessage(source, type, id, severity, length, messageBuffer.data());
       }
     }
@@ -3649,7 +3651,7 @@ void IContext::initialize(Result* result) {
   } else {
     glVersion = ::igl::opengl::getGLVersion(version);
     if (glVersion == GLVersion::NotAvailable) {
-      IGL_ASSERT_NOT_IMPLEMENTED();
+      IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
       Result::setResult(result, Result::Code::RuntimeError, "Unable to get GL version\n");
     }
   }
@@ -3667,7 +3669,7 @@ void IContext::initialize(Result* result) {
   } else {
     GLint n = 0;
     getIntegerv(GL_NUM_EXTENSIONS, &n);
-    if (IGL_VERIFY(n >= 0)) {
+    if (IGL_DEBUG_VERIFY(n >= 0)) {
       for (GLuint i = 0; i < static_cast<GLuint>(n); i++) {
         const auto* ext = reinterpret_cast<const char*>(getStringi(GL_EXTENSIONS, i));
         if (ext) {
@@ -3744,7 +3746,7 @@ bool IContext::shouldValidateShaders() const {
 }
 
 void IContext::SynchronizedDeletionQueues::flushDeletionQueue(IContext& context) {
-  if (IGL_VERIFY(context.isCurrentContext() || context.isCurrentSharegroup())) {
+  if (IGL_DEBUG_VERIFY(context.isCurrentContext() || context.isCurrentSharegroup())) {
     swapScratchDeletionQueues();
 
     if (!scratchBuffersQueue_.empty()) {

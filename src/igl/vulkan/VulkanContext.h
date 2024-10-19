@@ -38,14 +38,12 @@ class EnhancedShaderDebuggingStore;
 class CommandQueue;
 class ComputeCommandEncoder;
 class RenderCommandEncoder;
-class SyncManager;
 class VulkanBuffer;
 class VulkanDevice;
 class VulkanDescriptorSetLayout;
 class VulkanImage;
 class VulkanImageView;
 class VulkanPipelineLayout;
-class VulkanSampler;
 class VulkanSemaphore;
 class VulkanSwapchain;
 class VulkanTexture;
@@ -55,6 +53,7 @@ struct BindingsTextures;
 struct VulkanContextImpl;
 struct VulkanImageCreateInfo;
 struct VulkanImageViewCreateInfo;
+struct VulkanSampler;
 
 /*
  * Descriptor sets:
@@ -137,12 +136,13 @@ class VulkanContext final {
       VulkanImageViewCreateInfo imageViewCreateInfo,
       const char* IGL_NULLABLE debugName) const;
 
-  std::shared_ptr<VulkanSampler> createSampler(const VkSamplerCreateInfo& ci,
-                                               VkFormat yuvVkFormat,
-                                               igl::Result* IGL_NULLABLE outResult,
-                                               const char* IGL_NULLABLE debugName = nullptr) const;
+  SamplerHandle createSampler(const VkSamplerCreateInfo& ci,
+                              VkFormat yuvVkFormat,
+                              igl::Result* IGL_NULLABLE outResult,
+                              const char* IGL_NULLABLE debugName = nullptr) const;
 
   void createSurface(void* IGL_NULLABLE window, void* IGL_NULLABLE display);
+  void createHeadlessSurface();
 
   bool hasSwapchain() const noexcept {
     return swapchain_ != nullptr;
@@ -150,6 +150,14 @@ class VulkanContext final {
 
   Result waitIdle() const;
   Result present() const;
+
+  /// @brief Returns the index of the current resource being used.
+  ///        Its range is [0, config.maxResourceCount).
+  [[nodiscard]] uint32_t currentSyncIndex() const noexcept {
+    return syncCurrentIndex_;
+  }
+  void syncAcquireNext() noexcept;
+  void syncMarkSubmitted(VulkanImmediateCommands::SubmitHandle handle) noexcept;
 
   const VkPhysicalDeviceProperties& getVkPhysicalDeviceProperties() const {
     return vkPhysicalDeviceProperties2_.properties;
@@ -198,6 +206,13 @@ class VulkanContext final {
 
   const VulkanFeatures& features() const noexcept;
 
+  [[nodiscard]] const VkSurfaceCapabilitiesKHR& getSurfaceCapabilities() const noexcept {
+    return deviceSurfaceCaps_;
+  }
+
+  void ensureCurrentContextThread() const;
+  void setCurrentContextThread();
+
 #if defined(IGL_WITH_TRACY_GPU)
   TracyVkCtx tracyCtx_ = nullptr;
   std::unique_ptr<VulkanCommandPool> profilingCommandPool_;
@@ -220,6 +235,7 @@ class VulkanContext final {
                                              Result* IGL_NULLABLE outResult);
   void destroy(igl::BindGroupTextureHandle handle);
   void destroy(igl::BindGroupBufferHandle handle);
+  void destroy(igl::SamplerHandle handle);
   VkDescriptorSet getBindGroupDescriptorSet(igl::BindGroupTextureHandle handle) const;
   VkDescriptorSet getBindGroupDescriptorSet(igl::BindGroupBufferHandle handle) const;
   uint32_t getBindGroupUsageMask(igl::BindGroupTextureHandle handle) const;
@@ -295,7 +311,7 @@ class VulkanContext final {
   // deallocated. The context deallocates textures in a deferred way when it is safe to do so.
   // 2. Descriptor sets can be updated when they are not in use.
   mutable Pool<TextureTag, std::shared_ptr<VulkanTexture>> textures_;
-  mutable Pool<SamplerTag, std::shared_ptr<VulkanSampler>> samplers_;
+  mutable Pool<SamplerTag, VulkanSampler> samplers_;
   // a texture/sampler was created since the last descriptor set update
   mutable bool awaitingCreation_ = false;
 
@@ -338,7 +354,9 @@ class VulkanContext final {
 
   mutable std::deque<DeferredTask> deferredTasks_;
 
-  std::unique_ptr<SyncManager> syncManager_;
+  // sync resources
+  uint32_t syncCurrentIndex_ = 0u;
+  std::vector<SubmitHandle> syncSubmitHandles_;
 };
 
 } // namespace igl::vulkan

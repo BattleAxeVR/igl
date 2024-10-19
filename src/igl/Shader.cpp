@@ -132,7 +132,7 @@ ShaderLibraryDesc ShaderLibraryDesc::fromStringInput(const char* IGL_NONNULL lib
   libraryDesc.input.source = librarySource;
   libraryDesc.debugName = std::move(libraryDebugName);
 
-  if (IGL_VERIFY(!moduleInfo.empty())) {
+  if (IGL_DEBUG_VERIFY(!moduleInfo.empty())) {
     libraryDesc.moduleInfo = std::move(moduleInfo);
   }
 
@@ -149,7 +149,7 @@ ShaderLibraryDesc ShaderLibraryDesc::fromBinaryInput(const void* IGL_NONNULL lib
   libraryDesc.input.length = libraryDataLength;
   libraryDesc.debugName = std::move(libraryDebugName);
 
-  if (IGL_VERIFY(!moduleInfo.empty())) {
+  if (IGL_DEBUG_VERIFY(!moduleInfo.empty())) {
     libraryDesc.moduleInfo = std::move(moduleInfo);
   }
 
@@ -197,6 +197,7 @@ ShaderStagesDesc ShaderStagesDesc::fromRenderModules(
     std::shared_ptr<IShaderModule> vertexModule,
     std::shared_ptr<IShaderModule> fragmentModule) {
   ShaderStagesDesc desc;
+  desc.debugName = vertexModule->info().debugName + ", " + fragmentModule->info().debugName;
   desc.type = ShaderStagesType::Render;
   desc.vertexModule = std::move(vertexModule);
   desc.fragmentModule = std::move(fragmentModule);
@@ -205,6 +206,7 @@ ShaderStagesDesc ShaderStagesDesc::fromRenderModules(
 
 ShaderStagesDesc ShaderStagesDesc::fromComputeModule(std::shared_ptr<IShaderModule> computeModule) {
   ShaderStagesDesc desc;
+  desc.debugName = computeModule->info().debugName;
   desc.type = ShaderStagesType::Compute;
   desc.computeModule = std::move(computeModule);
   return desc;

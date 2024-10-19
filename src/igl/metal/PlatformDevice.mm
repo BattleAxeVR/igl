@@ -50,7 +50,7 @@ std::shared_ptr<SamplerState> PlatformDevice::createSamplerState(const SamplerSt
   id<MTLSamplerState> metalObject = [device_.get() newSamplerStateWithDescriptor:metalDesc];
   auto resource = std::make_shared<SamplerState>(metalObject);
   if (device_.getResourceTracker()) {
-    resource->initResourceTracker(device_.getResourceTracker());
+    resource->initResourceTracker(device_.getResourceTracker(), desc.debugName);
   }
   Result::setOk(outResult);
   return resource;
@@ -101,7 +101,7 @@ std::unique_ptr<ITexture> PlatformDevice::createTextureFromNativeDrawable(CALaye
   } else {
     // Layer is not CAMetalLayer
     // This should never hit, unless there's a new layer type that supports Metal
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     Result::setResult(outResult, Result::Code::Unsupported);
     return nullptr;
   }
@@ -155,7 +155,7 @@ std::unique_ptr<ITexture> PlatformDevice::createTextureFromNativePixelBufferWith
                         Result::Code::Unsupported,
                         "Invalid Texture Format : " +
                             std::string(TextureFormatProperties::fromTextureFormat(format).name));
-      IGL_ASSERT_MSG(0, outResult->message.c_str());
+      IGL_DEBUG_ABORT(outResult->message.c_str());
       return nullptr;
     }
 
@@ -169,7 +169,8 @@ std::unique_ptr<ITexture> PlatformDevice::createTextureFromNativePixelBufferWith
                                                                       height,
                                                                       planeIndex,
                                                                       &cvMetalTexture);
-    IGL_ASSERT_MSG(result == kCVReturnSuccess, "Failed to created Metal texture from PixelBuffer");
+    IGL_DEBUG_ASSERT(result == kCVReturnSuccess,
+                     "Failed to created Metal texture from PixelBuffer");
 
     if (result != kCVReturnSuccess) {
       NSLog(@"Failed to created Metal texture from PixelBuffer");
@@ -214,7 +215,7 @@ TextureFormat PlatformDevice::getNativeDrawableTextureFormat(CALayer* nativeDraw
   } else {
     // Layer is not CAMetalLayer
     // This should never hit, unless there's a new layer type that supports Metal
-    IGL_ASSERT_NOT_IMPLEMENTED();
+    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
     Result::setResult(outResult, Result::Code::Unsupported);
   }
 #else
@@ -229,7 +230,7 @@ CVMetalTextureCacheRef PlatformDevice::getTextureCache() {
   if (textureCache_ == nullptr && device_.get() != nullptr) {
     const CVReturn result =
         CVMetalTextureCacheCreate(kCFAllocatorDefault, nil, device_.get(), nil, &textureCache_);
-    IGL_ASSERT_MSG(result == kCVReturnSuccess, "Failed to created texture cache");
+    IGL_DEBUG_ASSERT(result == kCVReturnSuccess, "Failed to created texture cache");
 
     if (result != kCVReturnSuccess) {
       NSLog(@"Failed to created texture cache");

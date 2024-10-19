@@ -7,6 +7,7 @@
 
 #include "VulkanSwapchain.h"
 
+#include <igl/vulkan/ColorSpace.h>
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/VulkanContext.h>
@@ -47,7 +48,7 @@ bool isNativeSwapChainBGR(const std::vector<VkSurfaceFormatKHR>& formats) {
 VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& formats,
                                            igl::TextureFormat textureFormat,
                                            igl::ColorSpace colorSpace) {
-  IGL_ASSERT(!formats.empty());
+  IGL_DEBUG_ASSERT(!formats.empty());
 
   const bool isNativeSwapchainBGR = isNativeSwapChainBGR(formats);
   auto vulkanTextureFormat = igl::vulkan::textureFormatToVkFormat(textureFormat);
@@ -94,10 +95,10 @@ VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& mode
 VkImageUsageFlags chooseUsageFlags(const VulkanFunctionTable& vf,
                                    VkPhysicalDevice pd,
                                    VkSurfaceKHR surface,
-                                   VkFormat format) {
+                                   VkFormat format,
+                                   VkSurfaceCapabilitiesKHR& caps) {
   VkImageUsageFlags usageFlags = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
                                  VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-  VkSurfaceCapabilitiesKHR caps = {};
   VK_ASSERT(vf.vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pd, surface, &caps));
 
   const bool isStorageSupported = (caps.supportedUsageFlags & VK_IMAGE_USAGE_STORAGE_BIT) > 0;
@@ -119,7 +120,7 @@ VkImageUsageFlags chooseUsageFlags(const VulkanFunctionTable& vf,
 
 namespace igl::vulkan {
 
-VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint32_t height) :
+VulkanSwapchain::VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t height) :
   ctx_(ctx),
   device_(ctx.device_->getVkDevice()),
   graphicsQueue_(ctx.deviceQueues_.graphicsQueue),
@@ -134,7 +135,7 @@ VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint3
           .name,
       colorSpaceToString(vkColorSpaceToColorSpace(surfaceFormat_.colorSpace)));
 
-  IGL_ASSERT_MSG(
+  IGL_DEBUG_ASSERT(
       ctx.vkSurface_ != VK_NULL_HANDLE,
       "You are trying to create a swapchain but your OS surface is empty. Did you want to "
       "create an offscreen rendering context? If so, set 'width' and 'height' to 0 when you "
@@ -148,13 +149,16 @@ VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint3
                                                       ctx.deviceQueues_.graphicsQueueFamilyIndex,
                                                       ctx.vkSurface_,
                                                       &queueFamilySupportsPresentation));
-    IGL_ASSERT_MSG(queueFamilySupportsPresentation == VK_TRUE,
-                   "The queue family used with the swapchain does not support presentation");
+    IGL_DEBUG_ASSERT(queueFamilySupportsPresentation == VK_TRUE,
+                     "The queue family used with the swapchain does not support presentation");
   }
 #endif
 
-  const VkImageUsageFlags usageFlags =
-      chooseUsageFlags(ctx.vf_, ctx.getVkPhysicalDevice(), ctx.vkSurface_, surfaceFormat_.format);
+  const VkImageUsageFlags usageFlags = chooseUsageFlags(ctx.vf_,
+                                                        ctx.getVkPhysicalDevice(),
+                                                        ctx.vkSurface_,
+                                                        surfaceFormat_.format,
+                                                        ctx.deviceSurfaceCaps_);
 
   {
     const uint32_t requestedSwapchainImageCount = chooseSwapImageCount(ctx.deviceSurfaceCaps_);
@@ -178,7 +182,7 @@ VulkanSwapchain::VulkanSwapchain(const VulkanContext& ctx, uint32_t width, uint3
   VK_ASSERT(ctx.vf_.vkGetSwapchainImagesKHR(
       device_, swapchain_, &numSwapchainImages_, swapchainImages.data()));
 
-  IGL_ASSERT(numSwapchainImages_ > 0);
+  IGL_DEBUG_ASSERT(numSwapchainImages_ > 0);
 
   // Prevent underflow when doing (frameNumber_ - numSwapchainImages_).
   // Every resource submitted in the frame (frameNumber_ - numSwapchainImages_) or earlier is
@@ -233,7 +237,7 @@ VkImageView VulkanSwapchain::getDepthVkImageView() const {
 }
 
 void VulkanSwapchain::lazyAllocateDepthBuffer() const {
-  IGL_ASSERT(!depthTexture_);
+  IGL_DEBUG_ASSERT(!depthTexture_);
 
   const VkFormat depthFormat =
 #if IGL_PLATFORM_APPLE

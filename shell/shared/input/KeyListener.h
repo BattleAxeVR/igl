@@ -8,16 +8,18 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 namespace igl::shell {
 
 enum {
   KeyEventModifierNone = 0,
   KeyEventModifierShift = 1 << 0,
-  KeyEventModifierCapslock = 1 << 1,
-  KeyEventModifierControl = 1 << 2,
-  KeyEventModifierOption = 1 << 3,
-  KeyEventModifierCommand = 1 << 4,
+  KeyEventModifierControl = 1 << 1,
+  KeyEventModifierOption = 1 << 2,
+  KeyEventModifierCapsLock = 1 << 3,
+  KeyEventModifierNumLock = 1 << 4,
+  KeyEventModifierCommand = 1 << 5,
 };
 
 struct KeyEvent {
@@ -30,9 +32,18 @@ struct KeyEvent {
     key(key), isDown(isDown), modifiers(modifiers) {}
 };
 
+struct CharEvent {
+  int character;
+};
+
 class IKeyListener {
  public:
-  virtual bool process(const KeyEvent& event) = 0;
+  virtual bool process(const KeyEvent& /*event*/) {
+    return false;
+  }
+  virtual bool process(const CharEvent& /*event*/) {
+    return false;
+  }
 
   virtual ~IKeyListener() = default;
 };

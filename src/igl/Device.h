@@ -94,6 +94,7 @@ class IDevice : public ICapabilities {
 
   virtual void destroy(igl::BindGroupTextureHandle handle) = 0;
   virtual void destroy(igl::BindGroupBufferHandle handle) = 0;
+  virtual void destroy(igl::SamplerHandle handle) = 0;
 
   /**
    * @brief Creates a command queue.
@@ -353,7 +354,7 @@ class IDevice : public ICapabilities {
    */
   bool testDevelopmentFlags(InDevelopementFeatures featureEnum) {
     const uint8_t pos = static_cast<uint8_t>(featureEnum);
-    IGL_ASSERT(pos < 64);
+    IGL_DEBUG_ASSERT(pos < 64);
 
     return (inDevelopmentFlags_ & (1ull << pos)) != 0u;
   }
@@ -366,7 +367,7 @@ class IDevice : public ICapabilities {
    */
   void setDevelopmentFlags(InDevelopementFeatures featureEnum, bool val) {
     const uint8_t pos = static_cast<uint8_t>(featureEnum);
-    IGL_ASSERT(pos < 64);
+    IGL_DEBUG_ASSERT(pos < 64);
 
     if (val) {
       inDevelopmentFlags_ |= 1ull << pos;
@@ -374,6 +375,13 @@ class IDevice : public ICapabilities {
       inDevelopmentFlags_ &= ~(1ull << pos);
     }
   }
+
+  /**
+   * IGL can only be accessed by 1 thread at a time. Call this function to mark the current thread
+   * as the "owning" thread.
+   */
+  virtual void setCurrentThread() {
+  } // NOTE: for now, this is implemented only in IGL/Vulkan and IGL/OpenGL
 
  protected:
   virtual void beginScope();
