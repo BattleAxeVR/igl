@@ -164,7 +164,7 @@
 #endif
 
 #if defined(IGL_BACKEND_ENABLE_VULKAN)
-#define IGL_BACKEND_VULKAN 1
+#define IGL_BACKEND_VULKAN 0
 #else
 #define IGL_BACKEND_VULKAN 0
 #endif
