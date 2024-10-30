@@ -11,9 +11,7 @@
 #include <optional>
 #include <shell/shared/platform/Platform.h>
 
-namespace igl {
-class ITexture;
-} // namespace igl
+namespace igl {} // namespace igl
 
 namespace igl::shell {
 struct AppParams;
@@ -22,7 +20,7 @@ struct ShellParams;
 class RenderSession {
  public:
   explicit RenderSession(std::shared_ptr<Platform> platform);
-  virtual ~RenderSession() noexcept;
+  virtual ~RenderSession() noexcept = default;
 
   virtual void initialize() noexcept {}
   virtual bool pre_update() noexcept { return true; }
@@ -79,7 +77,7 @@ class RenderSession {
 
  private:
   std::shared_ptr<Platform> platform_;
-  std::unique_ptr<AppParams> appParams_;
+  std::shared_ptr<AppParams> appParams_;
   std::optional<igl::Color> preferredClearColor_;
   const ShellParams* shellParams_ = nullptr;
 };

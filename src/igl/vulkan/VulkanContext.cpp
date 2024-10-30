@@ -361,6 +361,7 @@ struct VulkanContextImpl final {
   Pool<BindGroupTextureTag, BindGroupMetadataTextures> bindGroupTexturesPool_;
 
   SamplerHandle dummySampler_ = {};
+  TextureHandle dummyTexture_ = {};
 
   igl::vulkan::DescriptorPoolsArena& getOrCreateArena_CombinedImageSamplers(
       const VulkanContext& ctx,
@@ -466,14 +467,11 @@ VulkanContext::~VulkanContext() {
   pimpl_->bindGroupBuffersPool_.clear();
 
   destroy(pimpl_->dummySampler_);
+  destroy(pimpl_->dummyTexture_);
 
 #if IGL_DEBUG
-  for (const auto& t : textures_.objects_) {
-    if (t.obj_.use_count() > 1) {
-      IGL_DEBUG_ABORT("Leaked texture detected! %u %s",
-                      t.obj_->getTextureId(),
-                      t.obj_->getVulkanImage().name_.c_str());
-    }
+  if (textures_.numObjects()) {
+    IGL_LOG_ERROR("Leaked %u textures\n", textures_.numObjects());
   }
   if (samplers_.numObjects()) {
     IGL_LOG_ERROR("Leaked %u samplers\n", samplers_.numObjects());
@@ -913,12 +911,12 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
     if (!IGL_DEBUG_VERIFY(imageView.valid())) {
       return Result(Result::Code::InvalidOperation, "Cannot create VulkanImageView");
     }
-    const TextureHandle dummyTexture =
+    pimpl_->dummyTexture_ =
         textures_.create(std::make_shared<VulkanTexture>(std::move(image), std::move(imageView)));
     IGL_DEBUG_ASSERT(textures_.numObjects() == 1);
     const uint32_t pixel = 0xFF000000;
     stagingDevice_->imageData(
-        (*textures_.get(dummyTexture))->getVulkanImage(),
+        (*textures_.get(pimpl_->dummyTexture_))->image_,
         TextureType::TwoD,
         TextureRangeDesc::new2D(0, 0, 1, 1),
         TextureFormatProperties::fromTextureFormat(TextureFormat::RGBA_UNorm8),
@@ -1617,25 +1615,19 @@ void VulkanContext::updateBindingsTextures(VkCommandBuffer IGL_NONNULL cmdBuf,
     IGL_DEBUG_ASSERT(d.descriptorSet == kBindPoint_CombinedImageSamplers);
     const uint32_t loc = d.bindingLocation;
     IGL_DEBUG_ASSERT(loc < IGL_TEXTURE_SAMPLERS_MAX);
-    igl::vulkan::VulkanTexture* texture = data.textures[loc];
-    if (texture && isGraphics) {
+    VkImageView texture = data.textures[loc];
+    const bool hasTexture = texture != VK_NULL_HANDLE;
+    if (hasTexture && isGraphics) {
       IGL_DEBUG_ASSERT(data.samplers[loc], "A sampler should be bound to every bound texture slot");
     }
-    VkSampler sampler = data.samplers[loc] ? data.samplers[loc]->vkSampler : dummySampler;
-    // multisampled images cannot be directly accessed from shaders
-    const bool isTextureAvailable =
-        (texture != nullptr) &&
-        ((texture->image_.samples_ & VK_SAMPLE_COUNT_1_BIT) == VK_SAMPLE_COUNT_1_BIT);
-    const bool isSampledImage = isTextureAvailable && texture->image_.isSampledImage();
-    if (isSampledImage) {
-      IGL_DEBUG_ASSERT(sampler);
-    }
+    VkSampler sampler = data.samplers[loc] ? data.samplers[loc] : dummySampler;
     writes[numWrites++] = ivkGetWriteDescriptorSet_ImageInfo(
         dset, loc, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &infoSampledImages[numImages]);
-    infoSampledImages[numImages++] = {isSampledImage ? sampler : dummySampler,
-                                      isSampledImage ? texture->imageView_.getVkImageView()
-                                                     : dummyImageView,
-                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL};
+    infoSampledImages[numImages++] = VkDescriptorImageInfo{
+        .sampler = hasTexture ? sampler : dummySampler,
+        .imageView = hasTexture ? texture : dummyImageView,
+        .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+    };
   }
 
   if (numWrites) {
@@ -2149,6 +2141,16 @@ void VulkanContext::destroy(igl::SamplerHandle handle) {
       }));
 
   samplers_.destroy(handle);
+}
+
+void VulkanContext::destroy(igl::TextureHandle handle) {
+  IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DESTROY);
+
+  if (handle.empty()) {
+    return;
+  }
+
+  textures_.destroy(handle);
 }
 
 VkDescriptorSet VulkanContext::getBindGroupDescriptorSet(igl::BindGroupTextureHandle handle) const {
