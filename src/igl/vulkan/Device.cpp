@@ -25,7 +25,6 @@
 #include <igl/vulkan/VulkanContext.h>
 #include <igl/vulkan/VulkanDevice.h>
 #include <igl/vulkan/VulkanHelpers.h>
-#include <igl/vulkan/VulkanImageView.h>
 #include <igl/vulkan/VulkanShaderModule.h>
 
 // Writes the shader code to disk for debugging. Used in `Device::createShaderModule()`
@@ -297,8 +296,12 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(const void* IGL_N
 #endif // IGL_SHADER_DUMP && IGL_DEBUG
 
   VkShaderModule vkShaderModule = VK_NULL_HANDLE;
-  const VkResult result =
-      ivkCreateShaderModuleFromSPIRV(&ctx_->vf_, device, data, length, &vkShaderModule);
+  const VkShaderModuleCreateInfo ci = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = length,
+      .pCode = static_cast<const uint32_t*>(data),
+  };
+  const VkResult result = ctx_->vf_.vkCreateShaderModule(device, &ci, nullptr, &vkShaderModule);
 
   setResultFrom(outResult, result);
 
@@ -406,8 +409,12 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
   const Result result = glslang::compileShader(stage, source, spirv, &glslangResource);
 
   VkShaderModule vkShaderModule = VK_NULL_HANDLE;
-  VK_ASSERT(ivkCreateShaderModuleFromSPIRV(
-      &ctx_->vf_, device, spirv.data(), spirv.size() * sizeof(uint32_t), &vkShaderModule));
+  const VkShaderModuleCreateInfo ci = {
+      .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+      .codeSize = spirv.size() * sizeof(uint32_t),
+      .pCode = spirv.data(),
+  };
+  VK_ASSERT(ctx_->vf_.vkCreateShaderModule(device, &ci, nullptr, &vkShaderModule));
 
   Result::setResult(outResult, result);
 

@@ -18,11 +18,8 @@ namespace igl {
 class IDepthStencilState;
 class IRenderPipelineState;
 class ISamplerState;
-class ITexture;
-struct Dependencies;
 namespace opengl {
 
-class RenderCommandAdapter;
 class CommandBuffer;
 
 class RenderCommandEncoder final : public IRenderCommandEncoder, public WithContext {
@@ -91,7 +88,7 @@ class RenderCommandEncoder final : public IRenderCommandEncoder, public WithCont
                                 uint32_t stride) override;
 
   void setStencilReferenceValue(uint32_t value) override;
-  void setBlendColor(Color color) override;
+  void setBlendColor(const Color& color) override;
   void setDepthBias(float depthBias, float slopeScale, float clamp) override;
 
  private:

@@ -239,7 +239,8 @@ void RenderCommandEncoder::bindDepthStencilState(
   }
 }
 
-void RenderCommandEncoder::setBlendColor(Color color) {
+void RenderCommandEncoder::setBlendColor(const Color& color) {
+  IGL_DEBUG_ASSERT(encoder_);
   [encoder_ setBlendColorRed:color.r green:color.g blue:color.b alpha:color.a];
 }
 
@@ -480,6 +481,9 @@ MTLPrimitiveType RenderCommandEncoder::convertPrimitiveType(PrimitiveType value)
 
 MTLIndexType RenderCommandEncoder::convertIndexType(IndexFormat value) {
   switch (value) {
+  case IndexFormat::UInt8:
+    IGL_DEBUG_ASSERT(false, "8-bit indices are not supported in Metal");
+    [[fallthrough]];
   case IndexFormat::UInt16:
     return MTLIndexTypeUInt16;
   case IndexFormat::UInt32:
