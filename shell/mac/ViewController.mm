@@ -268,6 +268,10 @@ using namespace igl;
     IGL_DEBUG_ASSERT(result.isOk());
     shellPlatform_ = std::make_shared<igl::shell::PlatformMac>(
         opengl::macos::HWDevice().createWithContext(std::move(context), nullptr));
+
+    auto& device = shellPlatform_->getDevice();
+    auto* platformDevice = device.getPlatformDevice<igl::opengl::macos::PlatformDevice>();
+    platformDevice->setNativeDrawableTextureFormat(config_.swapchainColorTextureFormat, nullptr);
     self.view = openGLView;
     break;
   }
@@ -318,6 +322,8 @@ using namespace igl;
         // @fb-only
         // @fb-only
         // @fb-only
+        // @fb-only
+            // @fb-only
         // @fb-only
 
     // @fb-only
@@ -522,7 +528,7 @@ static uint32_t getModifiers(NSEvent* event) {
 
 - (void)keyDown:(NSEvent*)event {
   shellPlatform_->getInputDispatcher().queueEvent(
-      igl::shell::KeyEvent(false, event.keyCode, getModifiers(event)));
+      igl::shell::KeyEvent(true, event.keyCode, getModifiers(event)));
   std::string characters([event.characters UTF8String]);
   for (const auto& c : characters) {
     shellPlatform_->getInputDispatcher().queueEvent(igl::shell::CharEvent{.character = c});

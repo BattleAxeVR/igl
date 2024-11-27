@@ -11,10 +11,6 @@
 #include <optional>
 #include <shell/shared/platform/Platform.h>
 
-namespace igl {
-class ITexture;
-} // namespace igl
-
 namespace igl::shell {
 struct AppParams;
 struct ShellParams;
@@ -22,7 +18,7 @@ struct ShellParams;
 class RenderSession {
  public:
   explicit RenderSession(std::shared_ptr<Platform> platform);
-  virtual ~RenderSession() noexcept;
+  virtual ~RenderSession() noexcept = default;
 
   virtual void initialize() noexcept {}
   // NOLINTNEXTLINE(performance-unnecessary-value-param)
@@ -55,6 +51,14 @@ class RenderSession {
 
   static double getSeconds() noexcept;
 
+  std::shared_ptr<ICommandQueue> getCommandQueue() noexcept {
+    return commandQueue_;
+  }
+
+  std::shared_ptr<IFramebuffer> getFramebuffer() noexcept {
+    return framebuffer_;
+  }
+
   void releaseFramebuffer() {
     framebuffer_ = nullptr;
   }
@@ -77,7 +81,7 @@ class RenderSession {
 
  private:
   std::shared_ptr<Platform> platform_;
-  std::unique_ptr<AppParams> appParams_;
+  std::shared_ptr<AppParams> appParams_;
   std::optional<igl::Color> preferredClearColor_;
   const ShellParams* shellParams_ = nullptr;
 };

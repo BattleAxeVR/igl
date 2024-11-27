@@ -215,6 +215,8 @@ bool DeviceFeatureSet::isExtensionSupported(Extensions extension) const {
     return hasESExtension(*this, "GL_IMG_multisampled_render_to_texture");
   case Extensions::MultiViewMultiSample:
     return hasESExtension(*this, "GL_OVR_multiview_multisampled_render_to_texture");
+  case Extensions::PolygonOffsetClamp:
+    return hasDesktopOrESExtension(*this, "GL_ARB_polygon_offset_clamp");
   case Extensions::RequiredInternalFormat:
     return hasESExtension(*this, "GL_OES_required_internalformat");
   case Extensions::ShaderImageLoadStore:
@@ -427,6 +429,9 @@ bool DeviceFeatureSet::isFeatureSupported(DeviceFeatures feature) const {
 
   case DeviceFeatures::ValidationLayersEnabled:
     return false;
+
+  case DeviceFeatures::Indices8Bit:
+    return true;
   }
 
   return false;

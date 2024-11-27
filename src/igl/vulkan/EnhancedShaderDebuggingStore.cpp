@@ -22,7 +22,6 @@
 #include <igl/vulkan/CommandQueue.h>
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/Device.h>
-#include <igl/vulkan/Framebuffer.h>
 #include <igl/vulkan/RenderCommandEncoder.h>
 #include <igl/vulkan/VulkanContext.h>
 
@@ -97,39 +96,35 @@ std::string EnhancedShaderDebuggingStore::recordLineShaderCode(bool includeFunct
   })";
 }
 
-void EnhancedShaderDebuggingStore::initializeBuffer() const {
-  IGL_DEBUG_ASSERT(device_ != nullptr,
-                   "Device is null. This object needs to be initialized to be used");
-
-  constexpr size_t lineStructureSizeBytes = sizeof(Line);
-  constexpr size_t bufferSizeBytes = lineStructureSizeBytes * kNumberOfLines;
-  Header bufferHeader(kNumberOfLines,
-                      VkDrawIndirectCommand{
-                          2, /* vertex count */
-                          0, /* instances */
-                          0, /* first_vertex */
-                          0, /* first_instance */
-                      });
-
-  vertexBuffer_ = device_->createBuffer(
-      BufferDesc(BufferDesc::BufferTypeBits::Storage | BufferDesc::BufferTypeBits::Indirect,
-                 nullptr,
-                 sizeof(Header) + bufferSizeBytes,
-                 ResourceStorage::Private,
-                 0,
-                 "Buffer: shader draw line"),
-      nullptr);
-
-  vertexBuffer_->upload(&bufferHeader, igl::BufferRange(sizeof(Header), 0));
-}
-
 std::shared_ptr<igl::IBuffer> EnhancedShaderDebuggingStore::vertexBuffer() const {
   if (!enabled_) {
     return nullptr;
   }
 
   if (vertexBuffer_ == nullptr) {
-    initializeBuffer();
+    IGL_DEBUG_ASSERT(device_ != nullptr,
+                     "Device is null. This object needs to be initialized to be used");
+
+    constexpr size_t lineStructureSizeBytes = sizeof(Line);
+    constexpr size_t bufferSizeBytes = lineStructureSizeBytes * kNumberOfLines;
+    Header bufferHeader(kNumberOfLines,
+                        VkDrawIndirectCommand{
+                            2, /* vertex count */
+                            0, /* instances */
+                            0, /* first_vertex */
+                            0, /* first_instance */
+                        });
+
+    vertexBuffer_ = device_->createBuffer(
+        BufferDesc(BufferDesc::BufferTypeBits::Storage | BufferDesc::BufferTypeBits::Indirect,
+                   nullptr,
+                   sizeof(Header) + bufferSizeBytes,
+                   ResourceStorage::Private,
+                   0,
+                   "Buffer: shader draw line"),
+        nullptr);
+
+    vertexBuffer_->upload(&bufferHeader, igl::BufferRange(sizeof(Header), 0));
   }
 
   return vertexBuffer_;
@@ -170,10 +165,12 @@ const std::shared_ptr<igl::IFramebuffer>& EnhancedShaderDebuggingStore::framebuf
   }
 
   igl::Result result;
-  FramebufferDesc framebufferDesc;
-  framebufferDesc.debugName = "Framebuffer: shader debug framebuffer";
-  framebufferDesc.colorAttachments[0].texture = resolveAttachment;
-  framebuffers_[resolveAttachment] = device.createFramebuffer(framebufferDesc, &result);
+  framebuffers_[resolveAttachment] = device.createFramebuffer(
+      {
+          .colorAttachments = {{.texture = resolveAttachment}},
+          .debugName = "Framebuffer: shader debug framebuffer",
+      },
+      &result);
 
   if (!IGL_DEBUG_VERIFY(result.isOk())) {
     IGL_LOG_INFO("Error creating a framebuffer for drawing debug lines from shaders");
@@ -188,7 +185,15 @@ std::shared_ptr<igl::IDepthStencilState> EnhancedShaderDebuggingStore::depthSten
   }
 
   if (depthStencilState_ == nullptr) {
-    initializeDepthState();
+    IGL_DEBUG_ASSERT(device_ != nullptr,
+                     "Device is null. This object needs to be initialized to be used");
+
+    depthStencilState_ = device_->createDepthStencilState(
+        {
+            .compareFunction = kDepthCompareFunction,
+            .isDepthWriteEnabled = kDepthWriteEnabled,
+        },
+        nullptr);
   }
 
   return depthStencilState_;
@@ -201,10 +206,10 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
     return nullptr;
   }
 
-  const auto hashedFramebufferFormats = hashFramebufferFormats(framebuffer);
+  const uint64_t hashedFramebufferFormats = hashFramebufferFormats(framebuffer);
 
-  auto result = pipelineStates_.find(hashedFramebufferFormats);
-  if (result != pipelineStates_.end()) {
+  if (auto result = pipelineStates_.find(hashedFramebufferFormats);
+      result != pipelineStates_.end()) {
     return result->second;
   }
 
@@ -258,19 +263,9 @@ std::shared_ptr<igl::IRenderPipelineState> EnhancedShaderDebuggingStore::pipelin
   desc.shaderStages = shaderStage_;
   desc.debugName = genNameHandle("Pipeline: debug lines");
 
-  pipelineStates_.insert({hashedFramebufferFormats, device.createRenderPipeline(desc, nullptr)});
-
-  return pipelineStates_[hashedFramebufferFormats];
-}
-
-void EnhancedShaderDebuggingStore::initializeDepthState() const {
-  IGL_DEBUG_ASSERT(device_ != nullptr,
-                   "Device is null. This object needs to be initialized to be used");
-
-  DepthStencilStateDesc desc;
-  desc.isDepthWriteEnabled = kDepthWriteEnabled;
-  desc.compareFunction = kDepthCompareFunction;
-  depthStencilState_ = device_->createDepthStencilState(desc, nullptr);
+  return pipelineStates_
+      .insert_or_assign(hashedFramebufferFormats, device.createRenderPipeline(desc, nullptr))
+      .first->second;
 }
 
 std::string EnhancedShaderDebuggingStore::renderLineVSCode() const {
