@@ -1668,27 +1668,51 @@ bool XrApp::bodyTrackingFBSupported() const noexcept {
 }
 
 bool XrApp::metaFullBodyTrackingSupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 bool XrApp::metaBodyTrackingFidelitySupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 bool XrApp::simultaneousHandsAndControllersSupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 bool XrApp::eyeTrackingSocialFBSupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 bool XrApp::htcViveFocus3ControllersSupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 bool XrApp::byteDanceControllersSupported() const noexcept {
+#if ENABLE_META_OPENXR_FEATURES
   return supportedOptionalXrExtensions_.count(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME) != 0;
+#else
+    return false;
+#endif
 }
 
 #if ENABLE_META_OPENXR_FEATURES
