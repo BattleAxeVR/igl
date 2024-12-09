@@ -1498,7 +1498,6 @@ void XrApp::render() {
 	  
 #if ENABLE_CLOUDXR
       shellParams_->viewParams[0].cameraPosition = cameraPositions_[i];
-      shellParams_->current_view_id_ = i;
 #endif
 
       renderSession_->update(std::move(surfaceTextures));
