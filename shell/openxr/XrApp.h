@@ -212,9 +212,8 @@ class XrApp {
   void handleActionView(const std::string& data);
 
   void update();
-  void pollActions(const bool mainThread);
-  bool enableMainThreadPolling_ = true;
-  bool enableAsyncPolling_ = false;
+  void pollActions();
+  bool enableActionPolling_ = false;
 
   void setNativeWindow(void* win) {
     nativeWindow_ = win;

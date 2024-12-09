@@ -1573,20 +1573,13 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
-  pollActions(true);
+  pollActions();
   render();
   endFrame(frameState);
 }
 
-void XrApp::pollActions(const bool mainThread) {
-    if (!initialized_ || !resumed_ || !sessionActive_) {
-        return;
-    }
-
-    if (mainThread && !enableMainThreadPolling_) {
-        return;
-    }
-    else if (!mainThread && !enableAsyncPolling_) {
+void XrApp::pollActions() {
+    if (!initialized_ || !resumed_ || !sessionActive_ || !enableActionPolling_) {
         return;
     }
 
