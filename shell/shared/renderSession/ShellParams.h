@@ -37,6 +37,7 @@ struct ShellParams {
   std::array<HandMesh, 2> handMeshes = {};
   std::array<HandTracking, 2> handTracking = {};
 
+  int current_view_id_ = 0;
   openxr::XrApp* xr_app_ptr_ = nullptr; // horrible hack but CloudXR needs to poll the Xr State from another thread at >> higher Hz than rendering.
 };
 } // namespace igl::shell

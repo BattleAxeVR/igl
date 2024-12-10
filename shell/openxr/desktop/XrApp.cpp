@@ -747,6 +747,7 @@ void XrApp::render() {
     for (size_t i = 0; i < kNumViews; i++) {
       shellParams_->viewParams[0].viewMatrix = viewTransforms_[i];
       shellParams_->viewParams[0].cameraPosition = cameraPositions_[i];
+      shellParams_->current_view_id_ = i;
       copyFov(shellParams_->viewParams[0].fov, views_[i].fov);
       auto surfaceTextures = swapchainProviders_[i]->getSurfaceTextures();
       renderSession_->update(surfaceTextures);
