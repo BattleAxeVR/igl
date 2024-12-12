@@ -566,6 +566,12 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
          }});
   }
 
+#if DRAW_UI
+    if (useQuadLayerCompositionForUI_) {
+        updateQuadCompositionForUI();
+  }
+#endif
+
   initialized_ = true;
   return initialized_;
 }
@@ -623,6 +629,75 @@ void XrApp::updateQuadComposition() noexcept {
   // Remove any layers that are no longer needed.
   compositionLayers_.resize(quadLayersParams.numQuads());
 }
+
+#if DRAW_UI
+// NOLINTNEXTLINE(bugprone-exception-escape)
+    void XrApp::updateQuadCompositionForUI() noexcept
+    {
+        const auto& appParams = renderSession_->appParams();
+
+        constexpr uint32_t kQuadLayerDefaultImageSize = 1024;
+
+        const auto aspect = appParams.sizeY / appParams.sizeX;
+
+        QuadLayerParams quadLayersParams = {
+                .layerInfo = {{
+#if USE_LOCAL_AR_SPACE
+                                      .position = {0.0f, 0.0f, -1.0f},
+#else
+                                      .position = {0.0f, 0.0f, 0.0f},
+#endif
+                                      .size = {appParams.sizeX, appParams.sizeY},
+                                      .blendMode = LayerBlendMode::AlphaBlend,
+                                      .imageWidth = kQuadLayerDefaultImageSize,
+                                      .imageHeight = static_cast<uint32_t>(kQuadLayerDefaultImageSize * aspect),
+                              }}};
+
+        if (appParams.quadLayerParamsGetter)
+        {
+            auto params = appParams.quadLayerParamsGetter();
+            if (params.numQuads() > 0)
+            {
+                quadLayersParams = std::move(params);
+            }
+        }
+
+        std::array<impl::SwapchainImageInfo, XrComposition::kNumViews> swapchainImageInfo{};
+
+        const size_t numCompositionLayers = compositionLayers_.size();
+        const size_t numQuads = quadLayersParams.numQuads();
+
+        for (size_t i = 0; i < numQuads; ++i)
+        {
+            swapchainImageInfo.fill({
+                                            .imageWidth = quadLayersParams.layerInfo[i].imageWidth,
+                                            .imageHeight = quadLayersParams.layerInfo[i].imageHeight,
+                                    });
+
+            if (i < numCompositionLayers)
+            {
+                auto* quadLayer = static_cast<XrCompositionQuad*>(compositionLayers_[i].get());
+                quadLayer->updateQuadLayerInfo(quadLayersParams.layerInfo[i]);
+                quadLayer->updateSwapchainImageInfo(swapchainImageInfo);
+            }
+            else
+            {
+                compositionLayers_.emplace_back(
+                        std::make_unique<XrCompositionQuad>(*impl_,
+                                                            platform_,
+                                                            session_,
+                                                            useSinglePassStereo_,
+                                                            alphaBlendCompositionSupported(),
+                                                            quadLayersParams.layerInfo[i]));
+
+                compositionLayers_.back()->updateSwapchainImageInfo(swapchainImageInfo);
+            }
+        }
+
+        // Remove any layers that are no longer needed.
+        compositionLayers_.resize(quadLayersParams.numQuads());
+    }
+#endif
 
 void XrApp::createShellSession(std::unique_ptr<igl::IDevice> device, AAssetManager* assetMgr) {
 #if IGL_PLATFORM_ANDROID
@@ -1413,6 +1488,12 @@ XrFrameState XrApp::beginFrame() {
   if (useQuadLayerComposition_) {
     updateQuadComposition();
   }
+
+#if DRAW_UI
+    if (useQuadLayerCompositionForUI_) {
+        updateQuadCompositionForUI();
+    }
+#endif
 
   const XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 

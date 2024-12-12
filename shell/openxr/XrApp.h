@@ -61,6 +61,10 @@ const int LEFT = 0;
 const int RIGHT = 1;
 const int NUM_SIDES = 2;
 
+#ifndef DRAW_UI
+#define DRAW_UI 1
+#endif
+
 struct android_app;
 struct AAssetManager;
 
@@ -264,6 +268,10 @@ class XrApp {
 
   void updateQuadComposition() noexcept;
 
+#if DRAW_UI
+  void updateQuadCompositionForUI() noexcept;
+#endif
+
   [[nodiscard]] inline bool passthroughSupported() const noexcept;
   [[nodiscard]] inline bool passthroughEnabled() const noexcept;
 
@@ -330,6 +338,10 @@ class XrApp {
   bool useSinglePassStereo_ = false;
   bool additiveBlendingSupported_ = false;
   bool useQuadLayerComposition_ = false;
+
+#if DRAW_UI
+  bool useQuadLayerCompositionForUI_ = false;
+#endif
 
   XrViewConfigurationProperties viewConfigProps_ = {.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
   std::array<XrViewConfigurationView, XrComposition::kNumViews> viewports_{};
