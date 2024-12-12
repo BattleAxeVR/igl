@@ -634,11 +634,11 @@ void XrApp::updateQuadComposition() noexcept {
 // NOLINTNEXTLINE(bugprone-exception-escape)
     void XrApp::updateQuadCompositionForUI() noexcept
     {
-        const auto& appParams = renderSession_->appParams();
+        const AppParams& appParams = renderSession_->appParams();
 
-        constexpr uint32_t kQuadLayerDefaultImageSize = 1024;
+        constexpr uint32_t kQuadLayerDefaultImageSize = 512;
 
-        const auto aspect = appParams.sizeY / appParams.sizeX;
+        const float aspect = appParams.sizeY / appParams.sizeX;
 
         QuadLayerParams quadLayersParams = {
                 .layerInfo = {{
@@ -655,7 +655,8 @@ void XrApp::updateQuadComposition() noexcept {
 
         if (appParams.quadLayerParamsGetter)
         {
-            auto params = appParams.quadLayerParamsGetter();
+            QuadLayerParams params = appParams.quadLayerParamsGetter();
+
             if (params.numQuads() > 0)
             {
                 quadLayersParams = std::move(params);
@@ -667,17 +668,19 @@ void XrApp::updateQuadComposition() noexcept {
         const size_t numCompositionLayers = compositionLayers_.size();
         const size_t numQuads = quadLayersParams.numQuads();
 
-        for (size_t i = 0; i < numQuads; ++i)
+        for (size_t quadLayerIndex = 0; quadLayerIndex < numQuads; ++quadLayerIndex)
         {
+            size_t compositionLayerIndex = quadLayerIndex + 1;
+
             swapchainImageInfo.fill({
-                                            .imageWidth = quadLayersParams.layerInfo[i].imageWidth,
-                                            .imageHeight = quadLayersParams.layerInfo[i].imageHeight,
+                                            .imageWidth = quadLayersParams.layerInfo[quadLayerIndex].imageWidth,
+                                            .imageHeight = quadLayersParams.layerInfo[quadLayerIndex].imageHeight,
                                     });
 
-            if (i < numCompositionLayers)
+            if (compositionLayerIndex < numCompositionLayers)
             {
-                auto* quadLayer = static_cast<XrCompositionQuad*>(compositionLayers_[i].get());
-                quadLayer->updateQuadLayerInfo(quadLayersParams.layerInfo[i]);
+                auto* quadLayer = static_cast<XrCompositionQuad*>(compositionLayers_[compositionLayerIndex].get());
+                quadLayer->updateQuadLayerInfo(quadLayersParams.layerInfo[quadLayerIndex]);
                 quadLayer->updateSwapchainImageInfo(swapchainImageInfo);
             }
             else
@@ -688,14 +691,14 @@ void XrApp::updateQuadComposition() noexcept {
                                                             session_,
                                                             useSinglePassStereo_,
                                                             alphaBlendCompositionSupported(),
-                                                            quadLayersParams.layerInfo[i]));
+                                                            quadLayersParams.layerInfo[quadLayerIndex]));
 
                 compositionLayers_.back()->updateSwapchainImageInfo(swapchainImageInfo);
             }
         }
 
         // Remove any layers that are no longer needed.
-        compositionLayers_.resize(quadLayersParams.numQuads());
+        //compositionLayers_.resize(quadLayersParams.numQuads());
     }
 #endif
 

@@ -340,7 +340,7 @@ class XrApp {
   bool useQuadLayerComposition_ = false;
 
 #if DRAW_UI
-  bool useQuadLayerCompositionForUI_ = false;
+  bool useQuadLayerCompositionForUI_ = true;
 #endif
 
   XrViewConfigurationProperties viewConfigProps_ = {.type = XR_TYPE_VIEW_CONFIGURATION_PROPERTIES};
