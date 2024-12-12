@@ -1575,6 +1575,7 @@ void XrApp::render() {
     }
 
     for (uint32_t i = 0; i < compositionLayers_[layerIndex]->renderPassesCount(); ++i) {
+
       auto surfaceTextures = compositionLayers_[layerIndex]->beginRendering(
           i, views_, viewTransforms_, cameraPositions_, shellParams_->viewParams);
 
@@ -1585,7 +1586,16 @@ void XrApp::render() {
       shellParams_->current_view_id_ = i;
 #endif
 
-      renderSession_->update(std::move(surfaceTextures));
+#if DRAW_UI
+    if (useQuadLayerCompositionForUI_ && (layerIndex == 1))
+    {
+        renderSession_->update_UI(std::move(surfaceTextures));
+    }
+    else
+#endif
+    {
+        renderSession_->update(std::move(surfaceTextures));
+    }
 
       compositionLayers_[layerIndex]->endRendering(i);
     }

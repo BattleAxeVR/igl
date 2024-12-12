@@ -27,6 +27,10 @@ class RenderSession {
   virtual void update(IGL_MAYBE_UNUSED igl::SurfaceTextures surfaceTextures) noexcept {}
   virtual void teardown() noexcept {}
 
+#if 1//DRAW_UI
+  virtual void update_UI(IGL_MAYBE_UNUSED igl::SurfaceTextures surfaceTextures) noexcept {}
+#endif
+
   void updateDisplayScale(float scale) noexcept;
 
   [[nodiscard]] float pixelsPerPoint() const noexcept;
