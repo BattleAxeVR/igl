@@ -95,7 +95,7 @@ void XrCompositionQuad::doComposition(
 #endif // XR_FB_composition_layer_alpha_blend
         .layerFlags = compositionFlags,
         .space = currentSpace,
-        .eyeVisibility = (view == 0) ? XR_EYE_VISIBILITY_LEFT : XR_EYE_VISIBILITY_RIGHT,
+        .eyeVisibility = info_.bothEyesVisible ? XR_EYE_VISIBILITY_BOTH : (view == 0) ? XR_EYE_VISIBILITY_LEFT : XR_EYE_VISIBILITY_RIGHT,
         .subImage =
             {
                 swapchainProviders_[swapchainProviderIndex]->colorSwapchain(),
@@ -108,6 +108,11 @@ void XrCompositionQuad::doComposition(
     };
 
     layers.push_back(reinterpret_cast<const XrCompositionLayerBaseHeader*>(&quadLayers_[view]));
+
+    if (info_.bothEyesVisible){
+        // Don't add another quad layer for the second view
+        break;
+    }
   }
 }
 

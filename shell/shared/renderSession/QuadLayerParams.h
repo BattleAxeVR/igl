@@ -29,6 +29,7 @@ struct QuadLayerInfo {
   igl::BlendFactor customSrcAlphaBlendFactor = igl::BlendFactor::One;
   igl::BlendFactor customDstRGBBlendFactor = igl::BlendFactor::Zero;
   igl::BlendFactor customDstAlphaBlendFactor = igl::BlendFactor::Zero;
+  bool bothEyesVisible = false;
 };
 
 struct QuadLayerParams {

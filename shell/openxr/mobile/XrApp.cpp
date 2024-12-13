@@ -649,6 +649,11 @@ void XrApp::updateQuadComposition() noexcept {
                                       .blendMode = LayerBlendMode::AlphaBlend,
                                       .imageWidth = kQuadLayerDefaultImageSize,
                                       .imageHeight = static_cast<uint32_t>(kQuadLayerDefaultImageSize * aspect),
+                                      .bothEyesVisible = true,
+                                      //.customSrcRGBBlendFactor = igl::BlendFactor::Zero,
+                                      //.customSrcAlphaBlendFactor = igl::BlendFactor::Zero,
+                                      //.customDstRGBBlendFactor = igl::BlendFactor::One,
+                                      //.customDstAlphaBlendFactor = igl::BlendFactor::One,
                               }}};
 
         if (appParams.quadLayerParamsGetter)
