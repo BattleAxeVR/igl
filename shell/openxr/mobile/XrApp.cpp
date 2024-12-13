@@ -639,14 +639,12 @@ void XrApp::updateQuadComposition() noexcept {
         constexpr uint32_t kQuadLayerDefaultImageSize = 512;
 
         const float aspect = appParams.sizeY / appParams.sizeX;
+        const float default_UI_height = 1.5f;
+        const float default_UI_distance = 1.0f;
 
         QuadLayerParams quadLayersParams = {
                 .layerInfo = {{
-#if USE_LOCAL_AR_SPACE
-                                      .position = {0.0f, 0.0f, -1.0f},
-#else
-                                      .position = {0.0f, 0.0f, 0.0f},
-#endif
+                                      .position = {0.0f, default_UI_height, -default_UI_distance},
                                       .size = {appParams.sizeX, appParams.sizeY},
                                       .blendMode = LayerBlendMode::AlphaBlend,
                                       .imageWidth = kQuadLayerDefaultImageSize,
@@ -696,9 +694,6 @@ void XrApp::updateQuadComposition() noexcept {
                 compositionLayers_.back()->updateSwapchainImageInfo(swapchainImageInfo);
             }
         }
-
-        // Remove any layers that are no longer needed.
-        //compositionLayers_.resize(quadLayersParams.numQuads());
     }
 #endif
 
@@ -1621,7 +1616,8 @@ void XrApp::endFrame(XrFrameState frameState) {
   }
 
   const auto& appParams = renderSession_->appParams();
-  for (const auto& layer : compositionLayers_) {
+
+  for (const std::unique_ptr<XrComposition>& layer : compositionLayers_) {
     if (layer->isValid()) {
 
 #if ENABLE_CLOUDXR
