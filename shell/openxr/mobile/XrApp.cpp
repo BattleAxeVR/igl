@@ -549,7 +549,13 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   IGL_DEBUG_ASSERT(renderSession_ != nullptr);
   renderSession_->initialize();
 
-  if (useQuadLayerComposition_) {
+#if DRAW_UI
+    if (useQuadLayerCompositionForUI_) {
+        updateQuadCompositionForUI();
+    }
+#endif
+
+    if (useQuadLayerComposition_) {
     updateQuadComposition();
   } else {
     compositionLayers_.emplace_back(std::make_unique<XrCompositionProjection>(
@@ -565,12 +571,6 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
              .imageHeight = viewports_[1].recommendedImageRectHeight,
          }});
   }
-
-#if DRAW_UI
-    if (useQuadLayerCompositionForUI_) {
-        updateQuadCompositionForUI();
-  }
-#endif
 
   initialized_ = true;
   return initialized_;
@@ -636,7 +636,7 @@ void XrApp::updateQuadComposition() noexcept {
     {
         const AppParams& appParams = renderSession_->appParams();
 
-        constexpr uint32_t kQuadLayerDefaultImageSize = 512;
+        constexpr uint32_t kQuadLayerDefaultImageSize = 1920;
 
         const float aspect = appParams.sizeY / appParams.sizeX;
         const float default_UI_height = 1.5f;
@@ -649,11 +649,11 @@ void XrApp::updateQuadComposition() noexcept {
                                       .blendMode = LayerBlendMode::AlphaBlend,
                                       .imageWidth = kQuadLayerDefaultImageSize,
                                       .imageHeight = static_cast<uint32_t>(kQuadLayerDefaultImageSize * aspect),
+                                      .customSrcRGBBlendFactor = igl::BlendFactor::One,
+                                      .customSrcAlphaBlendFactor = igl::BlendFactor::One,
+                                      .customDstRGBBlendFactor = igl::BlendFactor::One,
+                                      .customDstAlphaBlendFactor = igl::BlendFactor::One,
                                       .bothEyesVisible = true,
-                                      //.customSrcRGBBlendFactor = igl::BlendFactor::Zero,
-                                      //.customSrcAlphaBlendFactor = igl::BlendFactor::Zero,
-                                      //.customDstRGBBlendFactor = igl::BlendFactor::One,
-                                      //.customDstAlphaBlendFactor = igl::BlendFactor::One,
                               }}};
 
         if (appParams.quadLayerParamsGetter)
@@ -1488,15 +1488,15 @@ XrFrameState XrApp::beginFrame() {
     passthrough_->setEnabled(passthroughEnabled());
   }
 
-  if (useQuadLayerComposition_) {
-    updateQuadComposition();
-  }
-
 #if DRAW_UI
     if (useQuadLayerCompositionForUI_) {
         updateQuadCompositionForUI();
     }
 #endif
+
+    if (useQuadLayerComposition_) {
+    updateQuadComposition();
+  }
 
   const XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
@@ -1577,7 +1577,7 @@ void XrApp::render() {
       uint32_t renderPassCount = compositionLayers_[layerIndex]->renderPassesCount();
 
 #if DRAW_UI
-      if (useQuadLayerCompositionForUI_ && (layerIndex == 1))
+      if (useQuadLayerCompositionForUI_ && (layerIndex == 0))
       {
           // UI is mono
           renderPassCount = 1;
@@ -1597,7 +1597,7 @@ void XrApp::render() {
 #endif
 
 #if DRAW_UI
-    if (useQuadLayerCompositionForUI_ && (layerIndex == 1))
+    if (useQuadLayerCompositionForUI_ && (layerIndex == 0))
     {
         renderSession_->update_UI(std::move(surfaceTextures));
     }
@@ -1622,6 +1622,12 @@ void XrApp::endFrame(XrFrameState frameState) {
   if (passthroughEnabled()) {
     compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
   }
+
+#if DRAW_UI
+  if (useQuadLayerCompositionForUI_){
+      compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+  }
+#endif
 
   std::vector<const XrCompositionLayerBaseHeader*> layers;
   layers.reserve(1 + compositionLayers_.size() * (useQuadLayerComposition_ ? 2 : 1));
@@ -1661,8 +1667,7 @@ void XrApp::endFrame(XrFrameState frameState) {
       .type = XR_TYPE_FRAME_END_INFO,
       .next = nullptr,
       .displayTime = frameState.predictedDisplayTime,
-      .environmentBlendMode = additiveBlendingSupported_ ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE
-                                                         : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
+      .environmentBlendMode = additiveBlendingSupported_ ? XR_ENVIRONMENT_BLEND_MODE_ADDITIVE : XR_ENVIRONMENT_BLEND_MODE_OPAQUE,
       .layerCount = static_cast<uint32_t>(layers.size()),
       .layers = layers.data(),
   };
