@@ -1574,7 +1574,17 @@ void XrApp::render() {
       continue;
     }
 
-    for (uint32_t i = 0; i < compositionLayers_[layerIndex]->renderPassesCount(); ++i) {
+      uint32_t renderPassCount = compositionLayers_[layerIndex]->renderPassesCount();
+
+#if DRAW_UI
+      if (useQuadLayerCompositionForUI_ && (layerIndex == 1))
+      {
+          // UI is mono
+          renderPassCount = 1;
+      }
+#endif
+
+    for (uint32_t i = 0; i < renderPassCount; ++i) {
 
       auto surfaceTextures = compositionLayers_[layerIndex]->beginRendering(
           i, views_, viewTransforms_, cameraPositions_, shellParams_->viewParams);
