@@ -555,7 +555,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     }
 #endif
 
-    if (useQuadLayerComposition_) {
+  if (useQuadLayerComposition_) {
     updateQuadComposition();
   } else {
     compositionLayers_.emplace_back(std::make_unique<XrCompositionProjection>(
