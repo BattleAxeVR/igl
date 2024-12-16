@@ -639,13 +639,14 @@ void XrApp::updateQuadComposition() noexcept {
         constexpr uint32_t kQuadLayerDefaultImageSize = 1920;
 
         const float aspect = appParams.sizeY / appParams.sizeX;
-        const float default_UI_height = 1.5f;
-        const float default_UI_distance = 1.0f;
+        const float default_UI_height = 1.25f;
+        const float default_UI_distance = 100.0f;
+        const float default_UI_scale = 0.5f;
 
         QuadLayerParams quadLayersParams = {
                 .layerInfo = {{
                                       .position = {0.0f, default_UI_height, -default_UI_distance},
-                                      .size = {appParams.sizeX, appParams.sizeY},
+                                      .size = {appParams.sizeX * default_UI_distance * default_UI_scale, appParams.sizeY * default_UI_distance * default_UI_scale},
                                       .blendMode = LayerBlendMode::AlphaBlend,
                                       .imageWidth = kQuadLayerDefaultImageSize,
                                       .imageHeight = static_cast<uint32_t>(kQuadLayerDefaultImageSize * aspect),
