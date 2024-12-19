@@ -635,21 +635,18 @@ void XrApp::updateQuadComposition() noexcept {
     {
         const AppParams& appParams = renderSession_->appParams();
 
-        constexpr uint32_t kQuadLayerDefaultImageSize = 1920;
-
-        const float aspect = appParams.sizeY / appParams.sizeX;
-        const float default_UI_height = 1.5f;
-        const float default_UI_distance = -2.0f;
-        const float default_UI_scale_x = 1.0f;
-        const float default_UI_scale_y = 1.0f;
+        const float default_UI_height = GUI_PANEL_ELEVATION;
+        const float default_UI_distance = GUI_PANEL_DISTANCE;
+        const float default_UI_scale_x = GUI_PANEL_SCALE_X;
+        const float default_UI_scale_y = GUI_PANEL_SCALE_Y;
 
         QuadLayerParams quadLayersParams = {
                 .layerInfo = {{
                                       .position = {0.0f, default_UI_height, default_UI_distance},
                                       .size = {default_UI_scale_x, default_UI_scale_y},
                                       .blendMode = LayerBlendMode::AlphaBlend,
-                                      .imageWidth = kQuadLayerDefaultImageSize,
-                                      .imageHeight = static_cast<uint32_t>(kQuadLayerDefaultImageSize * aspect),
+                                      .imageWidth = GUI_PANEL_WIDTH,
+                                      .imageHeight = GUI_PANEL_HEIGHT,
                                       .customSrcRGBBlendFactor = igl::BlendFactor::One,
                                       .customSrcAlphaBlendFactor = igl::BlendFactor::One,
                                       .customDstRGBBlendFactor = igl::BlendFactor::One,

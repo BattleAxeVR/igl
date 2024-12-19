@@ -61,8 +61,12 @@ const int LEFT = 0;
 const int RIGHT = 1;
 const int NUM_SIDES = 2;
 
+#if ENABLE_CLOUDXR
+#include "../src/cpp/ok_defines.h"
+#endif
+
 #ifndef DRAW_UI
-#define DRAW_UI 1
+#define DRAW_UI 0
 #endif
 
 struct android_app;
