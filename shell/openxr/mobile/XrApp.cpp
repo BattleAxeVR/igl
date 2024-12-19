@@ -638,7 +638,7 @@ void XrApp::updateQuadComposition() noexcept {
         constexpr uint32_t kQuadLayerDefaultImageSize = 1920;
 
         const float aspect = appParams.sizeY / appParams.sizeX;
-        const float default_UI_height = 1.0f;
+        const float default_UI_height = 1.5f;
         const float default_UI_distance = -2.0f;
         const float default_UI_scale_x = 1.0f;
         const float default_UI_scale_y = 1.0f;
