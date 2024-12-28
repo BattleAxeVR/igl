@@ -28,10 +28,10 @@
 #include <vector>
 
 #ifndef ENABLE_META_OPENXR_FEATURES
-#define ENABLE_META_OPENXR_FEATURES ENABLE_CLOUDXR
+#define ENABLE_META_OPENXR_FEATURES 0
 #endif
 
-#define ENABLE_PASSTHROUGH !ENABLE_META_OPENXR_FEATURES
+#define ENABLE_PASSTHROUGH 0
 
 #if ENABLE_META_OPENXR_FEATURES
 #include <extx1_event_channel.h>
@@ -68,6 +68,19 @@ const int NUM_SIDES = 2;
 #ifndef DRAW_UI
 #define DRAW_UI 0
 #endif
+
+#ifndef SUPPORT_CLOUDXR_LINK_SHARPENING
+#define SUPPORT_CLOUDXR_LINK_SHARPENING 0
+#endif
+
+#ifndef SUPPORT_BODY_TRACKING_FB
+#define SUPPORT_BODY_TRACKING_FB 0
+#endif
+
+#ifndef SUPPORT_OPENXR_SIMULTANEOUS_HANDS_AND_CONTROLLERS
+#define SUPPORT_OPENXR_SIMULTANEOUS_HANDS_AND_CONTROLLERS 0
+#endif
+
 
 struct android_app;
 struct AAssetManager;
@@ -259,9 +272,11 @@ class XrApp {
   XrFrameState beginFrame();
   void render();
   void endFrame(XrFrameState frameState);
-  
+
+#if SUPPORT_CLOUDXR_LINK_SHARPENING
   bool isSharpeningEnabled() const;
   void setSharpeningEnabled(const bool enabled);
+#endif
 
   HeadsetType headsetType_ = HeadsetType::UNKNOWN_;
 
@@ -371,7 +386,7 @@ class XrApp {
   bool simpleControllersSupported_ = false;
   bool touchControllersSupported_ = true;
 
-#if ENABLE_META_OPENXR_FEATURES
+#if SUPPORT_OPENXR_SIMULTANEOUS_HANDS_AND_CONTROLLERS
   bool simultaneousHandsAndControllersEnabled_ = false;
   PFN_xrResumeSimultaneousHandsAndControllersTrackingMETA xrResumeSimultaneousHandsAndControllersTrackingMETA_ = nullptr;
   PFN_xrPauseSimultaneousHandsAndControllersTrackingMETA xrPauseSimultaneousHandsAndControllersTrackingMETA_ = nullptr;

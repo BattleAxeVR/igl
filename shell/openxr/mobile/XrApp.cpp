@@ -178,17 +178,20 @@ bool XrApp::checkExtensions() {
   additionalOptionalExtensions.push_back(XR_FB_COMPOSITION_LAYER_SETTINGS_EXTENSION_NAME);
   additionalOptionalExtensions.push_back(XR_FB_TOUCH_CONTROLLER_PRO_EXTENSION_NAME);
   additionalOptionalExtensions.push_back(XR_FB_TOUCH_CONTROLLER_PROXIMITY_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
+  additionalOptionalExtensions.push_back(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+#endif
 
+#if SUPPORT_BODY_TRACKING_FB
   additionalOptionalExtensions.push_back(XR_FB_BODY_TRACKING_EXTENSION_NAME);
   additionalOptionalExtensions.push_back(XR_META_BODY_TRACKING_FULL_BODY_EXTENSION_NAME);
   additionalOptionalExtensions.push_back(XR_META_BODY_TRACKING_FIDELITY_EXTENSION_NAME);
-
-  additionalOptionalExtensions.push_back(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
-  additionalOptionalExtensions.push_back(XR_FB_EYE_TRACKING_SOCIAL_EXTENSION_NAME);
 #endif
 
-  additionalOptionalExtensions.push_back(XR_HTC_VIVE_FOCUS3_CONTROLLER_INTERACTION_EXTENSION_NAME);
-  additionalOptionalExtensions.push_back(XR_BD_CONTROLLER_INTERACTION_EXTENSION_NAME);
+#if SUPPORT_OPENXR_SIMULTANEOUS_HANDS_AND_CONTROLLERS
+  additionalOptionalExtensions.push_back(XR_META_SIMULTANEOUS_HANDS_AND_CONTROLLERS_EXTENSION_NAME);
+#endif
 
   optionalExtensionsImpl.insert(optionalExtensionsImpl.end(),
                                 std::begin(XrPassthrough::getExtensions()),
@@ -1813,8 +1816,7 @@ bool XrApp::byteDanceControllersSupported() const noexcept {
 #endif
 }
 
-#if ENABLE_META_OPENXR_FEATURES
-
+#if SUPPORT_CLOUDXR_LINK_SHARPENING
 bool XrApp::isSharpeningEnabled() const {
   return compositionLayerSettingsSupported() &&
   ((compositionLayerSettings_.layerFlags & XR_COMPOSITION_LAYER_SETTINGS_QUALITY_SHARPENING_BIT_FB) != 0);
@@ -1832,7 +1834,9 @@ void XrApp::setSharpeningEnabled(const bool enabled) {
     }
     IGL_LOG_INFO("Link Sharpening is now %s", isSharpeningEnabled() ? "ON" : "OFF");
 }
+#endif
 
+#if SUPPORT_OPENXR_SIMULTANEOUS_HANDS_AND_CONTROLLERS
 bool XrApp::setSimultaneousHandsAndControllersEnabled(const bool enabled) {
     if (!simultaneousHandsAndControllersSupported() || (enabled == simultaneousHandsAndControllersEnabled_) || !xrResumeSimultaneousHandsAndControllersTrackingMETA_ || !xrPauseSimultaneousHandsAndControllersTrackingMETA_) {
         return false;
