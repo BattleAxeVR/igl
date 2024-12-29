@@ -31,8 +31,6 @@
 #define ENABLE_META_OPENXR_FEATURES 0
 #endif
 
-#define ENABLE_PASSTHROUGH 0
-
 #if ENABLE_META_OPENXR_FEATURES
 #include <extx1_event_channel.h>
 #include <fb_face_tracking2.h>
@@ -63,6 +61,10 @@ const int NUM_SIDES = 2;
 
 #if ENABLE_CLOUDXR
 #include "../src/cpp/ok_defines.h"
+#endif
+
+#ifndef ENABLE_PASSTHROUGH
+#define ENABLE_PASSTHROUGH 1
 #endif
 
 #ifndef DRAW_UI
@@ -255,6 +257,10 @@ class XrApp {
   }
   XrSession session() const;
 
+#if ENABLE_PASSTHROUGH
+  void setPassThroughEnabled(const bool passThroughEnabled);
+#endif
+
  private:
   bool checkExtensions();
   bool createInstance();
@@ -375,7 +381,11 @@ class XrApp {
   XrSpace currentSpace_ = XR_NULL_HANDLE;
   bool stageSpaceSupported_ = false;
 
+#if ENABLE_PASSTHROUGH
   std::unique_ptr<XrPassthrough> passthrough_;
+  bool passThroughEnabled_ = true;
+#endif
+
   std::unique_ptr<XrHands> hands_;
   std::unique_ptr<XrRefreshRate> refreshRate_;
 

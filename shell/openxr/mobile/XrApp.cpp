@@ -79,7 +79,11 @@ XrApp::~XrApp() {
 
   renderSession_.reset();
   compositionLayers_.clear();
+
+#if ENABLE_PASSTHROUGH
   passthrough_.reset();
+#endif
+
   hands_.reset();
 
   if (currentSpace_ != XR_NULL_HANDLE) {
@@ -521,12 +525,15 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   createSpaces();
   createActions();
 
+#if ENABLE_PASSTHROUGH
   if (passthroughSupported()) {
     passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
     if (!passthrough_->initialize()) {
       return false;
     }
   }
+#endif
+
   if (handTrackingSupported()) {
     hands_ = std::make_unique<XrHands>(instance_, session_, handTrackingMeshSupported());
     if (!hands_->initialize()) {
@@ -1481,10 +1488,28 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
   }
 }
 
+#if ENABLE_PASSTHROUGH
+    void XrApp::setPassThroughEnabled(const bool passThroughEnabled)
+    {
+        if (passthrough_)
+        {
+            passThroughEnabled_ = passThroughEnabled;
+            passthrough_->setEnabled(passThroughEnabled_);
+
+            if (!passThroughEnabled_){
+                passthrough_.reset();
+            }
+        }
+    }
+#endif
+
 XrFrameState XrApp::beginFrame() {
+
+#if ENABLE_PASSTHROUGH
   if (passthrough_) {
     passthrough_->setEnabled(passthroughEnabled());
   }
+#endif
 
 #if DRAW_UI
     if (useQuadLayerCompositionForUI_) {
@@ -1546,6 +1571,8 @@ XrFrameState XrApp::beginFrame() {
 }
 
 void XrApp::render() {
+
+#if ENABLE_PASSTHROUGH
   if (passthrough_) {
     if (passthroughEnabled()) {
       shellParams_->clearColorValue = igl::Color{0.0f, 0.0f, 0.0f, 0.0f};
@@ -1553,8 +1580,11 @@ void XrApp::render() {
       shellParams_->clearColorValue.reset();
     }
   }
+  else
+#endif
+
 #if USE_FORCE_ZERO_CLEAR
-  else {
+  {
     shellParams_->clearColorValue = igl::Color{0.0f, 0.0f, 0.0f, 0.0f};
   }
 #endif
@@ -1567,6 +1597,18 @@ void XrApp::render() {
   }
 #endif
 
+#if DRAW_UI
+  size_t UI_layer_index = 0;
+
+#if ENABLE_PASSTHROUGH
+  if (passthroughEnabled())
+  {
+    UI_layer_index = 1;
+  }
+#endif
+
+#endif
+
   for (size_t layerIndex = 0; layerIndex < compositionLayers_.size(); ++layerIndex) {
     if (!compositionLayers_[layerIndex]->isValid()) {
       continue;
@@ -1575,7 +1617,7 @@ void XrApp::render() {
       uint32_t renderPassCount = compositionLayers_[layerIndex]->renderPassesCount();
 
 #if DRAW_UI
-      if (useQuadLayerCompositionForUI_ && (layerIndex == 0))
+      if (useQuadLayerCompositionForUI_ && (layerIndex == UI_layer_index))
       {
           // UI is mono
           renderPassCount = 1;
@@ -1595,7 +1637,7 @@ void XrApp::render() {
 #endif
 
 #if DRAW_UI
-    if (useQuadLayerCompositionForUI_ && (layerIndex == 0))
+    if (useQuadLayerCompositionForUI_ && (layerIndex == UI_layer_index))
     {
         renderSession_->update_UI(std::move(surfaceTextures));
     }
@@ -1630,9 +1672,11 @@ void XrApp::endFrame(XrFrameState frameState) {
   std::vector<const XrCompositionLayerBaseHeader*> layers;
   layers.reserve(1 + compositionLayers_.size() * (useQuadLayerComposition_ ? 2 : 1));
 
+#if ENABLE_PASSTHROUGH
   if (passthroughEnabled()) {
     passthrough_->injectLayer(layers);
   }
+#endif
 
   const auto& appParams = renderSession_->appParams();
 
@@ -1710,11 +1754,16 @@ bool XrApp::passthroughSupported() const noexcept {
 }
 
 bool XrApp::passthroughEnabled() const noexcept {
-  if (!renderSession_ || !passthrough_) {
+
+#if ENABLE_PASSTHROUGH
+  if (!renderSession_ || !passthrough_ || !passThroughEnabled_) {
     return false;
   }
   const auto& appParams = renderSession_->appParams();
   return appParams.passthroughGetter ? appParams.passthroughGetter() : useQuadLayerComposition_;
+#else
+  return false;
+#endif
 }
 
 bool XrApp::handTrackingSupported() const noexcept {
