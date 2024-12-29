@@ -525,7 +525,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   createSpaces();
   createActions();
 
-#if ENABLE_PASSTHROUGH
+#if (ENABLE_PASSTHROUGH && !DRAW_UI)
   if (passthroughSupported()) {
     passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
     if (!passthrough_->initialize()) {
@@ -1493,19 +1493,32 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
     {
         if (passthrough_)
         {
-            passThroughEnabled_ = passThroughEnabled;
-            passthrough_->setEnabled(passThroughEnabled_);
-
-            if (!passThroughEnabled_){
+            if (!passThroughEnabled)
+            {
+                passthrough_->setEnabled(false);
                 passthrough_.reset();
             }
+
+            passThroughEnabled_ = passThroughEnabled;
+        }
+        else if (passThroughEnabled && passthroughSupported())
+        {
+            passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
+
+            if (!passthrough_->initialize())
+            {
+                return;
+            }
+
+            passthrough_->setEnabled(true);
+            passThroughEnabled_ = true;
         }
     }
 #endif
 
 XrFrameState XrApp::beginFrame() {
 
-#if ENABLE_PASSTHROUGH
+#if (ENABLE_PASSTHROUGH && !DRAW_UI)
   if (passthrough_) {
     passthrough_->setEnabled(passthroughEnabled());
   }
@@ -1659,9 +1672,12 @@ void XrApp::render() {
 void XrApp::endFrame(XrFrameState frameState) {
 
   XrCompositionLayerFlags compositionFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+
+#if ENABLE_PASSTHROUGH
   if (passthroughEnabled()) {
     compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
   }
+#endif
 
 #if DRAW_UI
   if (useQuadLayerCompositionForUI_){
