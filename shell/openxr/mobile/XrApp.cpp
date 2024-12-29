@@ -755,19 +755,20 @@ void XrApp::createSpaces() {
   XR_CHECK(xrCreateReferenceSpace(session_, &spaceCreateInfo, &currentSpace_));
 }
 
-void XrApp::createActions() {
-
+#if ENABLE_CONTROLLERS
+void XrApp::createActions()
+{
     headsetType_ = compute_headset_type(systemProps_.systemName, systemProps_.systemId, systemProps_.vendorId);
 
     XrActionSetCreateInfo actionSetInfo{XR_TYPE_ACTION_SET_CREATE_INFO};
     strcpy(actionSetInfo.actionSetName, "gameplay");
     strcpy(actionSetInfo.localizedActionSetName, "Gameplay");
     actionSetInfo.priority = 0;
-    XR_CHECK(xrCreateActionSet(instance_, &actionSetInfo, &xr_inputs_.actionSet));
+    XR_CHECK(xrCreateActionSet(instance_, &actionSetInfo, &ok_inputs_.actionSet));
 
     // Get the XrPath for the left and right hands - we will use them as subaction paths.
-    xrStringToPath(instance_, "/user/hand/left", &xr_inputs_.handSubactionPath[LEFT]);
-    xrStringToPath(instance_, "/user/hand/right", &xr_inputs_.handSubactionPath[RIGHT]);
+    xrStringToPath(instance_, "/user/hand/left", &ok_inputs_.handSubactionPath[LEFT]);
+    xrStringToPath(instance_, "/user/hand/right", &ok_inputs_.handSubactionPath[RIGHT]);
 
     // Create actions.
     {
@@ -776,152 +777,152 @@ void XrApp::createActions() {
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "grab_object");
         strcpy(actionInfo.localizedActionName, "Grab Object");
-        actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
-        actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.grabAction));
+        actionInfo.countSubactionPaths = BVR::NUM_CONTROLLERS;
+        actionInfo.subactionPaths = ok_inputs_.handSubactionPath;
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.grabAction));
 
         // Create an input action getting the left and right hand poses.
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
         strcpy(actionInfo.actionName, "grip_pose");
         strcpy(actionInfo.localizedActionName, "Grip Pose");
-        actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
-        actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.gripPoseAction));
+        actionInfo.countSubactionPaths = BVR::NUM_CONTROLLERS;
+        actionInfo.subactionPaths = ok_inputs_.handSubactionPath;
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.gripPoseAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_POSE_INPUT;
         strcpy(actionInfo.actionName, "aim_pose");
         strcpy(actionInfo.localizedActionName, "Aim Pose");
-        actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
-        actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.aimPoseAction));
+        actionInfo.countSubactionPaths = BVR::NUM_CONTROLLERS;
+        actionInfo.subactionPaths = ok_inputs_.handSubactionPath;
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.aimPoseAction));
 
         // Menu / System
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "menu_click");
         strcpy(actionInfo.localizedActionName, "Menu Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.menuClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.menuClickAction));
 
         // Trigger
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "trigger_click");
         strcpy(actionInfo.localizedActionName, "Trigger Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.triggerClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.triggerClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "trigger_touch");
         strcpy(actionInfo.localizedActionName, "Trigger Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.triggerTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.triggerTouchAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "trigger_value");
         strcpy(actionInfo.localizedActionName, "Trigger Value");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.triggerValueAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.triggerValueAction));
 
         // Squeeze
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "squeeze_click");
         strcpy(actionInfo.localizedActionName, "Squeeze Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.squeezeClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.squeezeClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "squeeze_touch");
         strcpy(actionInfo.localizedActionName, "Squeeze Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.squeezeTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.squeezeTouchAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "squeeze_value");
         strcpy(actionInfo.localizedActionName, "Squeeze Value");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.squeezeValueAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.squeezeValueAction));
 
         // Thumbsticks
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_click");
         strcpy(actionInfo.localizedActionName, "Thumbstick Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbstickClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_touch");
         strcpy(actionInfo.localizedActionName, "Thumbstick Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbstickTouchAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_x");
         strcpy(actionInfo.localizedActionName, "Thumbstick X");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickXAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbstickXAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumbstick_y");
         strcpy(actionInfo.localizedActionName, "Thumbstick Y");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbstickYAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbstickYAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "thumbrest_touch");
         strcpy(actionInfo.localizedActionName, "Thumb Rest Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbRestTouchAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "thumbrest_click");
         strcpy(actionInfo.localizedActionName, "Thumb Rest Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbRestClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumbrest_force");
         strcpy(actionInfo.localizedActionName, "Thumb Rest Force");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbRestForceAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbRestForceAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "thumb_proximity");
         strcpy(actionInfo.localizedActionName, "Thumb Proximity");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.thumbProximityAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.thumbProximityAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "pinch_value");
         strcpy(actionInfo.localizedActionName, "Pinch Value");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.pinchValueAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.pinchValueAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "pinch_force");
         strcpy(actionInfo.localizedActionName, "Pinch Force");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.pinchForceAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.pinchForceAction));
 
         // A/X Button
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_a_click");
         strcpy(actionInfo.localizedActionName, "Button A Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.buttonAXClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.buttonAXClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_a_touch");
         strcpy(actionInfo.localizedActionName, "Button A Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.buttonAXTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.buttonAXTouchAction));
 
         // B/Y Button
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_b_click");
         strcpy(actionInfo.localizedActionName, "Button B Click");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.buttonBYClickAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.buttonBYClickAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
         strcpy(actionInfo.actionName, "button_b_touch");
         strcpy(actionInfo.localizedActionName, "Button B Touch");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.buttonBYTouchAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.buttonBYTouchAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "trackpad_x");
         strcpy(actionInfo.localizedActionName, "trackpad X");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.trackpadXAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.trackpadXAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_FLOAT_INPUT;
         strcpy(actionInfo.actionName, "trackpad_y");
         strcpy(actionInfo.localizedActionName, "trackpad Y");
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.trackpadXAction));
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.trackpadXAction));
 
         actionInfo.actionType = XR_ACTION_TYPE_VIBRATION_OUTPUT;
         strcpy(actionInfo.actionName, "vibrate_hand");
         strcpy(actionInfo.localizedActionName, "Vibrate Hand");
-        actionInfo.countSubactionPaths = uint32_t(xr_inputs_.handSubactionPath.size());
-        actionInfo.subactionPaths = xr_inputs_.handSubactionPath.data();
-        XR_CHECK(xrCreateAction(xr_inputs_.actionSet, &actionInfo, &xr_inputs_.vibrateAction));
+        actionInfo.countSubactionPaths = BVR::NUM_CONTROLLERS;
+        actionInfo.subactionPaths = ok_inputs_.handSubactionPath;
+        XR_CHECK(xrCreateAction(ok_inputs_.actionSet, &actionInfo, &ok_inputs_.vibrateAction));
     }
 
     std::array<XrPath, NUM_SIDES> selectPath;
@@ -1070,15 +1071,15 @@ void XrApp::createActions() {
         xrStringToPath(instance_, "/interaction_profiles/khr/simple_controller", &khrSimpleInteractionProfilePath);
 
         std::vector<XrActionSuggestedBinding> bindings{{
-                                                               {xr_inputs_.grabAction, selectPath[LEFT]},
-                                                               {xr_inputs_.grabAction, selectPath[RIGHT]},
-                                                               {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                               {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                               {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                               {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                               {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                               {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                               {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                               {ok_inputs_.grabAction, selectPath[LEFT]},
+                                                               {ok_inputs_.grabAction, selectPath[RIGHT]},
+                                                               {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                               {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                               {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                               {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                               {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                               {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                               {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestedBindings.interactionProfile = khrSimpleInteractionProfilePath;
@@ -1094,43 +1095,43 @@ void XrApp::createActions() {
         xrStringToPath(instance_, "/interaction_profiles/oculus/touch_controller", &oculusTouchInteractionProfilePath);
 
         std::vector<XrActionSuggestedBinding> oculus_touch_bindings{{
-                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
-                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
-                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
-                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
-                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
-                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
-                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
-                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
-                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
-                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
-                                                                            {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                                            {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                                            {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                                            {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                                            {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
-                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
-                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
-                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
-                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
-                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
-                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
-                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
-                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
-                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
-                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
-                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
-                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                            {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                                            {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                                            {ok_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                            {ok_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                            {ok_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                            {ok_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                            {ok_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                            {ok_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                            {ok_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                            {ok_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                            {ok_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                            {ok_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                            {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                            {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                            {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                            {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                            {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                            {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                            {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            //{ok_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                            //{ok_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                            {ok_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                            {ok_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                            {ok_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                            {ok_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                            {ok_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                            {ok_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                            {ok_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                            {ok_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                            {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                            {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestedBindings.interactionProfile = oculusTouchInteractionProfilePath;
@@ -1149,55 +1150,55 @@ void XrApp::createActions() {
         xrStringToPath(instance_, "/interaction_profiles/facebook/touch_controller_pro", &oculusTouchProInteractionProfilePath);
 
         std::vector<XrActionSuggestedBinding> oculus_touch_pro_bindings{{
-                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
-                                                                            {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
-                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
-                                                                            {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
-                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
-                                                                            {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
-                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
-                                                                            {xr_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
-                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
-                                                                            {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
-                                                                            {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                                            {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                                            {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                                            {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                                            {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
-                                                                            {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
-                                                                            {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
-                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
-                                                                            {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
-                                                                            {xr_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
-                                                                            {xr_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
-                                                                            {xr_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
-                                                                            {xr_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
-                                                                            //{xr_inputs_.pinchValueAction, pinchValuePath[LEFT]},
-                                                                            //{xr_inputs_.pinchValueAction, pinchValuePath[RIGHT]},
-                                                                            //{xr_inputs_.pinchForceAction, pinchForcePath[LEFT]},
-                                                                            //{xr_inputs_.pinchForceAction, pinchForcePath[RIGHT]},-
-                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
-                                                                            //{xr_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
-                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
-                                                                            //{xr_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
-                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
-                                                                            //{xr_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
-                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
-                                                                            {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
-                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
-                                                                            {xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
-                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
-                                                                            {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
-                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
-                                                                            {xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                            {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                                            {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                                            {ok_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                            {ok_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                            {ok_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                            {ok_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                            {ok_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                            {ok_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                            {ok_inputs_.squeezeClickAction, squeezeValuePath[LEFT]},
+                                                                            {ok_inputs_.squeezeClickAction, squeezeValuePath[RIGHT]},
+                                                                            {ok_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                            {ok_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                            {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                            {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                            {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                            {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                            {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                            {ok_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                            {ok_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                            {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                            {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                            {ok_inputs_.thumbRestForceAction, thumbRestForcePath[LEFT]},
+                                                                            {ok_inputs_.thumbRestForceAction, thumbRestForcePath[RIGHT]},
+                                                                            {ok_inputs_.thumbProximityAction, thumbProximityPath[LEFT]},
+                                                                            {ok_inputs_.thumbProximityAction, thumbProximityPath[RIGHT]},
+                                                                            //{ok_inputs_.pinchValueAction, pinchValuePath[LEFT]},
+                                                                            //{ok_inputs_.pinchValueAction, pinchValuePath[RIGHT]},
+                                                                            //{ok_inputs_.pinchForceAction, pinchForcePath[LEFT]},
+                                                                            //{ok_inputs_.pinchForceAction, pinchForcePath[RIGHT]},-
+                                                                            //{ok_inputs_.thumbRestClickAction, thumbRestClickPath[LEFT]},
+                                                                            //{ok_inputs_.thumbRestClickAction, thumbRestClickPath[RIGHT]},
+                                                                            //{ok_inputs_.trackpadXAction, trackPad_X_Path[LEFT]},
+                                                                            //{ok_inputs_.trackpadXAction, trackPad_X_Path[RIGHT]},
+                                                                            //{ok_inputs_.trackpadYAction, trackPad_Y_Path[LEFT]},
+                                                                            //{ok_inputs_.trackpadYAction, trackPad_Y_Path[RIGHT]},
+                                                                            {ok_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                            {ok_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                            {ok_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                            {ok_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                            {ok_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                            {ok_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                            {ok_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                            {ok_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                            {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                            {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestedBindings.interactionProfile = oculusTouchProInteractionProfilePath;
@@ -1213,43 +1214,43 @@ void XrApp::createActions() {
         xrStringToPath(instance_, "/interaction_profiles/htc/vive_focus3_controller", &htcInteractionProfilePath);
 
         std::vector<XrActionSuggestedBinding> htc_vive_focus3_bindings{{
-                                                                                {xr_inputs_.triggerClickAction, triggerValuePath[LEFT]},
-                                                                                {xr_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
-                                                                                {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
-                                                                                {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
-                                                                                {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
-                                                                                {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
-                                                                                {xr_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
-                                                                                {xr_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
-                                                                                {xr_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
-                                                                                {xr_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
-                                                                                {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
-                                                                                {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
-                                                                                {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                                                {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                                                {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                                                {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                                                {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                                                {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
-                                                                                {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
-                                                                                {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
-                                                                                {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
-                                                                                {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
-                                                                                {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
-                                                                                {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
-                                                                                {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
-                                                                                {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
-                                                                                {xr_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
-                                                                                {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
-                                                                                {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
-                                                                                //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
-                                                                                //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
-                                                                                {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
-                                                                                {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
-                                                                                //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
-                                                                                //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]}, // Are these supported on HTC? Not sure
-                                                                                {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                                                {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                                                {ok_inputs_.triggerClickAction, triggerValuePath[LEFT]},
+                                                                                {ok_inputs_.triggerClickAction, triggerValuePath[RIGHT]},
+                                                                                {ok_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                                {ok_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                                {ok_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                                {ok_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                                {ok_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
+                                                                                {ok_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
+                                                                                {ok_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
+                                                                                {ok_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
+                                                                                {ok_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                                {ok_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                                {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                                {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                                {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                                {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                                {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                                {ok_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                                {ok_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                                {ok_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                                {ok_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                                {ok_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                                {ok_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                                {ok_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                                {ok_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                                {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[LEFT]},
+                                                                                {ok_inputs_.thumbRestTouchAction, thumbRestTouchPath[RIGHT]},
+                                                                                {ok_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                                {ok_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                                //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                                //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                                {ok_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                                {ok_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                                //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                                //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]}, // Are these supported on HTC? Not sure
+                                                                                {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                                {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
         XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
         suggestedBindings.interactionProfile = htcInteractionProfilePath;
@@ -1269,42 +1270,42 @@ void XrApp::createActions() {
             xrStringToPath(instance_, "/interaction_profiles/pico/neo3_controller", &pico_neo3_interaction_profile_path);
 
             std::vector<XrActionSuggestedBinding> pico_neo3_bindings{{
-                                                                             {xr_inputs_.triggerClickAction, triggerClickPath[LEFT]},
-                                                                             {xr_inputs_.triggerClickAction, triggerClickPath[RIGHT]},
-                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
-                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
-                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
-                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
-                                                                             {xr_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
-                                                                             {xr_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
-                                                                             {xr_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
-                                                                             {xr_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
-                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
-                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
-                                                                             {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                                             {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                                             {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                                             {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                                             {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                                             {xr_inputs_.menuClickAction, menuClickPath[RIGHT]}, // Pico 3 is the only one that allows access to System menu button events
-                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
-                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
-                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
-                                                                             //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
-                                                                             //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
-                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
-                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
-                                                                             //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
-                                                                             //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                                             {ok_inputs_.triggerClickAction, triggerClickPath[LEFT]},
+                                                                             {ok_inputs_.triggerClickAction, triggerClickPath[RIGHT]},
+                                                                             {ok_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                             {ok_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                             {ok_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                             {ok_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                             {ok_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
+                                                                             {ok_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
+                                                                             {ok_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
+                                                                             {ok_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
+                                                                             {ok_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                             {ok_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                             {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                             {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                             {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                             {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                             {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                             {ok_inputs_.menuClickAction, menuClickPath[RIGHT]}, // Pico 3 is the only one that allows access to System menu button events
+                                                                             {ok_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                             {ok_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                             {ok_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                             //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                             //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                             {ok_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                             {ok_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                             //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                             //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                             {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                             {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
             XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
             suggestedBindings.interactionProfile = pico_neo3_interaction_profile_path;
@@ -1318,41 +1319,41 @@ void XrApp::createActions() {
             xrStringToPath(instance_, "/interaction_profiles/bytedance/pico4_controller", &pico_neo4_interaction_profile_path);
 
             std::vector<XrActionSuggestedBinding> pico_neo4_bindings{{
-                                                                             {xr_inputs_.triggerClickAction, triggerClickPath[LEFT]},
-                                                                             {xr_inputs_.triggerClickAction, triggerClickPath[RIGHT]},
-                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
-                                                                             {xr_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
-                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[LEFT]},
-                                                                             {xr_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
-                                                                             {xr_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
-                                                                             {xr_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
-                                                                             {xr_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
-                                                                             {xr_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
-                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
-                                                                             {xr_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
-                                                                             {xr_inputs_.gripPoseAction, gripPosePath[LEFT]},
-                                                                             {xr_inputs_.gripPoseAction, gripPosePath[RIGHT]},
-                                                                             {xr_inputs_.aimPoseAction, aimPosePath[LEFT]},
-                                                                             {xr_inputs_.aimPoseAction, aimPosePath[RIGHT]},
-                                                                             {xr_inputs_.menuClickAction, menuClickPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickXAction, stickXPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickXAction, stickXPath[RIGHT]},
-                                                                             {xr_inputs_.thumbstickYAction, stickYPath[LEFT]},
-                                                                             {xr_inputs_.thumbstickYAction, stickYPath[RIGHT]},
-                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
-                                                                             {xr_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
-                                                                             //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
-                                                                             //{xr_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
-                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
-                                                                             {xr_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
-                                                                             //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
-                                                                             //{xr_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
-                                                                             {xr_inputs_.vibrateAction, hapticPath[LEFT]},
-                                                                             {xr_inputs_.vibrateAction, hapticPath[RIGHT]}}};
+                                                                             {ok_inputs_.triggerClickAction, triggerClickPath[LEFT]},
+                                                                             {ok_inputs_.triggerClickAction, triggerClickPath[RIGHT]},
+                                                                             {ok_inputs_.triggerTouchAction, triggerTouchPath[LEFT]},
+                                                                             {ok_inputs_.triggerTouchAction, triggerTouchPath[RIGHT]},
+                                                                             {ok_inputs_.triggerValueAction, triggerValuePath[LEFT]},
+                                                                             {ok_inputs_.triggerValueAction, triggerValuePath[RIGHT]},
+                                                                             {ok_inputs_.squeezeClickAction, squeezeClickPath[LEFT]},
+                                                                             {ok_inputs_.squeezeClickAction, squeezeClickPath[RIGHT]},
+                                                                             {ok_inputs_.squeezeTouchAction, squeezeTouchPath[LEFT]},
+                                                                             {ok_inputs_.squeezeTouchAction, squeezeTouchPath[RIGHT]},
+                                                                             {ok_inputs_.squeezeValueAction, squeezeValuePath[LEFT]},
+                                                                             {ok_inputs_.squeezeValueAction, squeezeValuePath[RIGHT]},
+                                                                             {ok_inputs_.gripPoseAction, gripPosePath[LEFT]},
+                                                                             {ok_inputs_.gripPoseAction, gripPosePath[RIGHT]},
+                                                                             {ok_inputs_.aimPoseAction, aimPosePath[LEFT]},
+                                                                             {ok_inputs_.aimPoseAction, aimPosePath[RIGHT]},
+                                                                             {ok_inputs_.menuClickAction, menuClickPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickClickAction, stickClickPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickClickAction, stickClickPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickTouchAction, stickTouchPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickTouchAction, stickTouchPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickXAction, stickXPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickXAction, stickXPath[RIGHT]},
+                                                                             {ok_inputs_.thumbstickYAction, stickYPath[LEFT]},
+                                                                             {ok_inputs_.thumbstickYAction, stickYPath[RIGHT]},
+                                                                             {ok_inputs_.buttonAXClickAction, XA_ClickPath[LEFT]},
+                                                                             {ok_inputs_.buttonAXClickAction, XA_ClickPath[RIGHT]},
+                                                                             //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[LEFT]},
+                                                                             //{ok_inputs_.buttonAXTouchAction, XA_TouchPath[RIGHT]},
+                                                                             {ok_inputs_.buttonBYClickAction, YB_ClickPath[LEFT]},
+                                                                             {ok_inputs_.buttonBYClickAction, YB_ClickPath[RIGHT]},
+                                                                             //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[LEFT]},
+                                                                             //{ok_inputs_.buttonBYTouchAction, YB_TouchPath[RIGHT]},
+                                                                             {ok_inputs_.vibrateAction, hapticPath[LEFT]},
+                                                                             {ok_inputs_.vibrateAction, hapticPath[RIGHT]}}};
 
             XrInteractionProfileSuggestedBinding suggestedBindings{XR_TYPE_INTERACTION_PROFILE_SUGGESTED_BINDING};
             suggestedBindings.interactionProfile = pico_neo4_interaction_profile_path;
@@ -1360,32 +1361,31 @@ void XrApp::createActions() {
             suggestedBindings.countSuggestedBindings = (uint32_t)pico_neo4_bindings.size();
             XR_CHECK(xrSuggestInteractionProfileBindings(instance_, &suggestedBindings));
         }
-
-
     }
 
     XrActionSpaceCreateInfo actionSpaceInfo{XR_TYPE_ACTION_SPACE_CREATE_INFO};
-    actionSpaceInfo.action = xr_inputs_.gripPoseAction;
+    actionSpaceInfo.action = ok_inputs_.gripPoseAction;
     actionSpaceInfo.poseInActionSpace.orientation.w = 1.f;
-    actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
-    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.gripSpace[LEFT]));
+    actionSpaceInfo.subactionPath = ok_inputs_.handSubactionPath[LEFT];
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &ok_inputs_.gripSpace[LEFT]));
 
-    actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[RIGHT];
-    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.gripSpace[RIGHT]));
+    actionSpaceInfo.subactionPath = ok_inputs_.handSubactionPath[RIGHT];
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &ok_inputs_.gripSpace[RIGHT]));
 
-    actionSpaceInfo.action = xr_inputs_.aimPoseAction;
-    actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[LEFT];
-    xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.aimSpace[LEFT]);
+    actionSpaceInfo.action = ok_inputs_.aimPoseAction;
+    actionSpaceInfo.subactionPath = ok_inputs_.handSubactionPath[LEFT];
+    xrCreateActionSpace(session_, &actionSpaceInfo, &ok_inputs_.aimSpace[LEFT]);
 
-    actionSpaceInfo.subactionPath = xr_inputs_.handSubactionPath[RIGHT];
-    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &xr_inputs_.aimSpace[RIGHT]));
+    actionSpaceInfo.subactionPath = ok_inputs_.handSubactionPath[RIGHT];
+    XR_CHECK(xrCreateActionSpace(session_, &actionSpaceInfo, &ok_inputs_.aimSpace[RIGHT]));
 
     XrSessionActionSetsAttachInfo attachInfo{XR_TYPE_SESSION_ACTION_SETS_ATTACH_INFO};
     attachInfo.countActionSets = 1;
-    attachInfo.actionSets = &xr_inputs_.actionSet;
+    attachInfo.actionSets = &ok_inputs_.actionSet;
     XR_CHECK(xrAttachSessionActionSets(session_, &attachInfo));
 }
 
+#endif // ENABLE_CONTROLLERS
 
 void XrApp::handleXrEvents() {
   XrEventDataBuffer eventDataBuffer = {};
@@ -1746,9 +1746,7 @@ void XrApp::pollActions() {
         return;
     }
 
-    xr_inputs_.handActive = {XR_FALSE, XR_FALSE};
-
-    const XrActiveActionSet activeActionSet{xr_inputs_.actionSet, XR_NULL_PATH};
+    const XrActiveActionSet activeActionSet{ok_inputs_.actionSet, XR_NULL_PATH};
     XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
     syncInfo.countActiveActionSets = 1;
     syncInfo.activeActionSets = &activeActionSet;

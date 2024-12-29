@@ -63,6 +63,14 @@ const int NUM_SIDES = 2;
 #include "../src/cpp/ok_defines.h"
 #endif
 
+#ifndef ENABLE_CONTROLLERS
+#define ENABLE_CONTROLLERS 0
+#endif
+
+#if ENABLE_CONTROLLERS
+#include "../src/cpp/OKController.h"
+#endif
+
 #ifndef ENABLE_PASSTHROUGH
 #define ENABLE_PASSTHROUGH 1
 #endif
@@ -160,56 +168,6 @@ static HeadsetType compute_headset_type(const std::string& system_name, const ui
     return HeadsetType::UNKNOWN_;
 }
 
-struct XrInputState
-{
-    std::array<float, NUM_SIDES> handScale = {{1.0f, 1.0f}};
-    std::array<XrBool32, NUM_SIDES> handActive;
-
-    std::array<XrPath, NUM_SIDES> handSubactionPath;
-
-    std::array<XrSpace, NUM_SIDES> gripSpace;
-    std::array<XrSpace, NUM_SIDES> aimSpace;
-
-    XrActionSet actionSet{XR_NULL_HANDLE};
-    XrAction grabAction{XR_NULL_HANDLE};
-    XrAction vibrateAction{XR_NULL_HANDLE};
-
-    XrAction gripPoseAction{ XR_NULL_HANDLE };
-    XrAction aimPoseAction{ XR_NULL_HANDLE };
-    XrAction menuClickAction{ XR_NULL_HANDLE };
-
-    XrAction triggerClickAction{ XR_NULL_HANDLE };
-    XrAction triggerTouchAction{ XR_NULL_HANDLE };
-    XrAction triggerValueAction{ XR_NULL_HANDLE };
-
-    XrAction squeezeClickAction{ XR_NULL_HANDLE };
-    XrAction squeezeTouchAction{ XR_NULL_HANDLE };
-    XrAction squeezeValueAction{ XR_NULL_HANDLE };
-    // XrAction squeezeForceAction{ XR_NULL_HANDLE };
-
-    XrAction thumbstickTouchAction{ XR_NULL_HANDLE };
-    XrAction thumbstickClickAction{ XR_NULL_HANDLE };
-
-    XrAction thumbstickXAction{ XR_NULL_HANDLE };
-    XrAction thumbstickYAction{ XR_NULL_HANDLE };
-
-    XrAction thumbRestTouchAction{ XR_NULL_HANDLE };
-    XrAction thumbRestClickAction{ XR_NULL_HANDLE };
-    XrAction thumbRestForceAction{ XR_NULL_HANDLE };
-    XrAction thumbProximityAction{ XR_NULL_HANDLE };
-
-    XrAction pinchValueAction{ XR_NULL_HANDLE };
-    XrAction pinchForceAction{ XR_NULL_HANDLE };
-
-    XrAction buttonAXClickAction{ XR_NULL_HANDLE };
-    XrAction buttonAXTouchAction{ XR_NULL_HANDLE };
-
-    XrAction buttonBYClickAction{ XR_NULL_HANDLE };
-    XrAction buttonBYTouchAction{ XR_NULL_HANDLE };
-
-    XrAction trackpadXAction{ XR_NULL_HANDLE };
-    XrAction trackpadYAction{ XR_NULL_HANDLE };
-};
 
 class XrApp {
 
@@ -353,7 +311,10 @@ class XrApp {
   
   XrPosef headPose_;
   XrTime headPoseTime_;
-  XrInputState xr_inputs_;
+
+#if ENABLE_CONTROLLERS
+  BVR::OKOpenXRControllerActions ok_inputs_;
+#endif
 
 #if ENABLE_CLOUDXR
   bool should_override_eye_poses_ = false;
