@@ -24,6 +24,11 @@ class XrPassthrough final {
 
   void setEnabled(bool enabled) noexcept;
 
+  bool isEnabled() const noexcept
+  {
+      return enabled_;
+  }
+
   void injectLayer(std::vector<const XrCompositionLayerBaseHeader*>& layers) noexcept;
 
  private:

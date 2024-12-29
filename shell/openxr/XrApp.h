@@ -383,7 +383,6 @@ class XrApp {
 
 #if ENABLE_PASSTHROUGH
   std::unique_ptr<XrPassthrough> passthrough_;
-  bool passThroughEnabled_ = true;
 #endif
 
   std::unique_ptr<XrHands> hands_;

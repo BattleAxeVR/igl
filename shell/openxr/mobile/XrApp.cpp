@@ -1491,17 +1491,12 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
 #if ENABLE_PASSTHROUGH
     void XrApp::setPassThroughEnabled(const bool passThroughEnabled)
     {
-        if (passthrough_)
+        if (passthrough_ && !passThroughEnabled)
         {
-            if (!passThroughEnabled)
-            {
-                passthrough_->setEnabled(false);
-                passthrough_.reset();
-            }
-
-            passThroughEnabled_ = passThroughEnabled;
+            passthrough_->setEnabled(false);
+            passthrough_.reset();
         }
-        else if (passThroughEnabled && passthroughSupported())
+        else if (!passthrough_ && passthroughSupported() && passThroughEnabled)
         {
             passthrough_ = std::make_unique<XrPassthrough>(instance_, session_);
 
@@ -1511,7 +1506,6 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
             }
 
             passthrough_->setEnabled(true);
-            passThroughEnabled_ = true;
         }
     }
 #endif
@@ -1772,7 +1766,7 @@ bool XrApp::passthroughSupported() const noexcept {
 bool XrApp::passthroughEnabled() const noexcept {
 
 #if ENABLE_PASSTHROUGH
-  if (!renderSession_ || !passthrough_ || !passThroughEnabled_) {
+  if (!renderSession_ || !passthrough_) {
     return false;
   }
   const auto& appParams = renderSession_->appParams();
