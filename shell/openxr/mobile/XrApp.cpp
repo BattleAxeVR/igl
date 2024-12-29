@@ -523,7 +523,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
   enumerateReferenceSpaces();
   enumerateBlendModes();
   createSpaces();
-  createActions();
+  //createActions();
 
 #if (ENABLE_PASSTHROUGH && !DRAW_UI)
   if (passthroughSupported()) {
@@ -1736,7 +1736,7 @@ void XrApp::update() {
   }
 
   auto frameState = beginFrame();
-  pollActions();
+  //pollActions();
   render();
   endFrame(frameState);
 }
