@@ -64,7 +64,7 @@ const int NUM_SIDES = 2;
 #endif
 
 #ifndef ENABLE_CONTROLLERS
-#define ENABLE_CONTROLLERS 0
+#define ENABLE_CONTROLLERS 1
 #endif
 
 #if ENABLE_CONTROLLERS
