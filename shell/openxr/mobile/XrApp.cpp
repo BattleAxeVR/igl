@@ -1746,7 +1746,7 @@ void XrApp::pollActions() {
         return;
     }
 
-if ENABLE_CONTROLLERS
+#if ENABLE_CONTROLLERS
     const XrActiveActionSet activeActionSet{ok_inputs_.actionSet, XR_NULL_PATH};
     XrActionsSyncInfo syncInfo{XR_TYPE_ACTIONS_SYNC_INFO};
     syncInfo.countActiveActionSets = 1;
