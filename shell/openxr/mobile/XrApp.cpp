@@ -1067,11 +1067,18 @@ void XrApp::endFrame(XrFrameState frameState) {
 
   const auto& appParams = renderSession_->appParams();
 
-  for (const std::unique_ptr<XrComposition>& layer : compositionLayers_) {
-    if (layer->isValid()) {
-
 #if ENABLE_CLOUDXR
-        if (should_override_eye_poses_)
+  const int cloudxr_layer_index = 0;
+#endif
+
+  for (int layer_index = 0; layer_index < (int)compositionLayers_.size(); layer_index++)
+  {
+    const std::unique_ptr<XrComposition>& layer = compositionLayers_[layer_index];
+
+    if (layer->isValid())
+    {
+#if ENABLE_CLOUDXR
+        if (should_override_eye_poses_ && (layer_index == cloudxr_layer_index))
         {
             std::array<XrPosef, XrComposition::kNumViews> viewStagePoseOverrides = viewStagePoses_;
 
@@ -1083,7 +1090,6 @@ void XrApp::endFrame(XrFrameState frameState) {
             layer->doComposition(appParams.depthParams, views_, viewStagePoseOverrides, currentSpace_, compositionFlags, layers);
         }
         else
-
 #endif
         {
             layer->doComposition(
