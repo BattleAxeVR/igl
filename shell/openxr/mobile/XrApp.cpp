@@ -541,7 +541,7 @@ bool XrApp::initialize(const struct android_app* app, const InitParams& params) 
     }
   }
 
-#if ENABLE_META_OPENXR_FEATURES
+#if ENABLE_FB_REFRESH_RATE
   if (refreshRateExtensionSupported()) {
     refreshRate_ = std::make_unique<XrRefreshRate>(instance_, session_);
     if (!refreshRate_->initialize(params.refreshRateParams)) {

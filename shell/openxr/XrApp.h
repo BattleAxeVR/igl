@@ -76,6 +76,10 @@ const int NUM_SIDES = 2;
 #define ENABLE_PASSTHROUGH 1
 #endif
 
+#ifndef ENABLE_FB_REFRESH_RATE
+#define ENABLE_FB_REFRESH_RATE 1
+#endif
+
 #ifndef DRAW_UI
 #define DRAW_UI 0
 #endif
@@ -283,7 +287,10 @@ class XrApp {
 #endif
 
   std::unique_ptr<XrHands> hands_;
+
+#if ENABLE_FB_REFRESH_RATE
   std::unique_ptr<XrRefreshRate> refreshRate_;
+#endif
 
   bool compositionLayerSettingsSupported_ = false;
   XrCompositionLayerSettingsFB compositionLayerSettings_ = 
