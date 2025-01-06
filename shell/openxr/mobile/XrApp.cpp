@@ -984,6 +984,12 @@ void XrApp::render() {
 #if DRAW_UI
   size_t UI_layer_index = 0;
 
+#if ENABLE_CLOUDXR
+    const bool draw_ui = useQuadLayerCompositionForUI_ && !should_override_eye_poses_;
+#else
+    const bool draw_ui = useQuadLayerCompositionForUI_;
+#endif
+
 #if ENABLE_PASSTHROUGH
   if (passthroughEnabled())
   {
@@ -1001,10 +1007,17 @@ void XrApp::render() {
       uint32_t renderPassCount = compositionLayers_[layerIndex]->renderPassesCount();
 
 #if DRAW_UI
-      if (useQuadLayerCompositionForUI_ && (layerIndex == UI_layer_index))
+        const bool layer_is_UI = (layerIndex == UI_layer_index);
+
+      if (draw_ui && layer_is_UI)
       {
           // UI is mono
           renderPassCount = 1;
+      }
+
+      if (layer_is_UI && !draw_ui)
+      {
+          //continue;
       }
 #endif
 
@@ -1020,7 +1033,7 @@ void XrApp::render() {
 #endif
 
 #if DRAW_UI
-    if (useQuadLayerCompositionForUI_ && (layerIndex == UI_layer_index))
+    if (draw_ui && layer_is_UI)
     {
         renderSession_->update_UI(std::move(surfaceTextures));
     }
@@ -1043,41 +1056,80 @@ void XrApp::endFrame(XrFrameState frameState) {
 
   XrCompositionLayerFlags compositionFlags = XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
 
+  std::vector<const XrCompositionLayerBaseHeader*> layers;
+  layers.reserve(1 + compositionLayers_.size() * (useQuadLayerComposition_ ? 2 : 1));
+
+#if ENABLE_CLOUDXR
+    size_t cloudxr_layer_index = 0;
+#endif
+
 #if ENABLE_PASSTHROUGH
   if (passthroughEnabled()) {
     compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+
+#if ENABLE_CLOUDXR
+    cloudxr_layer_index++;
+#endif
+
   }
 #endif
 
 #if DRAW_UI
-  if (useQuadLayerCompositionForUI_){
-      compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-  }
+    size_t UI_layer_index = 0;
+
+#if ENABLE_CLOUDXR
+    const bool draw_ui = useQuadLayerCompositionForUI_ && !should_override_eye_poses_;
+#else
+    const bool draw_ui = useQuadLayerCompositionForUI_;
 #endif
 
-  std::vector<const XrCompositionLayerBaseHeader*> layers;
-  layers.reserve(1 + compositionLayers_.size() * (useQuadLayerComposition_ ? 2 : 1));
+  if (draw_ui)
+  {
+      compositionFlags |= XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+  }
+
+#if ENABLE_CLOUDXR
+    cloudxr_layer_index++;
+#endif
+
+#endif
 
 #if ENABLE_PASSTHROUGH
   if (passthroughEnabled()) {
     passthrough_->injectLayer(layers);
+
+#if DRAW_UI
+    UI_layer_index++;
+#endif
+
+#if ENABLE_CLOUDXR
+    cloudxr_layer_index++;
+#endif
   }
 #endif
 
   const auto& appParams = renderSession_->appParams();
 
-#if ENABLE_CLOUDXR
-  const int cloudxr_layer_index = 0;
-#endif
 
   for (int layer_index = 0; layer_index < (int)compositionLayers_.size(); layer_index++)
   {
+#if DRAW_UI
+      const bool layer_is_UI = (layer_index == UI_layer_index);
+
+      if (layer_is_UI && !draw_ui)
+      {
+          continue;
+      }
+#endif
+
     const std::unique_ptr<XrComposition>& layer = compositionLayers_[layer_index];
 
     if (layer->isValid())
     {
 #if ENABLE_CLOUDXR
-        if (should_override_eye_poses_ && (layer_index == cloudxr_layer_index))
+        const bool is_cloudxr_layer = (layer_index == cloudxr_layer_index);
+
+        if (should_override_eye_poses_ && is_cloudxr_layer)
         {
             std::array<XrPosef, XrComposition::kNumViews> viewStagePoseOverrides = viewStagePoses_;
 
@@ -1088,11 +1140,15 @@ void XrApp::endFrame(XrFrameState frameState) {
 
             layer->doComposition(appParams.depthParams, views_, viewStagePoseOverrides, currentSpace_, compositionFlags, layers);
         }
+        else if (should_override_eye_poses_ && !is_cloudxr_layer)
+        {
+            // Don't bother adding the other layers.
+            continue;
+        }
         else
 #endif
         {
-            layer->doComposition(
-                    appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
+            layer->doComposition(appParams.depthParams, views_, viewStagePoses_, currentSpace_, compositionFlags, layers);
         }
     }
   }
