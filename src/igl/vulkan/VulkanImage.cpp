@@ -262,108 +262,106 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
   ctx_->vf_.vkGetPhysicalDeviceFormatProperties(physicalDevice_, imageFormat_, &formatProperties_);
 }
 
-// clang-format off
-// @fb-only
-// @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-                         // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
-                                               // @fb-only
- // @fb-only
-  // @fb-only
-      // @fb-only
-      // @fb-only
- // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-  // @fb-only
-      // @fb-only
- // @fb-only
-  // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-      // @fb-only
-      // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-      // @fb-only
-  // @fb-only
-  // @fb-only
-      // @fb-only
- // @fb-only
-  // @fb-only
-  // @fb-only
- // @fb-only
-  // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-                                               // @fb-only
-                                               // @fb-only
- // @fb-only
-  // @fb-only
-               // @fb-only
-               // @fb-only
- // @fb-only
-  // @fb-only
-  // @fb-only
-// @fb-only
-// @fb-only
-// clang-format on
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+VulkanImage::VulkanImage(const VulkanContext& ctx,
+                         AHardwareBuffer* hwBuffer,
+                         uint64_t memoryAllocationSize,
+                         VkDevice device,
+                         VkExtent3D extent,
+                         VkImageType type,
+                         VkFormat format,
+                         uint32_t mipLevels,
+                         uint32_t arrayLayers,
+                         VkImageTiling tiling,
+                         VkImageUsageFlags usageFlags,
+                         VkImageCreateFlags createFlags,
+                         VkSampleCountFlagBits samples,
+                         const char* debugName) :
+  ctx_(&ctx),
+  physicalDevice_(ctx.getVkPhysicalDevice()),
+  device_(device),
+  usageFlags_(usageFlags),
+  extent_(extent),
+  type_(type),
+  imageFormat_(format),
+  mipLevels_(mipLevels),
+  arrayLayers_(arrayLayers),
+  samples_(samples),
+  isDepthFormat_(isDepthFormat(format)),
+  isStencilFormat_(isStencilFormat(format)),
+  isDepthOrStencilFormat_(isDepthFormat_ || isStencilFormat_),
+  isImported_(true),
+  tiling_(tiling) {
+  IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
+
+  IGL_DEBUG_ASSERT(hwBuffer != nullptr);
+  IGL_DEBUG_ASSERT(mipLevels_ > 0, "The image must contain at least one mip level");
+  IGL_DEBUG_ASSERT(arrayLayers_ > 0, "The image must contain at least one layer");
+  IGL_DEBUG_ASSERT(imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid VkFormat value");
+  IGL_DEBUG_ASSERT(samples_ > 0, "The image must contain at least one sample");
+
+  setName(debugName);
+
+  VkImageCreateInfo ci = ivkGetImageCreateInfo(type,
+                                               imageFormat_,
+                                               tiling,
+                                               usageFlags,
+                                               extent_,
+                                               mipLevels_,
+                                               arrayLayers_,
+                                               createFlags,
+                                               samples);
+
+  const VkExternalMemoryImageCreateInfoKHR extImgMem = {
+      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR,
+      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID};
+
+  ci.pNext = &extImgMem;
+
+  VK_ASSERT(ctx_->vf_.vkCreateImage(device_, &ci, nullptr, &vkImage_));
+  VK_ASSERT(ivkSetDebugObjectName(
+      &ctx_->vf_, device_, VK_OBJECT_TYPE_IMAGE, (uint64_t)vkImage_, debugName));
+
+  // NOTE: Importing a hardware buffer causes Vulkan to acquire a reference to
+  // the hardware buffer, which it releases when the allocated memory is freed.
+
+  const VkImportAndroidHardwareBufferInfoANDROID hwBufferInfo = {
+      .sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
+      .buffer = hwBuffer,
+  };
+
+  VkMemoryDedicatedAllocateInfoKHR dedicatedAllocateInfo = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR,
+      .pNext = &hwBufferInfo,
+      .image = vkImage_,
+      .buffer = VK_NULL_HANDLE,
+  };
+
+  VkAndroidHardwareBufferPropertiesANDROID hwBufferProperties{
+      .sType = VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID,
+  };
+  VK_ASSERT(ctx_->vf_.vkGetAndroidHardwareBufferPropertiesANDROID(
+      device_, hwBuffer, &hwBufferProperties));
+
+  VkPhysicalDeviceMemoryProperties vulkanMemoryProperties;
+  ctx_->vf_.vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &vulkanMemoryProperties);
+
+  const VkMemoryAllocateInfo memoryAllocateInfo = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext = &dedicatedAllocateInfo,
+      .allocationSize = hwBufferProperties.allocationSize,
+      .memoryTypeIndex = ivkGetMemoryTypeIndex(vulkanMemoryProperties,
+                                               hwBufferProperties.memoryTypeBits,
+                                               VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
+
+  IGL_LOG_INFO("Imported texture has requirements %d, ends up index %d",
+               hwBufferProperties.memoryTypeBits,
+               memoryAllocateInfo.memoryTypeIndex);
+
+  VK_ASSERT(ctx_->vf_.vkAllocateMemory(device_, &memoryAllocateInfo, nullptr, &vkMemory_[0]));
+  VK_ASSERT(ctx_->vf_.vkBindImageMemory(device_, vkImage_, vkMemory_[0], 0));
+}
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
 VulkanImage::VulkanImage(const VulkanContext& ctx,
                          int32_t undupedFileDescriptor,
@@ -595,17 +593,13 @@ VulkanImage VulkanImage::createWithExportMemory(const VulkanContext& ctx,
                                                 VkImageUsageFlags usageFlags,
                                                 VkImageCreateFlags createFlags,
                                                 VkSampleCountFlagBits samples,
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
                                                 AHardwareBuffer* hwBuffer,
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
                                                 const char* debugName) {
   const VkPhysicalDeviceExternalImageFormatInfo externaInfo = {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO,
       nullptr,
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-      hwBuffer != nullptr ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID :
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-                          kHandleType,
+      hwBuffer != nullptr ? VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID
+                          : kHandleType,
   };
   const VkPhysicalDeviceImageFormatInfo2 formatInfo2 = {
       VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
@@ -643,18 +637,20 @@ VulkanImage VulkanImage::createWithExportMemory(const VulkanContext& ctx,
         createFlags);
     return VulkanImage();
   }
-  const auto compatibleHandleTypes = externalFormatProperties.compatibleHandleTypes;
 
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+  VkExternalMemoryHandleTypeFlags compatibleHandleTypes =
+      VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+
   if (hwBuffer != nullptr) {
-    IGL_DEBUG_ASSERT(compatibleHandleTypes &
-                     VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
-  } else {
-#endif
-    IGL_DEBUG_ASSERT(compatibleHandleTypes & kHandleType);
 #if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+    IGL_DEBUG_ASSERT(externalFormatProperties.compatibleHandleTypes &
+                     VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID);
+    compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+#endif // IGL_ANDROID_HWBUFFER_SUPPORTED
+  } else {
+    IGL_DEBUG_ASSERT(externalFormatProperties.compatibleHandleTypes & kHandleType);
+    compatibleHandleTypes = kHandleType;
   }
-#endif
 
   return {ctx,
           device,
@@ -669,9 +665,7 @@ VulkanImage VulkanImage::createWithExportMemory(const VulkanContext& ctx,
           createFlags,
           samples,
           compatibleHandleTypes,
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
           hwBuffer,
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
           debugName};
 }
 
@@ -687,10 +681,8 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
                          VkMemoryPropertyFlags memFlags,
                          VkImageCreateFlags createFlags,
                          VkSampleCountFlagBits samples,
-                         const VkExternalMemoryHandleTypeFlags compatibleHandleTypes,
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+                         VkExternalMemoryHandleTypeFlags compatibleHandleTypes,
                          AHardwareBuffer* hwBuffer,
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
                          const char* debugName) :
   ctx_(&ctx),
   physicalDevice_(ctx.getVkPhysicalDevice()),
@@ -747,12 +739,11 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 #endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
   const VkExternalMemoryImageCreateInfoKHR externalImageCreateInfo = {
-      VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR,
+      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO_KHR,
 #if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-      hwBuffer != nullptr ? &externalFormat :
+      .pNext = hwBuffer ? &externalFormat : nullptr,
 #endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-                          nullptr,
-      compatibleHandleTypes,
+      .handleTypes = compatibleHandleTypes,
   };
 
   VkImageCreateInfo ci = ivkGetImageCreateInfo(type,
@@ -778,34 +769,29 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
   // For Android we need a dedicated allocation for exporting the image, otherwise
   // the exported handle is not generated properly.
 #if IGL_PLATFORM_ANDROID
-
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
   VkImportAndroidHardwareBufferInfoANDROID bufferInfo = {
       .sType = VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID,
       .pNext = nullptr,
       .buffer = hwBuffer,
   };
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
   VkMemoryDedicatedAllocateInfoKHR dedicatedAllocateInfo = {
       VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR,
-#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-      hwBuffer != nullptr ? &bufferInfo :
-#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-                          nullptr,
+      hwBuffer != nullptr ? &bufferInfo : nullptr,
       vkImage_,
       VK_NULL_HANDLE,
   };
 #endif // IGL_PLATFORM_ANDROID
 
   const VkExportMemoryAllocateInfoKHR externalMemoryAllocateInfo = {
-      VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR,
+      .sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO_KHR,
+      .pNext =
 #if IGL_PLATFORM_ANDROID
-      &dedicatedAllocateInfo,
+          &dedicatedAllocateInfo,
 #else
-      nullptr,
+          nullptr,
 #endif // IGL_PLATFORM_ANDROID
-      compatibleHandleTypes,
+      .handleTypes = compatibleHandleTypes,
   };
 
   std::array<VkBindImagePlaneMemoryInfo, kMaxImagePlanes> bindImagePlaneMemoryInfo{};
