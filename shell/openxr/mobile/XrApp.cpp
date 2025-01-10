@@ -758,8 +758,8 @@ void XrApp::createSpaces() {
 #if ENABLE_CONTROLLERS
 void XrApp::createActions()
 {
-    BVR::HeadsetType headset_type = BVR::OKOpenXRInterface::compute_headset_type(systemProps_.systemName, systemProps_.systemId, systemProps_.vendorId);
-    ok_inputs_.init(headset_type, instance_, session_);
+    //BVR::HeadsetType headset_type = BVR::OKOpenXRInterface::compute_headset_type(systemProps_.systemName, systemProps_.systemId, systemProps_.vendorId);
+    //ok_inputs_.init(headset_type, instance_, session_);
 }
 
 #endif // ENABLE_CONTROLLERS
