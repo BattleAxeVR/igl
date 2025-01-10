@@ -73,11 +73,11 @@ const int NUM_SIDES = 2;
 #endif
 
 #ifndef ENABLE_PASSTHROUGH
-#define ENABLE_PASSTHROUGH 1
+#define ENABLE_PASSTHROUGH 0
 #endif
 
 #ifndef ENABLE_FB_REFRESH_RATE
-#define ENABLE_FB_REFRESH_RATE 1
+#define ENABLE_FB_REFRESH_RATE 0
 #endif
 
 #ifndef DRAW_UI
