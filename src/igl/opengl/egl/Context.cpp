@@ -189,7 +189,7 @@ EGLConfig chooseConfig(EGLDisplay display) {
 }
 
 Context::Context(RenderingAPI api, EGLNativeWindowType window) :
-        Context(api, EGL_NO_CONTEXT, nullptr, true, window, {1920, 1920}) {}
+        Context(api, EGL_NO_CONTEXT, nullptr, true, window, {1824, 1824}) {}
 
 #if CREATE_GL_ES_WINDOW
 Context::Context(RenderingAPI api, size_t width, size_t height)
