@@ -125,7 +125,10 @@ std::unique_ptr<igl::IDevice> XrAppImplVulkan::initIGL(XrInstance instance, XrSy
                                               0,
                                               0,
                                               requiredVkDeviceExtensions_.size(),
-                                              requiredVkDeviceExtensions_.data());
+                                              requiredVkDeviceExtensions_.data(),
+                                              nullptr,
+                                              "IGL Shell OpenXR",
+                                              nullptr);
   return device;
 }
 
