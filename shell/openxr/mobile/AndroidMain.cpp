@@ -8,7 +8,6 @@
 // @fb-only
 
 #include <igl/Common.h>
-#include <igl/Macros.h>
 
 #if IGL_PLATFORM_ANDROID
 
