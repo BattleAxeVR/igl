@@ -128,7 +128,6 @@ class VulkanImage final {
               VkSampleCountFlagBits samples,
               const char* debugName = nullptr);
 #endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
-
   /**
    * @brief Constructs a `VulkanImage` object and a `VkImage` object from a file descriptor. The
    * `VkImage` object is backed by external memory. The handle type of the external memory used is
@@ -208,7 +207,6 @@ class VulkanImage final {
                                             VkImageUsageFlags usageFlags,
                                             VkImageCreateFlags createFlags,
                                             VkSampleCountFlagBits samples,
-                                            AHardwareBuffer* hwBuffer,
                                             const char* debugName = nullptr);
 #endif // IGL_PLATFORM_WINDOWS || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
 
@@ -325,8 +323,7 @@ class VulkanImage final {
   bool isCubemap_ = false;
   void* exportedMemoryHandle_ = nullptr; // windows handle
   int exportedFd_ = -1; // linux fd
-  uint32_t extendedFormat_;
-      // @fb-only
+  uint32_t extendedFormat_ = 0; // defined by VkAndroidHardwareBufferFormatPropertiesANDROID
 #if defined(IGL_DEBUG)
   std::string name_;
 #endif
@@ -366,7 +363,6 @@ class VulkanImage final {
               VkImageCreateFlags createFlags,
               VkSampleCountFlagBits samples,
               VkExternalMemoryHandleTypeFlags compatibleHandleTypes,
-              AHardwareBuffer* hwBuffer,
               const char* debugName);
 #endif // IGL_PLATFORM_WINDOWS || IGL_PLATFORM_LINUX || IGL_PLATFORM_ANDROID
 
