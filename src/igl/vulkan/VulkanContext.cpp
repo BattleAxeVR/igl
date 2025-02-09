@@ -338,6 +338,8 @@ struct VulkanContextImpl final {
       arenaCombinedImageSamplers_;
   std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
       arenaBuffers_;
+  std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
+      arenaStorageImages_;
   std::unique_ptr<igl::vulkan::VulkanDescriptorSetLayout> dslBindless_; // everything
   VkDescriptorPool dpBindless_ = VK_NULL_HANDLE;
   VkDescriptorSet dsBindless_ = VK_NULL_HANDLE;
@@ -365,6 +367,17 @@ struct VulkanContextImpl final {
                                                numBindings,
                                                "arenaCombinedImageSamplers_");
     return *arenaCombinedImageSamplers_[dsl].get();
+  }
+  igl::vulkan::DescriptorPoolsArena& getOrCreateArena_StorageImages(const VulkanContext& ctx,
+                                                                    VkDescriptorSetLayout dsl,
+                                                                    uint32_t numBindings) {
+    auto it = arenaStorageImages_.find(dsl);
+    if (it != arenaStorageImages_.end()) {
+      return *it->second;
+    }
+    arenaStorageImages_[dsl] = std::make_unique<DescriptorPoolsArena>(
+        ctx, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, dsl, numBindings, "arenaStorageImages_");
+    return *arenaStorageImages_[dsl].get();
   }
   igl::vulkan::DescriptorPoolsArena& getOrCreateArena_Buffers(const VulkanContext& ctx,
                                                               VkDescriptorSetLayout dsl,
@@ -498,6 +511,7 @@ VulkanContext::~VulkanContext() {
       }
     }
     pimpl_->arenaCombinedImageSamplers_.clear();
+    pimpl_->arenaStorageImages_.clear();
     pimpl_->arenaBuffers_.clear();
     vf_.vkDestroyPipelineCache(device, pipelineCache_, nullptr);
   }
@@ -830,14 +844,15 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
 
   // Create Vulkan Memory Allocator
   if (IGL_VULKAN_USE_VMA) {
-    VK_ASSERT_RETURN(ivkVmaCreateAllocator(&vf_,
-                                           vkPhysicalDevice_,
-                                           device_->getVkDevice(),
-                                           vkInstance_,
-                                           apiVersion,
-                                           config_.enableBufferDeviceAddress,
-                                           (VkDeviceSize)config_.vmaPreferredLargeHeapBlockSize,
-                                           &pimpl_->vma_));
+    VK_ASSERT_RETURN(
+        ivkVmaCreateAllocator(&vf_,
+                              vkPhysicalDevice_,
+                              device_->getVkDevice(),
+                              vkInstance_,
+                              apiVersion > VK_API_VERSION_1_3 ? VK_API_VERSION_1_3 : apiVersion,
+                              config_.enableBufferDeviceAddress,
+                              (VkDeviceSize)config_.vmaPreferredLargeHeapBlockSize,
+                              &pimpl_->vma_));
   }
 
   // The staging device will use VMA to allocate a buffer, so this needs
@@ -953,19 +968,25 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
 
 #if defined(VK_EXT_calibrated_timestamps)
   if (extensions_.enabled(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)) {
-    tracyCtx_ = TracyVkContextCalibrated(getVkPhysicalDevice(),
+    tracyCtx_ = TracyVkContextCalibrated(vkInstance_,
+                                         getVkPhysicalDevice(),
                                          getVkDevice(),
                                          deviceQueues_.graphicsQueue,
                                          profilingCommandBuffer_,
-                                         vkGetPhysicalDeviceCalibrateableTimeDomainsEXT,
-                                         vkGetCalibratedTimestampsEXT);
+                                         tableImpl_->vkGetInstanceProcAddr,
+                                         tableImpl_->vkGetDeviceProcAddr);
   }
 #endif // VK_EXT_calibrated_timestamps
   // If VK_EXT_calibrated_timestamps is not available or it has not been enabled, use the
   // uncalibrated Tracy context
   if (!tracyCtx_) {
-    tracyCtx_ = TracyVkContext(
-        getVkPhysicalDevice(), getVkDevice(), deviceQueues_.graphicsQueue, profilingCommandBuffer_);
+    tracyCtx_ = TracyVkContext(vkInstance_,
+                               getVkPhysicalDevice(),
+                               getVkDevice(),
+                               deviceQueues_.graphicsQueue,
+                               profilingCommandBuffer_,
+                               tableImpl_->vkGetInstanceProcAddr,
+                               tableImpl_->vkGetDeviceProcAddr);
   }
 
   IGL_DEBUG_ASSERT(tracyCtx_, "Failed to create Tracy GPU profiling context");
@@ -1665,6 +1686,62 @@ void VulkanContext::updateBindingsTextures(VkCommandBuffer IGL_NONNULL cmdBuf,
   }
 }
 
+void VulkanContext::updateBindingsStorageImages(
+    VkCommandBuffer IGL_NONNULL cmdBuf,
+    VkPipelineLayout layout,
+    VkPipelineBindPoint bindPoint,
+    VulkanImmediateCommands::SubmitHandle nextSubmitHandle,
+    const BindingsStorageImages& data,
+    const VulkanDescriptorSetLayout& dsl,
+    const util::SpvModuleInfo& info) const {
+  IGL_PROFILER_FUNCTION();
+
+  DescriptorPoolsArena& arena = pimpl_->getOrCreateArena_StorageImages(
+      *this, dsl.getVkDescriptorSetLayout(), dsl.numBindings_);
+
+  VkDescriptorSet dset = arena.getNextDescriptorSet(*immediate_, nextSubmitHandle);
+
+  // @fb-only
+  VkDescriptorImageInfo infoStorageImages[IGL_TEXTURE_SAMPLERS_MAX]; // uninitialized
+  uint32_t numStorageImages = 0;
+
+  // @fb-only
+  VkWriteDescriptorSet writes[IGL_TEXTURE_SAMPLERS_MAX]; // uninitialized
+  uint32_t numWrites = 0;
+
+  // make sure the guard value is always there
+  IGL_DEBUG_ASSERT(!textures_.objects_.empty());
+
+  // use the dummy texture to avoid sparse array
+  VkImageView dummyImageView = textures_.objects_[0].obj_->imageView_.getVkImageView();
+
+  for (const util::ImageDescription& d : info.images) {
+    IGL_DEBUG_ASSERT(d.descriptorSet == kBindPoint_StorageImages);
+    const uint32_t loc = d.bindingLocation;
+    IGL_DEBUG_ASSERT(loc < IGL_TEXTURE_SAMPLERS_MAX);
+    VkImageView imageView = data.images[loc];
+    writes[numWrites++] = ivkGetWriteDescriptorSet_ImageInfo(
+        dset, loc, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1, &infoStorageImages[numStorageImages]);
+    infoStorageImages[numStorageImages++] = VkDescriptorImageInfo{
+        .sampler = VK_NULL_HANDLE,
+        .imageView = imageView ? imageView : dummyImageView,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+  }
+
+  if (numWrites) {
+    IGL_PROFILER_ZONE("vkUpdateDescriptorSets()", IGL_PROFILER_COLOR_UPDATE);
+    vf_.vkUpdateDescriptorSets(device_->getVkDevice(), numWrites, writes, 0, nullptr);
+    IGL_PROFILER_ZONE_END();
+
+#if IGL_VULKAN_PRINT_COMMANDS
+    IGL_LOG_INFO("%p vkCmdBindDescriptorSets(%u) - storage images\n", cmdBuf, bindPoint);
+#endif // IGL_VULKAN_PRINT_COMMANDS
+    vf_.vkCmdBindDescriptorSets(
+        cmdBuf, bindPoint, layout, kBindPoint_StorageImages, 1, &dset, 0, nullptr);
+  }
+}
+
 void VulkanContext::updateBindingsBuffers(VkCommandBuffer IGL_NONNULL cmdBuf,
                                           VkPipelineLayout layout,
                                           VkPipelineBindPoint bindPoint,
@@ -1839,6 +1916,7 @@ VkSamplerYcbcrConversionInfo VulkanContext::getOrCreateYcbcrConversionInfo(VkFor
 void VulkanContext::freeResourcesForDescriptorSetLayout(VkDescriptorSetLayout dsl) const {
   pimpl_->arenaBuffers_.erase(dsl);
   pimpl_->arenaCombinedImageSamplers_.erase(dsl);
+  pimpl_->arenaStorageImages_.erase(dsl);
 }
 
 igl::BindGroupTextureHandle VulkanContext::createBindGroup(const BindGroupTextureDesc& desc,

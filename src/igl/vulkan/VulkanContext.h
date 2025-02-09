@@ -54,6 +54,7 @@ class VulkanTexture;
 
 struct BindingsBuffers;
 struct BindingsTextures;
+struct BindingsStorageImages;
 struct VulkanContextImpl;
 struct VulkanImageCreateInfo;
 struct VulkanImageViewCreateInfo;
@@ -64,11 +65,13 @@ struct VulkanSampler;
  *  0 - combined image samplers
  *  1 - uniform/storage buffers
  *  2 - bindless textures/samplers  <--  optional
+ *  3 - storage images
  */
 enum {
   kBindPoint_CombinedImageSamplers = 0,
   kBindPoint_Buffers = 1,
   kBindPoint_Bindless = 2,
+  kBindPoint_StorageImages = 3,
 };
 
 struct DeviceQueues {
@@ -363,6 +366,13 @@ class VulkanContext final {
                              BindingsBuffers& data,
                              const VulkanDescriptorSetLayout& dsl,
                              const util::SpvModuleInfo& info) const;
+  void updateBindingsStorageImages(VkCommandBuffer IGL_NONNULL cmdBuf,
+                                   VkPipelineLayout layout,
+                                   VkPipelineBindPoint bindPoint,
+                                   VulkanImmediateCommands::SubmitHandle nextSubmitHandle,
+                                   const BindingsStorageImages& data,
+                                   const VulkanDescriptorSetLayout& dsl,
+                                   const util::SpvModuleInfo& info) const;
 
   struct DeferredTask {
     DeferredTask(std::packaged_task<void()>&& task, SubmitHandle handle) :

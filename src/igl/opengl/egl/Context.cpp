@@ -301,6 +301,7 @@ std::unique_ptr<IContext> Context::createShareContext(Result* /*outResult*/) {
   return std::make_unique<Context>(*this);
 }
 
+// NOLINTBEGIN(bugprone-easily-swappable-parameters)
 Context::Context(EGLDisplay display,
                  EGLContext context,
                  EGLSurface readSurface,
@@ -308,6 +309,7 @@ Context::Context(EGLDisplay display,
                  EGLConfig config,
                  bool ownsContext,
                  bool ownsSurfaces) :
+  // NOLINTEND(bugprone-easily-swappable-parameters)
   contextOwned_(ownsContext),
   surfacesOwned_(ownsSurfaces),
   display_(display),
@@ -417,6 +419,7 @@ void Context::setPresentationTime(long long presentationTimeNs) {
   CHECK_EGL_ERRORS();
 }
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 void Context::updateSurfaces(EGLSurface readSurface, EGLSurface drawSurface) {
   readSurface_ = readSurface;
   drawSurface_ = drawSurface;
