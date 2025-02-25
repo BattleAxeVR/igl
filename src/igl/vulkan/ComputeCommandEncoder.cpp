@@ -195,6 +195,32 @@ void ComputeCommandEncoder::bindTexture(uint32_t index, ITexture* texture) {
   binder_.bindTexture(index, static_cast<Texture*>(texture));
 }
 
+void ComputeCommandEncoder::bindImageTexture(uint32_t index,
+                                             ITexture* texture,
+                                             TextureFormat format) {
+  IGL_PROFILER_FUNCTION();
+
+  IGL_DEBUG_ASSERT(texture);
+
+  (void)format;
+
+  igl::vulkan::Texture* tex = static_cast<Texture*>(texture);
+  const VulkanImage* vkImage = tex ? &tex->getVulkanTexture().image_ : nullptr;
+
+  IGL_DEBUG_ASSERT(vkImage);
+
+  if (!vkImage || !vkImage->isStorageImage()) {
+    IGL_DEBUG_ABORT("A texture should be Storage");
+    return;
+  }
+
+  igl::vulkan::transitionToGeneral(cmdBuffer_, texture);
+
+  restoreLayout_.push_back(vkImage);
+
+  binder_.bindStorageImage(index, tex);
+}
+
 void ComputeCommandEncoder::bindBuffer(uint32_t index,
                                        IBuffer* buffer,
                                        size_t offset,

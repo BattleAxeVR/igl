@@ -101,6 +101,10 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
   IGL_DEBUG_ASSERT(uploadResult.isOk());
   Result::setResult(outResult, uploadResult);
 
+  if (hasResourceTracker()) {
+    buffer->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
   return buffer;
 }
 
@@ -132,6 +136,10 @@ std::unique_ptr<IShaderStages> Device::createShaderStages(const ShaderStagesDesc
     Result::setOk(outResult);
   }
 
+  if (hasResourceTracker()) {
+    shaderStages->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
   return shaderStages;
 }
 
@@ -144,6 +152,10 @@ std::shared_ptr<ISamplerState> Device::createSamplerState(const SamplerStateDesc
   auto samplerState = std::make_shared<SamplerState>(const_cast<Device&>(*this));
 
   Result::setResult(outResult, samplerState->create(desc));
+
+  if (hasResourceTracker()) {
+    samplerState->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
 
   return samplerState;
 }
@@ -159,6 +171,10 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   auto texture = std::make_shared<Texture>(const_cast<Device&>(*this), desc.format);
 
   const Result res = texture->create(sanitized);
+
+  if (hasResourceTracker()) {
+    texture->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
 
   Result::setResult(outResult, res);
 
@@ -261,7 +277,13 @@ std::shared_ptr<IShaderModule> Device::createShaderModule(const ShaderModuleDesc
     return nullptr;
   }
   Result::setResult(outResult, std::move(result));
-  return std::make_shared<ShaderModule>(desc.info, std::move(vulkanShaderModule));
+  auto shaderModule = std::make_shared<ShaderModule>(desc.info, std::move(vulkanShaderModule));
+
+  if (hasResourceTracker()) {
+    shaderModule->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
+  return shaderModule;
 }
 
 std::shared_ptr<VulkanShaderModule> Device::createShaderModule(const void* IGL_NULLABLE data,
@@ -374,12 +396,12 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
     const std::string bindlessTexturesSource = ctx_->config_.enableDescriptorIndexing ?
                                                                                       R"(
       // everything - indexed by global texture/sampler id
-      layout (set = 2, binding = 0) uniform texture2D kTextures2D[];
-      layout (set = 2, binding = 1) uniform texture2DArray kTextures2DArray[];
-      layout (set = 2, binding = 2) uniform texture3D kTextures3D[];
-      layout (set = 2, binding = 3) uniform textureCube kTexturesCube[];
-      layout (set = 2, binding = 4) uniform sampler kSamplers[];
-      layout (set = 2, binding = 5) uniform samplerShadow kSamplersShadow[];
+      layout (set = 3, binding = 0) uniform texture2D kTextures2D[];
+      layout (set = 3, binding = 1) uniform texture2DArray kTextures2DArray[];
+      layout (set = 3, binding = 2) uniform texture3D kTextures3D[];
+      layout (set = 3, binding = 3) uniform textureCube kTexturesCube[];
+      layout (set = 3, binding = 4) uniform sampler kSamplers[];
+      layout (set = 3, binding = 5) uniform samplerShadow kSamplersShadow[];
       // binding #6 is reserved for STORAGE_IMAGEs: check VulkanContext.cpp
       )"
                                                                                       : "";
@@ -448,6 +470,11 @@ std::shared_ptr<IFramebuffer> Device::createFramebuffer(const FramebufferDesc& d
 
   auto resource = std::make_shared<Framebuffer>(*this, desc);
   Result::setOk(outResult);
+
+  if (hasResourceTracker()) {
+    resource->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
   return resource;
 }
 
@@ -496,7 +523,13 @@ std::unique_ptr<IShaderLibrary> Device::createShaderLibrary(const ShaderLibraryD
   }
 
   Result::setResult(outResult, std::move(result));
-  return std::make_unique<ShaderLibrary>(std::move(modules));
+  auto shaderLibrary = std::make_unique<ShaderLibrary>(std::move(modules));
+
+  if (hasResourceTracker()) {
+    shaderLibrary->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
+  return shaderLibrary;
 }
 
 bool Device::hasFeature(DeviceFeatures feature) const {
