@@ -15,7 +15,6 @@
 #include <igl/opengl/ComputePipelineState.h>
 #include <igl/opengl/DepthStencilState.h>
 #include <igl/opengl/DeviceFeatureSet.h>
-#include <igl/opengl/Errors.h>
 #include <igl/opengl/Framebuffer.h>
 #include <igl/opengl/IContext.h>
 #include <igl/opengl/RenderPipelineState.h>
@@ -166,7 +165,7 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   const auto sanitized = sanitize(desc);
 
   std::unique_ptr<Texture> texture;
-#if IGL_DEBUG
+#if IGL_DEBUG_ABORT_ENABLED
   if (sanitized.type == TextureType::TwoD || sanitized.type == TextureType::TwoDArray) {
     size_t textureSizeLimit = 0;
     getFeatureLimits(DeviceFeatureLimits::MaxTextureDimension1D2D, textureSizeLimit);
@@ -211,6 +210,17 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   IGL_DEBUG_ASSERT(outResult == nullptr || (outResult->isOk() == (texture != nullptr)));
 
   return texture;
+}
+
+std::shared_ptr<ITexture> Device::createTextureView(std::shared_ptr<ITexture> texture,
+                                                    const TextureViewDesc& desc,
+                                                    Result* IGL_NULLABLE outResult) const noexcept {
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
+
+  Result::setResult(
+      outResult, Result::Code::Unimplemented, "Texture views are not (yet) implemented");
+
+  return nullptr;
 }
 
 std::shared_ptr<IVertexInputState> Device::createVertexInputState(const VertexInputStateDesc& desc,

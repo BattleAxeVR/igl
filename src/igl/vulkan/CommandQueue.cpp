@@ -5,13 +5,21 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <igl/vulkan/CommandQueue.h>
+
 #include <igl/vulkan/Buffer.h>
 #include <igl/vulkan/CommandBuffer.h>
-#include <igl/vulkan/CommandQueue.h>
 #include <igl/vulkan/EnhancedShaderDebuggingStore.h>
 #include <igl/vulkan/RenderCommandEncoder.h>
 #include <igl/vulkan/VulkanContext.h>
 #include <igl/vulkan/VulkanSwapchain.h>
+
+#define IGL_COMMAND_QUEUE_DEBUG_FENCES (IGL_DEBUG && 0)
+
+#if IGL_COMMAND_QUEUE_DEBUG_FENCES
+#include <cinttypes> // PRIx3
+#include <igl/vulkan/VulkanFence.h>
+#endif // IGL_COMMAND_QUEUE_DEBUG_FENCES
 
 namespace igl::vulkan {
 
@@ -21,10 +29,7 @@ std::shared_ptr<ICommandBuffer> CommandQueue::createCommandBuffer(const CommandB
                                                                   Result* /*outResult*/) {
   IGL_PROFILER_FUNCTION();
 
-  // for now, we want only 1 command buffer
-  IGL_DEBUG_ASSERT(!isInsideFrame_);
-
-  isInsideFrame_ = true;
+  ++numBuffersLeftToSubmit_;
 
   return std::make_shared<CommandBuffer>(device_.getVulkanContext(), desc);
 }
@@ -39,10 +44,34 @@ SubmitHandle CommandQueue::submit(const ICommandBuffer& cmdBuffer, bool /* endOf
 
   incrementDrawCount(cmdBuffer.getCurrentDrawCount());
 
-  IGL_DEBUG_ASSERT(isInsideFrame_);
+  --numBuffersLeftToSubmit_;
 
   auto* vkCmdBuffer =
       const_cast<CommandBuffer*>(static_cast<const vulkan::CommandBuffer*>(&cmdBuffer));
+
+#if IGL_COMMAND_QUEUE_DEBUG_FENCES
+  // Create label with Fence handle and Fence FD, if available
+  // A string such as "Submit command buffer (hex: 0x149b90a10, fd: 12345)" has 55 characters
+  char labelName[60];
+  if (vkCmdBuffer->wrapper_.fence_.exportable()) {
+    std::snprintf(labelName,
+                  sizeof(labelName),
+                  "Submit command buffer (hex: %#" PRIx64 ", fd: %d)",
+                  reinterpret_cast<uint64_t>(vkCmdBuffer->wrapper_.fence_.vkFence_),
+                  ctx.immediate_->cachedFDFromSubmitHandle(vkCmdBuffer->wrapper_.handle_));
+  } else {
+    std::snprintf(labelName,
+                  sizeof(labelName),
+                  "Submit command buffer (hex: %#" PRIx64 ")",
+                  reinterpret_cast<uint64_t>(vkCmdBuffer->wrapper_.fence_.vkFence_));
+  }
+
+  ivkCmdInsertDebugUtilsLabel(&ctx.vf_,
+                              vkCmdBuffer->getVkCommandBuffer(),
+                              labelName,
+                              kColorCommandBufferSubmissionWithFence.toFloatPtr());
+#endif // IGL_COMMAND_QUEUE_DEBUG_FENCES
+
   const bool presentIfNotDebugging = ctx.enhancedShaderDebuggingStore_ == nullptr;
   auto submitHandle = endCommandBuffer(ctx, vkCmdBuffer, presentIfNotDebugging);
 
@@ -82,8 +111,6 @@ SubmitHandle CommandQueue::endCommandBuffer(VulkanContext& ctx,
   ctx.syncMarkSubmitted(cmdBuffer->lastSubmitHandle_);
   ctx.processDeferredTasks();
   ctx.stagingDevice_->mergeRegionsAndFreeBuffers();
-
-  isInsideFrame_ = false;
 
   return cmdBuffer->lastSubmitHandle_.handle();
 }

@@ -61,7 +61,7 @@
 #define VK_FORMAT_BC7_UNORM_BLOCK 145
 #endif // USE_OPENGL_BACKEND
 
-#if defined(__cpp_lib_format)
+#if defined(__cpp_lib_format) && !IGL_PLATFORM_APPLE
 #include <format>
 #define IGL_FORMAT std::format
 #else
@@ -993,6 +993,11 @@ void initIGL() {
             !kPreferIntegratedGPU ? HWDeviceType::IntegratedGpu : HWDeviceType::DiscreteGpu;
         devices =
             vulkan::HWDevice::queryDevices(*ctx, HWDeviceQueryDesc(fallbackHardwareType), nullptr);
+      }
+      if (devices.empty() || cfg.headless) {
+        // LavaPipe etc
+        devices = vulkan::HWDevice::queryDevices(
+            *ctx, HWDeviceQueryDesc(HWDeviceType::SoftwareGpu), nullptr);
       }
       IGL_DEBUG_ASSERT(!devices.empty(), "GPU is not found");
       device_ =

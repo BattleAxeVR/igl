@@ -7,8 +7,8 @@
 
 #include "VulkanImmediateCommands.h"
 
-#include <igl/vulkan/Common.h>
 #include <utility>
+#include <igl/vulkan/Common.h>
 
 namespace igl::vulkan {
 
@@ -27,10 +27,31 @@ VulkanImmediateCommands::VulkanImmediateCommands(const VulkanFunctionTable& vf,
                queueFamilyIndex,
                debugName),
   debugName_(debugName),
+  lastSubmitSemaphore_({
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+      .semaphore = VK_NULL_HANDLE,
+      .value = 0ull,
+      .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      .deviceIndex = 0ul,
+  }),
+  waitSemaphore_({
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+      .semaphore = VK_NULL_HANDLE,
+      .value = 0ull,
+      .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      .deviceIndex = 0ul,
+  }),
+  signalSemaphore_({
+      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
+      .semaphore = VK_NULL_HANDLE,
+      .value = 0ull,
+      .stageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      .deviceIndex = 0ul,
+  }),
   useTimelineSemaphoreAndSynchronization2_(useTimelineSemaphoreAndSynchronization2) {
   IGL_PROFILER_FUNCTION();
 
-  vf_.vkGetDeviceQueue(device, queueFamilyIndex, 0, &queue_);
+  vf_.vkGetDeviceQueue(device_, queueFamilyIndex, 0, &queue_);
 
   buffers_.reserve(kMaxCommandBuffers);
 
@@ -42,7 +63,7 @@ VulkanImmediateCommands::VulkanImmediateCommands(const VulkanFunctionTable& vf,
                     exportableFences,
                     IGL_FORMAT("Fence: commandBuffer #{}", i).c_str()),
         VulkanSemaphore(
-            vf_, device, false, IGL_FORMAT("Semaphore: {} ({})", debugName, i).c_str()));
+            vf_, device_, false, IGL_FORMAT("Semaphore: {} ({})", debugName, i).c_str()));
     VK_ASSERT(ivkAllocateCommandBuffer(
         &vf_, device_, commandPool_.getVkCommandPool(), &buffers_[i].cmdBufAllocated_));
     buffers_[i].handle_.bufferIndex_ = i;
@@ -122,6 +143,7 @@ const VulkanImmediateCommands::CommandBufferWrapper& VulkanImmediateCommands::ac
 
   current->cmdBuf_ = current->cmdBufAllocated_;
   current->isEncoding_ = true;
+  current->fd = -1;
 
   const VkCommandBufferBeginInfo bi = {
       .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
@@ -348,6 +370,16 @@ VkFence VulkanImmediateCommands::getVkFenceFromSubmitHandle(SubmitHandle handle)
   }
 
   return buffers_[handle.bufferIndex_].fence_.vkFence_;
+}
+
+void VulkanImmediateCommands::storeFDInSubmitHandle(SubmitHandle handle, int fd) noexcept {
+  IGL_DEBUG_ASSERT(handle.bufferIndex_ < buffers_.size());
+  buffers_[handle.bufferIndex_].fd = fd;
+}
+
+int VulkanImmediateCommands::cachedFDFromSubmitHandle(SubmitHandle handle) const noexcept {
+  IGL_DEBUG_ASSERT(handle.bufferIndex_ < buffers_.size());
+  return buffers_[handle.bufferIndex_].fd;
 }
 
 } // namespace igl::vulkan

@@ -8,10 +8,9 @@
 #include <igl/opengl/VertexInputState.h>
 
 #include <cstdlib>
-#include <igl/opengl/Device.h>
-#include <igl/opengl/Errors.h>
 #include <string>
 #include <vector>
+#include <igl/opengl/Device.h>
 
 namespace igl::opengl {
 

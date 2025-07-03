@@ -235,12 +235,15 @@
 ///--------------------------------------
 /// MARK: - Debug
 
+#if !defined(IGL_CMAKE_BUILD) && !defined(IGL_DEBUG)
+
+// @fb-only
+
+#endif // !defined(IGL_CMAKE_BUILD) && !defined(IGL_DEBUG)
+
 // clang-format off
 #if !defined(IGL_DEBUG) // allow build systems to define it
-#if defined(IGL_BUILD_MODE_OPT)
-  // Forced opt build.
-  #define IGL_DEBUG 0
-#elif IGL_PLATFORM_ANDROID && !defined(FBANDROID_BUILD_MODE_OPT)
+#if IGL_PLATFORM_ANDROID && !defined(FBANDROID_BUILD_MODE_OPT)
   // On Android, buck defines NDEBUG for all builds so the test above doesn't work.
   // FBANDROID_BUILD_MODE_OPT is only defined in production builds and was created
   // with the exact purpose of allowing native code to differentiate build modes.
@@ -261,6 +264,18 @@
 #endif
 // clang-format on
 
+///--------------------------------------
+/// MARK: - Logging
+
+#if IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS)
+#define IGL_LOGGING_ENABLED 1
+#else
+#define IGL_LOGGING_ENABLED 0
+#endif
+
+///--------------------------------------
+/// MARK: - Soft Errors
+
 // clang-format off
 #if !defined(IGL_SOFT_ERROR_ENABLED)
   // Either we have IGL_DEBUG, or Windows/Linux/etc, since we don't have good detection mechanism there.
@@ -271,3 +286,18 @@
   #endif
 #endif
 // clang-format on
+
+///--------------------------------------
+/// MARK: - Debug Asserts
+
+#if IGL_LOGGING_ENABLED
+#define IGL_DEBUG_ABORT_ENABLED 1
+#else
+#define IGL_DEBUG_ABORT_ENABLED 0
+#endif
+
+#if IGL_DEBUG
+#define IGL_DEBUG_BREAK_ENABLED 1
+#else
+#define IGL_DEBUG_BREAK_ENABLED 0
+#endif

@@ -11,8 +11,6 @@
 
 #include <array>
 #include <glm/glm.hpp>
-#include <igl/IGL.h>
-#include <igl/Macros.h>
 #include <shell/openxr/XrComposition.h>
 #include <shell/openxr/XrPlatform.h>
 #include <shell/openxr/XrRefreshRate.h>
@@ -26,6 +24,8 @@
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <igl/IGL.h>
+#include <igl/Macros.h>
 
 #ifndef ENABLE_META_OPENXR_FEATURES
 #define ENABLE_META_OPENXR_FEATURES 1

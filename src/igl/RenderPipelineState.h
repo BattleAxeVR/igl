@@ -7,13 +7,13 @@
 
 #pragma once
 
+#include <unordered_map>
+#include <vector>
 #include <igl/Common.h>
 #include <igl/NameHandle.h>
 #include <igl/RenderPipelineReflection.h>
 #include <igl/Shader.h>
 #include <igl/Texture.h>
-#include <unordered_map>
-#include <vector>
 
 namespace igl {
 
@@ -144,7 +144,6 @@ struct RenderPipelineDesc {
       BlendFactor srcAlphaBlendFactor = BlendFactor::One;
       BlendFactor dstRGBBlendFactor = BlendFactor::Zero;
       BlendFactor dstAlphaBlendFactor = BlendFactor::Zero;
-      ColorAttachment() = default;
       bool operator==(const ColorAttachment& other) const;
       bool operator!=(const ColorAttachment& other) const;
     };
@@ -221,19 +220,21 @@ class IRenderPipelineState {
   explicit IRenderPipelineState(RenderPipelineDesc desc) : desc_(std::move(desc)) {}
   virtual ~IRenderPipelineState() = default;
 
-  virtual std::shared_ptr<IRenderPipelineReflection> renderPipelineReflection() = 0;
+  [[nodiscard]] virtual std::shared_ptr<IRenderPipelineReflection> renderPipelineReflection() = 0;
   virtual void setRenderPipelineReflection(
       const IRenderPipelineReflection& renderPipelineReflection) = 0;
 
-  virtual int getIndexByName(const NameHandle& /* name */, ShaderStage /* stage */) const {
+  [[nodiscard]] virtual int getIndexByName(const NameHandle& /* name */,
+                                           ShaderStage /* stage */) const {
     return -1;
   }
 
-  virtual int getIndexByName(const std::string& /* name */, ShaderStage /* stage */) const {
+  [[nodiscard]] virtual int getIndexByName(const std::string& /* name */,
+                                           ShaderStage /* stage */) const {
     return -1;
   }
 
-  const RenderPipelineDesc& getRenderPipelineDesc() const {
+  [[nodiscard]] const RenderPipelineDesc& getRenderPipelineDesc() const {
     return desc_;
   }
 

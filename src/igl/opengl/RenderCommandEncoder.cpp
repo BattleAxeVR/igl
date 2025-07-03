@@ -10,7 +10,6 @@
 #include <igl/opengl/Buffer.h>
 #include <igl/opengl/CommandBuffer.h>
 #include <igl/opengl/DepthStencilState.h>
-#include <igl/opengl/Errors.h>
 #include <igl/opengl/Framebuffer.h>
 #include <igl/opengl/IContext.h>
 #include <igl/opengl/RenderCommandAdapter.h>
@@ -138,6 +137,8 @@ void RenderCommandEncoder::endEncoding() {
 
     adapter_->endEncoding();
     getContext().getAdapterPool().push_back(std::move(adapter_));
+
+    framebuffer_->unbind();
 
     if (resolveFramebuffer_) {
       Result outResult;

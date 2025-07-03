@@ -29,7 +29,6 @@ add_subdirectory(${IGL_ROOT_DIR}/third-party/deps/src/glslang "glslang")
 igl_set_folder(GenericCodeGen     "third-party/glslang")
 igl_set_folder(glslang            "third-party/glslang")
 igl_set_folder(MachineIndependent "third-party/glslang")
-igl_set_folder(OGLCompiler        "third-party/glslang")
 igl_set_folder(OSDependent        "third-party/glslang")
 igl_set_folder(SPIRV              "third-party/glslang")
 igl_set_folder(glslang-default-resource-limits "third-party/glslang")
@@ -39,4 +38,5 @@ target_link_libraries(IGLGlslang PUBLIC glslang SPIRV glslang-default-resource-l
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(IGLGlslang PRIVATE "-Wno-nullability-completeness")
+  target_compile_options(MachineIndependent PRIVATE "-Wno-unused-but-set-variable")
 endif()

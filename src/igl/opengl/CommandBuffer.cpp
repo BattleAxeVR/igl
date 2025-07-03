@@ -9,13 +9,13 @@
 
 #include <igl/opengl/Buffer.h>
 #include <igl/opengl/ComputeCommandEncoder.h>
-#include <igl/opengl/Errors.h>
 #include <igl/opengl/IContext.h>
 #include <igl/opengl/RenderCommandEncoder.h>
 
 namespace igl::opengl {
 
-CommandBuffer::CommandBuffer(std::shared_ptr<IContext> context) : context_(std::move(context)) {}
+CommandBuffer::CommandBuffer(std::shared_ptr<IContext> context, CommandBufferDesc desc) :
+  ICommandBuffer(std::move(desc)), context_(std::move(context)) {}
 
 CommandBuffer::~CommandBuffer() = default;
 

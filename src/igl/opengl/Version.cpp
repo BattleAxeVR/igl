@@ -8,10 +8,8 @@
 #include <igl/opengl/Version.h>
 
 #include <cstdint>
-#include <igl/Assert.h>
-#include <igl/Log.h>
+#include <igl/opengl/Config.h>
 #include <igl/opengl/GLIncludes.h>
-#include <igl/opengl/Macros.h>
 
 namespace igl::opengl {
 namespace {
@@ -196,7 +194,7 @@ GLVersion getGLVersion(const char* version, bool constrain) {
   if (constrain) {
     auto [constrainedMajorVersion, constrainedMinorVersion] =
         constrainVersion(majorVersion, minorVersion);
-#if IGL_DEBUG
+#if IGL_LOGGING_ENABLED
     if (constrainedMajorVersion != majorVersion || constrainedMinorVersion != minorVersion) {
 #if IGL_OPENGL_ES
       static constexpr std::string_view gl = "OpenGL ES";
@@ -217,7 +215,7 @@ GLVersion getGLVersion(const char* version, bool constrain) {
                    constrainedMajorVersion,
                    constrainedMinorVersion);
     }
-#endif // IGL_DEBUG
+#endif // IGL_LOGGING_ENABLED
     majorVersion = constrainedMajorVersion;
     minorVersion = constrainedMinorVersion;
   }

@@ -11,7 +11,6 @@
 #include <igl/RenderPass.h>
 #include <igl/opengl/Device.h>
 #include <igl/opengl/DummyTexture.h>
-#include <igl/opengl/Errors.h>
 
 #include <algorithm>
 #if !IGL_PLATFORM_ANDROID
@@ -71,7 +70,7 @@ Result checkFramebufferStatus(IContext& context, bool read) {
   return Result(code, message);
 }
 
-Texture::AttachmentParams toAttachmentParams(const RenderPassDesc::BaseAttachmentDesc& attachment,
+Texture::AttachmentParams toAttachmentParams(const RenderPassDesc::AttachmentDesc& attachment,
                                              FramebufferMode mode) {
   Texture::AttachmentParams params{};
   params.face = attachment.face;
@@ -108,12 +107,7 @@ Texture::AttachmentParams toReadAttachmentParams(const TextureRangeDesc& range,
 }
 } // namespace
 
-FramebufferBindingGuard::FramebufferBindingGuard(IContext& context) :
-  context_(context),
-  currentRenderbuffer_(0),
-  currentFramebuffer_(0),
-  currentReadFramebuffer_(0),
-  currentDrawFramebuffer_(0) {
+FramebufferBindingGuard::FramebufferBindingGuard(IContext& context) : context_(context) {
   context_.getIntegerv(GL_RENDERBUFFER_BINDING, reinterpret_cast<GLint*>(&currentRenderbuffer_));
 
   // Only restore currently bound framebuffer if it's valid
@@ -153,7 +147,7 @@ bool Framebuffer::isSwapchainBound() const {
   return frameBufferID_ == 0;
 }
 
-void Framebuffer::attachAsColor(igl::ITexture& texture,
+void Framebuffer::attachAsColor(ITexture& texture,
                                 uint32_t index,
                                 const Texture::AttachmentParams& params) const {
   static_cast<Texture&>(texture).attachAsColor(index, params);
@@ -165,8 +159,7 @@ void Framebuffer::attachAsColor(igl::ITexture& texture,
                                        params.mipLevel);
 }
 
-void Framebuffer::attachAsDepth(igl::ITexture& texture,
-                                const Texture::AttachmentParams& params) const {
+void Framebuffer::attachAsDepth(ITexture& texture, const Texture::AttachmentParams& params) const {
   static_cast<Texture&>(texture).attachAsDepth(params);
   depthCachedState_.updateCache(params.stereo ? FramebufferMode::Stereo : FramebufferMode::Mono,
                                 params.layer,
@@ -174,7 +167,7 @@ void Framebuffer::attachAsDepth(igl::ITexture& texture,
                                 params.mipLevel);
 }
 
-void Framebuffer::attachAsStencil(igl::ITexture& texture,
+void Framebuffer::attachAsStencil(ITexture& texture,
                                   const Texture::AttachmentParams& params) const {
   static_cast<Texture&>(texture).attachAsStencil(params);
   stencilCachedState_.updateCache(params.stereo ? FramebufferMode::Stereo : FramebufferMode::Mono,
@@ -220,7 +213,7 @@ void Framebuffer::copyBytesColorAttachment(ICommandQueue& /* unused */,
 
   CustomFramebuffer extraFramebuffer(getContext());
 
-  auto& texture = static_cast<igl::opengl::Texture&>(*itexture);
+  auto& texture = static_cast<Texture&>(*itexture);
 
   Result ret;
   FramebufferDesc desc;
@@ -640,9 +633,9 @@ void CustomFramebuffer::prepareResource(const std::string& debugName, Result* ou
   if (createResolveFramebuffer && maskColorResolveAttachments != maskColorAttachments) {
     IGL_DEBUG_ASSERT_NOT_REACHED();
     if (outResult) {
-      *outResult = igl::Result(igl::Result::Code::ArgumentInvalid,
-                               "If resolve texture is specified on a color attachment it must be "
-                               "specified on all of them");
+      *outResult = Result(igl::Result::Code::ArgumentInvalid,
+                          "If resolve texture is specified on a color attachment it must be "
+                          "specified on all of them");
     }
     return;
   }

@@ -11,14 +11,17 @@
 
 #include <OpenGLES/EAGL.h>
 #include <QuartzCore/CAEAGLLayer.h>
-#include <igl/opengl/Errors.h>
-#include <igl/opengl/Texture.h>
 #import <objc/runtime.h>
+#include <igl/opengl/Texture.h>
 
 namespace igl::opengl::ios {
 namespace {
-EAGLContext* createEAGLContext(RenderingAPI api, EAGLSharegroup* sharegroup) {
-  if (api == RenderingAPI::GLES3) {
+EAGLContext* createEAGLContext(BackendVersion backendVersion, EAGLSharegroup* sharegroup) {
+  IGL_DEBUG_ASSERT(backendVersion.flavor == BackendFlavor::OpenGL_ES);
+  IGL_DEBUG_ASSERT(backendVersion.majorVersion == 3 || backendVersion.majorVersion == 2);
+  IGL_DEBUG_ASSERT(backendVersion.minorVersion == 0);
+
+  if (backendVersion.majorVersion == 3 && backendVersion.minorVersion == 0) {
     EAGLContext* context = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3
                                                  sharegroup:sharegroup];
     if (context == nullptr) {
@@ -26,7 +29,7 @@ EAGLContext* createEAGLContext(RenderingAPI api, EAGLSharegroup* sharegroup) {
     }
     return context;
   } else {
-    IGL_DEBUG_ASSERT(api == RenderingAPI::GLES2,
+    IGL_DEBUG_ASSERT(backendVersion.majorVersion == 2,
                      "IGL: unacceptable enum for rendering API for iOS\n");
     return [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2 sharegroup:sharegroup];
   }
@@ -36,7 +39,7 @@ void* getOrGenerateContextUniqueID(EAGLContext* context) {
   static const void* uniqueIdKey = &uniqueIdKey;
   static uint64_t idCounter = 0;
   NSNumber* key = objc_getAssociatedObject(context, &uniqueIdKey);
-  uint64_t contextId;
+  uint64_t contextId = 0;
   if (key == nullptr) {
     // Generate and set id if it doesn't exist
     contextId = idCounter++;
@@ -48,7 +51,7 @@ void* getOrGenerateContextUniqueID(EAGLContext* context) {
 }
 } // namespace
 
-Context::Context(RenderingAPI api) : context_(createEAGLContext(api, nil)) {
+Context::Context(BackendVersion backendVersion) : context_(createEAGLContext(backendVersion, nil)) {
   if (context_ != nil) {
     IContext::registerContext(getOrGenerateContextUniqueID(context_), this);
   }
@@ -56,7 +59,8 @@ Context::Context(RenderingAPI api) : context_(createEAGLContext(api, nil)) {
   initialize();
 }
 
-Context::Context(RenderingAPI api, Result* result) : context_(createEAGLContext(api, nil)) {
+Context::Context(BackendVersion backendVersion, Result* result) :
+  context_(createEAGLContext(backendVersion, nil)) {
   if (context_ != nil) {
     IContext::registerContext(getOrGenerateContextUniqueID(context_), this);
   } else {

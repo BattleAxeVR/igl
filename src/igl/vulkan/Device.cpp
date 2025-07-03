@@ -34,6 +34,20 @@
 
 namespace {
 
+#if IGL_SHADER_DUMP && IGL_DEBUG
+std::string sanitizeFileName(const std::string& fileName) {
+  std::string result;
+  for (const char c : fileName) {
+    if (std::isalnum(c) || c == '.' || c == '_' || c == '-') {
+      result += c;
+    } else {
+      result += '_';
+    }
+  }
+  return result;
+}
+#endif // IGL_SHADER_DUMP && IGL_DEBUG
+
 bool supportsFormat(const VulkanFunctionTable& vf,
                     VkPhysicalDevice physicalDevice,
                     VkFormat format) {
@@ -182,6 +196,36 @@ std::shared_ptr<ITexture> Device::createTextureInternal(const TextureDesc& desc,
   return res.isOk() ? texture : nullptr;
 }
 
+std::shared_ptr<ITexture> Device::createTextureView(std::shared_ptr<ITexture> texture,
+                                                    const TextureViewDesc& desc,
+                                                    Result* IGL_NULLABLE outResult) const noexcept {
+  IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
+
+  IGL_ENSURE_VULKAN_CONTEXT_THREAD(ctx_);
+
+  if (!IGL_DEBUG_VERIFY(texture)) {
+    Result::setResult(outResult,
+                      Result(Result::Code::ArgumentInvalid, "A base texture should be specified"));
+    return {};
+  }
+
+  const Texture& baseTexture = static_cast<Texture&>(*texture);
+
+  auto newTexture = std::make_shared<Texture>(
+      const_cast<Device&>(*this),
+      desc.format == TextureFormat::Invalid ? baseTexture.getFormat() : desc.format);
+
+  const Result res = newTexture->createView(baseTexture, desc);
+
+  if (hasResourceTracker()) {
+    newTexture->initResourceTracker(getResourceTracker(), desc.debugName);
+  }
+
+  Result::setResult(outResult, res);
+
+  return res.isOk() ? newTexture : nullptr;
+}
+
 std::shared_ptr<IVertexInputState> Device::createVertexInputStateInternal(
     const VertexInputStateDesc& desc,
     Result* IGL_NULLABLE outResult) const {
@@ -306,8 +350,8 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(const void* IGL_N
   for (int i = 0; i < (length / sizeof(uint32_t)); i++) {
     hash ^= std::hash<uint32_t>()(words[i]);
   }
-  std::string filename =
-      IGL_FORMAT("{}{}{}.spv", IGL_SHADER_DUMP_PATH, debugName, std::to_string(hash));
+  const std::string filename = IGL_FORMAT(
+      "{}{}{}.spv", IGL_SHADER_DUMP_PATH, sanitizeFileName(debugName), std::to_string(hash));
   IGL_LOG_INFO("Dumping shader to: %s", filename.c_str());
   if (!std::filesystem::exists(filename)) {
     std::ofstream spirvFile;
@@ -378,19 +422,19 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
                                       : "";
 
     // GL_EXT_debug_printf extension
-    if (ctx_->extensions_.enabled(VK_KHR_SHADER_NON_SEMANTIC_INFO_EXTENSION_NAME)) {
+    if (ctx_->features_.has_VK_KHR_shader_non_semantic_info) {
       extraExtensions += "#extension GL_EXT_debug_printf : enable\n";
     }
 
     const std::string enhancedShaderDebuggingCode =
         EnhancedShaderDebuggingStore::recordLineShaderCode(
-            ctx_->enhancedShaderDebuggingStore_ != nullptr, ctx_->extensions_);
+            ctx_->enhancedShaderDebuggingStore_ != nullptr, ctx_->features_);
 
-    if (ctx_->features().VkPhysicalDeviceShaderFloat16Int8Features_.shaderFloat16 == VK_TRUE) {
+    if (ctx_->features_.featuresShaderFloat16Int8.shaderFloat16 == VK_TRUE) {
       extraExtensions += "#extension GL_EXT_shader_explicit_arithmetic_types_float16 : require\n";
     }
 
-    if (ctx_->config_.enableBufferDeviceAddress) {
+    if (ctx_->features_.has_VK_KHR_buffer_device_address) {
       extraExtensions += "#extension GL_EXT_buffer_reference : require\n";
       extraExtensions += "#extension GL_EXT_buffer_reference_uvec2 : require\n";
     }
@@ -606,9 +650,9 @@ bool Device::hasFeatureInternal(DeviceFeatures feature) const {
   case DeviceFeatures::BufferDeviceAddress:
     return true;
   case DeviceFeatures::Multiview:
-    return ctx_->features().VkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE;
+    return ctx_->features().featuresMultiview.multiview == VK_TRUE;
   case DeviceFeatures::MultiViewMultisample:
-    return ctx_->features().VkPhysicalDeviceMultiviewFeatures_.multiview == VK_TRUE &&
+    return ctx_->features().featuresMultiview.multiview == VK_TRUE &&
            deviceProperties.limits.framebufferColorSampleCounts > VK_SAMPLE_COUNT_1_BIT;
   case DeviceFeatures::BindUniform:
     return false;
@@ -637,10 +681,14 @@ bool Device::hasFeatureInternal(DeviceFeatures feature) const {
     return true;
   case DeviceFeatures::DrawIndexedIndirect:
     return true;
+  case DeviceFeatures::DrawInstanced:
+    return true;
   case DeviceFeatures::Indices8Bit:
-    return ctx_->extensions_.has8BitIndices;
+    return ctx_->features_.has_VK_EXT_index_type_uint8;
   case DeviceFeatures::ValidationLayersEnabled:
     return ctx_->areValidationLayersEnabled();
+  case DeviceFeatures::TextureViews:
+    return true;
   }
 
   IGL_DEBUG_ABORT("DeviceFeatures value not handled: %d", (int)feature);

@@ -7,13 +7,13 @@
 
 #pragma once
 
-#include <igl/Common.h>
+#include <cstddef>
+#include <cstdint>
+#include <unordered_map>
 #include <igl/NameHandle.h>
 #include <igl/RenderPipelineReflection.h>
 #include <igl/Shader.h>
 #include <igl/Texture.h>
-#include <map>
-#include <unordered_map>
 
 namespace igl {
 /**

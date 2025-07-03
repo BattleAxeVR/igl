@@ -9,11 +9,11 @@
 #include "data/VertexIndexData.h"
 #include "util/Common.h"
 
+#include <string>
 #include <igl/CommandBuffer.h>
 #include <igl/RenderPass.h>
 #include <igl/RenderPipelineState.h>
 #include <igl/VertexInputState.h>
-#include <string>
 
 // Use a 1x1 Framebuffer for this test
 #define OFFSCREEN_RT_WIDTH 1
@@ -119,7 +119,7 @@ class DeviceTest : public ::testing::Test {
   void TearDown() override {}
 
   // Member variables
- public:
+ protected:
   std::shared_ptr<IDevice> iglDev_;
   std::shared_ptr<ICommandQueue> cmdQueue_;
   std::shared_ptr<ICommandBuffer> cmdBuf_;

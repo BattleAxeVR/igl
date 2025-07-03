@@ -8,11 +8,10 @@
 // @fb-only
 
 #include <IGLU/simdtypes/SimdTypes.h>
-#include <igl/NameHandle.h>
-#include <igl/ShaderCreator.h>
-#include <igl/opengl/GLIncludes.h>
 #include <shell/renderSessions/TQSession.h>
 #include <shell/shared/renderSession/ShellParams.h>
+#include <igl/NameHandle.h>
+#include <igl/ShaderCreator.h>
 
 namespace igl::shell {
 namespace {
@@ -130,6 +129,7 @@ std::string getVulkanFragmentShaderSource() {
 std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
+  case igl::BackendType::Custom:
     IGL_DEBUG_ASSERT_NOT_REACHED();
     return nullptr;
   case igl::BackendType::Vulkan:
@@ -182,14 +182,7 @@ void TQSession::initialize() noexcept {
       BufferDesc(BufferDesc::BufferTypeBits::Vertex, vertexData, sizeof(vertexData));
   vb0_ = device.createBuffer(vbDesc, nullptr);
   IGL_DEBUG_ASSERT(vb0_ != nullptr);
-  const uint16_t indexData[] = {
-      0,
-      1,
-      2,
-      1,
-      3,
-      2,
-  };
+  const uint16_t indexData[] = {0, 1, 2, 1, 3, 2};
   const BufferDesc ibDesc =
       BufferDesc(BufferDesc::BufferTypeBits::Index, indexData, sizeof(indexData));
   ib0_ = device.createBuffer(ibDesc, nullptr);
@@ -197,10 +190,10 @@ void TQSession::initialize() noexcept {
 
   VertexInputStateDesc inputDesc;
   inputDesc.numAttributes = 2;
-  inputDesc.attributes[0] = VertexAttribute(
-      1, VertexAttributeFormat::Float3, offsetof(VertexPosUv, position), "position", 0);
+  inputDesc.attributes[0] = VertexAttribute{
+      1, VertexAttributeFormat::Float3, offsetof(VertexPosUv, position), "position", 0};
   inputDesc.attributes[1] =
-      VertexAttribute(1, VertexAttributeFormat::Float2, offsetof(VertexPosUv, uv), "uv_in", 1);
+      VertexAttribute{1, VertexAttributeFormat::Float2, offsetof(VertexPosUv, uv), "uv_in", 1};
   inputDesc.numInputBindings = 1;
   inputDesc.inputBindings[1].stride = sizeof(VertexPosUv);
   vertexInput0_ = device.createVertexInputState(inputDesc, nullptr);
@@ -222,12 +215,17 @@ void TQSession::initialize() noexcept {
   commandQueue_ = device.createCommandQueue(desc, nullptr);
   IGL_DEBUG_ASSERT(commandQueue_ != nullptr);
 
-  renderPass_.colorAttachments.resize(1);
-  renderPass_.colorAttachments[0].loadAction = LoadAction::Clear;
-  renderPass_.colorAttachments[0].storeAction = StoreAction::Store;
-  renderPass_.colorAttachments[0].clearColor = getPreferredClearColor();
-  renderPass_.depthAttachment.loadAction = LoadAction::Clear;
-  renderPass_.depthAttachment.clearDepth = 1.0;
+  renderPass_.colorAttachments = {
+      {
+          .loadAction = LoadAction::Clear,
+          .storeAction = StoreAction::Store,
+          .clearColor = getPreferredClearColor(),
+      },
+  };
+  renderPass_.depthAttachment = {
+      .loadAction = LoadAction::Clear,
+      .clearDepth = 1.0,
+  };
 
   // init uniforms
   fragmentParameters_ = FragmentFormat{{1.0f, 1.0f, 1.0f}};
@@ -263,19 +261,25 @@ void TQSession::update(SurfaceTextures surfaceTextures) noexcept {
 
   // Graphics pipeline
   if (pipelineState_ == nullptr) {
-    RenderPipelineDesc graphicsDesc;
-    graphicsDesc.vertexInputState = vertexInput0_;
-    graphicsDesc.shaderStages = shaderStages_;
-    graphicsDesc.targetDesc.colorAttachments.resize(1);
-    graphicsDesc.targetDesc.colorAttachments[0].textureFormat =
-        framebuffer_->getColorAttachment(0)->getFormat();
-    graphicsDesc.targetDesc.depthAttachmentFormat = framebuffer_->getDepthAttachment()->getFormat();
-    graphicsDesc.targetDesc.stencilAttachmentFormat =
-        framebuffer_->getStencilAttachment() ? framebuffer_->getStencilAttachment()->getFormat()
-                                             : igl::TextureFormat::Invalid;
-    graphicsDesc.fragmentUnitSamplerMap[textureUnit] = IGL_NAMEHANDLE("inputImage");
-    graphicsDesc.cullMode = igl::CullMode::Back;
-    graphicsDesc.frontFaceWinding = igl::WindingMode::Clockwise;
+    const RenderPipelineDesc graphicsDesc = {
+        .vertexInputState = vertexInput0_,
+        .shaderStages = shaderStages_,
+        .targetDesc =
+            {
+                .colorAttachments = {{.textureFormat =
+                                          framebuffer_->getColorAttachment(0)->getFormat()}},
+                .depthAttachmentFormat = framebuffer_->getDepthAttachment()->getFormat(),
+                .stencilAttachmentFormat = framebuffer_->getStencilAttachment()
+                                               ? framebuffer_->getStencilAttachment()->getFormat()
+                                               : igl::TextureFormat::Invalid,
+            },
+        .cullMode = igl::CullMode::Back,
+        .frontFaceWinding = igl::WindingMode::Clockwise,
+        .fragmentUnitSamplerMap =
+            {
+                std::pair<size_t, NameHandle>(textureUnit, IGL_NAMEHANDLE("inputImage")),
+            },
+    };
 
     pipelineState_ = getPlatform().getDevice().createRenderPipeline(graphicsDesc, nullptr);
     IGL_DEBUG_ASSERT(pipelineState_ != nullptr);
@@ -318,7 +322,14 @@ void TQSession::update(SurfaceTextures surfaceTextures) noexcept {
         commands->bindUniform(uniformDesc, &fragmentParameters_);
       }
     } else if (getPlatform().getDevice().hasFeature(DeviceFeatures::UniformBlocks)) {
-      commands->bindBuffer(0, fragmentParamBuffer_.get());
+      // @fb-only
+        // @fb-only
+                            // @fb-only
+                            // @fb-only
+                            // @fb-only
+      // @fb-only
+        commands->bindBuffer(0, fragmentParamBuffer_.get());
+      // @fb-only
     } else {
       IGL_DEBUG_ASSERT_NOT_REACHED();
     }

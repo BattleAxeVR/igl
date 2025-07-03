@@ -7,13 +7,13 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
 #include <igl/Common.h>
 #include <igl/DeviceFeatures.h>
 #include <igl/IResourceTracker.h>
 #include <igl/PlatformDevice.h>
 #include <igl/Texture.h>
-#include <utility>
-#include <vector>
 
 namespace igl {
 
@@ -148,6 +148,19 @@ class IDevice : public ICapabilities {
   virtual std::shared_ptr<ITexture> createTexture(const TextureDesc& desc,
                                                   Result* IGL_NULLABLE
                                                       outResult) const noexcept = 0;
+
+  /**
+   * @brief Creates a texture view resource.
+   * @see igl::TextureViewDesc
+   * @param desc Description for the desired resource.
+   * @param outResult Pointer to where the result (success, failure, etc) is written. Can be null if
+   * no reporting is desired.
+   * @return Shared pointer to the created texture.
+   */
+  virtual std::shared_ptr<ITexture> createTextureView(std::shared_ptr<ITexture> texture,
+                                                      const TextureViewDesc& desc,
+                                                      Result* IGL_NULLABLE
+                                                          outResult) const noexcept = 0;
 
   /**
    * @brief Creates a vertex input state.
@@ -294,7 +307,6 @@ class IDevice : public ICapabilities {
   /**
    * @brief This is only used by EGL-based clients, e.g. Android, to set the default framebuffer to
    * render to. For all other clients, this is a no-op.
-   * @param nativeWindowType Pointer to the native window to be rendered to.
    */
   virtual void updateSurface(void* IGL_NONNULL /*nativeWindowType*/) {}
 
@@ -341,6 +353,7 @@ class IDevice : public ICapabilities {
    *  - Metal: Magenta
    *  - Vulkan: Cyan
    // @fb-only
+   *  - Custom: Blue
    */
   [[nodiscard]] Color backendDebugColor() const noexcept;
 

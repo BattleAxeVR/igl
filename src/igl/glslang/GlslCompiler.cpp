@@ -6,12 +6,11 @@
  */
 
 #include <igl/glslang/GlslCompiler.h>
-#include <igl/glslang/GlslangHelpers.h>
-
-#include <igl/Macros.h>
 
 #include <cstdint>
 #include <string>
+#include <igl/Macros.h>
+#include <igl/glslang/GlslangHelpers.h>
 
 namespace igl::glslang {
 namespace {
@@ -31,7 +30,7 @@ namespace {
 
 // Logs GLSL shaders with line numbers annotation
 void logShaderSource(const char* text) {
-#if IGL_DEBUG
+#if IGL_LOGGING_ENABLED
   uint32_t line = 1;
 
   // IGLLog on Android also writes a new line,

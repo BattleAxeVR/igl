@@ -11,14 +11,14 @@
 #include <igl/NameHandle.h>
 
 #include <IGLU/simdtypes/SimdTypes.h>
+#include <shell/renderSessions/MRTSession.h>
+#include <shell/shared/renderSession/ShellParams.h>
 #include <igl/CommandBuffer.h>
 #include <igl/RenderPipelineState.h>
 #include <igl/SamplerState.h>
 #include <igl/ShaderCreator.h>
 #include <igl/VertexInputState.h>
 #include <igl/opengl/Device.h>
-#include <shell/renderSessions/MRTSession.h>
-#include <shell/shared/renderSession/ShellParams.h>
 
 namespace igl::shell {
 struct VertexPosUv {
@@ -251,6 +251,9 @@ static std::unique_ptr<IShaderStages> createShaderStagesForBackend(const IDevice
         "main",
         "",
         nullptr);
+  case igl::BackendType::Custom:
+    IGL_DEBUG_ABORT("No Custom shader available");
+    return nullptr;
   // @fb-only
     // @fb-only
     // @fb-only
@@ -299,10 +302,10 @@ void MRTSession::initialize() noexcept {
 
   VertexInputStateDesc inputDesc;
   inputDesc.numAttributes = 2;
-  inputDesc.attributes[0] = VertexAttribute(
-      0, VertexAttributeFormat::Float3, offsetof(VertexPosUv, position), "position", 0);
+  inputDesc.attributes[0] = VertexAttribute{
+      0, VertexAttributeFormat::Float3, offsetof(VertexPosUv, position), "position", 0};
   inputDesc.attributes[1] =
-      VertexAttribute(0, VertexAttributeFormat::Float2, offsetof(VertexPosUv, uv), "uv_in", 1);
+      VertexAttribute{0, VertexAttributeFormat::Float2, offsetof(VertexPosUv, uv), "uv_in", 1};
   inputDesc.numInputBindings = 1;
   inputDesc.inputBindings[0].stride = sizeof(VertexPosUv);
   vertexInput_ = device.createVertexInputState(inputDesc, nullptr);
@@ -319,9 +322,7 @@ void MRTSession::initialize() noexcept {
     shaderStagesDisplayLast_ = createShaderStagesForBackend(device, 1);
   }
 
-  // Command queue: backed by different types of GPU HW queues
-  const CommandQueueDesc desc{};
-  commandQueue_ = device.createCommandQueue(desc, nullptr);
+  commandQueue_ = device.createCommandQueue({}, nullptr);
 
   tex0_->generateMipmap(*commandQueue_);
 
@@ -382,10 +383,7 @@ void MRTSession::update(const igl::SurfaceTextures surfaceTextures) noexcept {
     pipelineStateMRT_ = device.createRenderPipeline(graphicsDesc, nullptr);
   }
 
-  // Command buffers (1-N per thread): create, submit and forget
-  const CommandBufferDesc cbDesc;
-  const std::shared_ptr<ICommandBuffer> buffer =
-      commandQueue_->createCommandBuffer(cbDesc, nullptr);
+  const std::shared_ptr<ICommandBuffer> buffer = commandQueue_->createCommandBuffer({}, nullptr);
 
   auto commands = buffer->createRenderCommandEncoder(renderPassMRT_, framebufferMRT_);
 
@@ -476,8 +474,9 @@ void MRTSession::createOrUpdateFramebufferDisplayLast(const igl::SurfaceTextures
   }
 
   // Framebuffer & Texture
-  FramebufferDesc framebufferDesc;
-  framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
+  const FramebufferDesc framebufferDesc = {
+      .colorAttachments = {{.texture = surfaceTextures.color}},
+  };
 
   framebufferDisplayLast_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, nullptr);
 }
@@ -494,10 +493,13 @@ void MRTSession::createOrUpdateFramebufferMRT(const igl::SurfaceTextures& surfac
     tex2_ = createTexture2D(surfaceTextures.color);
   }
   // Framebuffer & Texture
-  FramebufferDesc framebufferDesc;
-
-  framebufferDesc.colorAttachments[0].texture = tex1_;
-  framebufferDesc.colorAttachments[1].texture = tex2_;
+  const FramebufferDesc framebufferDesc = {
+      .colorAttachments =
+          {
+              {.texture = tex1_},
+              {.texture = tex2_},
+          },
+  };
 
   framebufferMRT_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, nullptr);
 }

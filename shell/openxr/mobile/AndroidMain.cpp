@@ -57,12 +57,12 @@ typedef _jobject* jobject;
 #include "ShellScalingApi.h"
 #endif // IGL_PLATFORM_WINDOWS
 
-static XrInstance gInstance_;
+static XrInstance gInstance;
 
 // This function cannot be declared as `static` due to our Android GitHub builds
 // @lint-ignore CLANGTIDY
 XrInstance getXrInstance() {
-  return gInstance_;
+  return gInstance;
 }
 
 
@@ -173,8 +173,8 @@ static void handleAppCmd(struct android_app* app, int32_t appCmd) {
 }
 
 void android_main(struct android_app* app) {
-  JNIEnv* Env = nullptr;
-  app->activity->vm->AttachCurrentThread(&Env, nullptr);
+  JNIEnv* env = nullptr;
+  app->activity->vm->AttachCurrentThread(&env, nullptr);
 
 #ifdef ATTACH_DEBUGGER
   sleep(20);
@@ -189,7 +189,7 @@ void android_main(struct android_app* app) {
     return;
   }
 
-  gInstance_ = xrApp->instance();
+  gInstance = xrApp->instance();
 
   app->onAppCmd = handleAppCmd;
   app->userData = xrApp.get();
@@ -245,7 +245,7 @@ int main(int argc, const char* argv[]) {
     return 1;
   }
 
-  gInstance_ = xrApp->instance();
+  gInstance = xrApp->instance();
   xrApp->setResumed(true);
 
   for (;;) {

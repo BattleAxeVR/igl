@@ -12,9 +12,9 @@
 
 #import "ViewController.h"
 
-#import <igl/Common.h>
 #include <shell/shared/renderSession/DefaultRenderSessionFactory.h>
 #include <shell/shared/renderSession/RenderSessionConfig.h>
+#import <igl/Common.h>
 
 namespace {
 
@@ -222,7 +222,7 @@ NSColorSpace* colorSpaceToNSColorSpace(igl::ColorSpace colorSpace) {
 }
 
 - (void)tearDownViewController {
-  if (self.tabViewController) {
+  if (self.tabViewController != nil) {
     for (NSInteger i = 0; i < [[self.tabViewController tabViewItems] count]; ++i) {
       NSTabViewItem* item = [self.tabViewController tabViewItems][i];
       ViewController* controller = (ViewController*)item.viewController;

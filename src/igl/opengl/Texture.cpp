@@ -10,7 +10,6 @@
 #include <algorithm>
 #include <igl/opengl/CommandBuffer.h>
 #include <igl/opengl/Device.h>
-#include <igl/opengl/Errors.h>
 #include <igl/opengl/util/TextureFormat.h>
 
 namespace igl::opengl {
@@ -263,7 +262,6 @@ bool Texture::toFormatDescGL(const IContext& ctx,
       IGL_LOG_INFO(
           "Texture format %s does not support SampledAttachment usage. Falling back to Sampled.\n",
           TextureFormatProperties::fromTextureFormat(textureFormat).name);
-      sampledOnly = true;
       sampledAttachment = false;
       attachmentOnly = false;
       attachment = false;

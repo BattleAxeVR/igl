@@ -8,6 +8,8 @@
 #include <igl/metal/Device.h>
 
 #import <Foundation/Foundation.h>
+#include <sstream>
+#include <unordered_set>
 #include <igl/metal/Buffer.h>
 #include <igl/metal/BufferSynchronizationManager.h>
 #include <igl/metal/CommandQueue.h>
@@ -21,8 +23,6 @@
 #include <igl/metal/Shader.h>
 #include <igl/metal/Texture.h>
 #include <igl/metal/VertexInputState.h>
-#include <sstream>
-#include <unordered_set>
 
 namespace igl::metal {
 
@@ -209,6 +209,17 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   IGL_DEBUG_ASSERT(outResult == nullptr || (outResult->isOk() == (iglObject != nullptr)));
 
   return iglObject;
+}
+
+std::shared_ptr<ITexture> Device::createTextureView(std::shared_ptr<ITexture> texture,
+                                                    const TextureViewDesc& desc,
+                                                    Result* IGL_NULLABLE outResult) const noexcept {
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
+
+  Result::setResult(
+      outResult, Result::Code::Unimplemented, "Texture views are not (yet) implemented");
+
+  return nullptr;
 }
 
 std::shared_ptr<IVertexInputState> Device::createVertexInputState(const VertexInputStateDesc& desc,

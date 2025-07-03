@@ -51,6 +51,7 @@ struct CommandBufferStatistics {
  */
 class ICommandBuffer {
  public:
+  explicit ICommandBuffer(CommandBufferDesc iDesc) : desc(std::move(iDesc)) {}
   virtual ~ICommandBuffer() = default;
 
   /**
@@ -147,6 +148,8 @@ class ICommandBuffer {
   void incrementCurrentDrawCount() {
     statistics_.currentDrawCount++;
   }
+
+  const CommandBufferDesc desc;
 
  private:
   CommandBufferStatistics statistics_;

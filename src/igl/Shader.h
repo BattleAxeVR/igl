@@ -7,10 +7,10 @@
 
 #pragma once
 
-#include <igl/Common.h>
-#include <igl/ITrackedResource.h>
 #include <utility>
 #include <vector>
+#include <igl/Common.h>
+#include <igl/ITrackedResource.h>
 
 namespace igl {
 
@@ -309,7 +309,7 @@ class IShaderStages : public ITrackedResource<IShaderStages> {
    */
   [[nodiscard]] bool isValid() const noexcept;
 
- private:
+ protected:
   ShaderStagesDesc desc_;
 };
 } // namespace igl

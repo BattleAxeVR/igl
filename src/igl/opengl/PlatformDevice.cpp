@@ -80,7 +80,7 @@ void PlatformDevice::blitFramebuffer(const std::shared_ptr<IFramebuffer>& src,
   auto& from = static_cast<Framebuffer&>(*src);
   auto& to = static_cast<Framebuffer&>(*dst);
 
-#if IGL_DEBUG
+#if IGL_DEBUG_ABORT_ENABLED
   // Guard against depth/stencil type mismatch:
   // GL_INVALID_OPERATION is generated if mask contains GL_DEPTH_BUFFER_BIT or GL_STENCIL_BUFFER_BIT
   // and the source and destination depth and stencil formats do not match.
@@ -94,9 +94,9 @@ void PlatformDevice::blitFramebuffer(const std::shared_ptr<IFramebuffer>& src,
     }
     if (srcDepthTexture && dstDepthTexture) {
       const GLenum srcFormat =
-          static_cast<igl::opengl::Texture*>(srcDepthTexture.get())->getGLInternalTextureFormat();
+          static_cast<Texture*>(srcDepthTexture.get())->getGLInternalTextureFormat();
       const GLenum dstFormat =
-          static_cast<igl::opengl::Texture*>(dstDepthTexture.get())->getGLInternalTextureFormat();
+          static_cast<Texture*>(dstDepthTexture.get())->getGLInternalTextureFormat();
       if (srcFormat != dstFormat) {
         IGL_DEBUG_ABORT(
             "PlatformDevice::blitFramebuffer: Mismatch of framebuffer depth attachment "
@@ -117,9 +117,9 @@ void PlatformDevice::blitFramebuffer(const std::shared_ptr<IFramebuffer>& src,
     }
     if (srcStencilTexture && dstStencilTexture) {
       const GLenum srcFormat =
-          static_cast<igl::opengl::Texture*>(srcStencilTexture.get())->getGLInternalTextureFormat();
+          static_cast<Texture*>(srcStencilTexture.get())->getGLInternalTextureFormat();
       const GLenum dstFormat =
-          static_cast<igl::opengl::Texture*>(dstStencilTexture.get())->getGLInternalTextureFormat();
+          static_cast<Texture*>(dstStencilTexture.get())->getGLInternalTextureFormat();
       if (srcFormat != dstFormat) {
         IGL_DEBUG_ABORT(
             "PlatformDevice::blitFramebuffer: Mismatch of framebuffer stencil "

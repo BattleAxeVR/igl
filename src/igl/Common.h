@@ -10,17 +10,16 @@
 #ifndef IGL_COMMON_H
 #define IGL_COMMON_H
 
-#include <cstdarg>
 #include <cstddef>
 #include <cstdint>
-#include <igl/Color.h>
-#include <igl/Core.h>
-#include <limits>
-#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <igl/Color.h>
+#include <igl/Core.h>
+
+#define IGL_ARRAY_NUM_ELEMENTS(x) (sizeof(x) / sizeof((x)[0]))
 
 namespace igl {
 
@@ -138,6 +137,7 @@ enum class BackendType {
   Metal,
   Vulkan,
   // @fb-only
+  Custom,
 };
 
 enum class BackendFlavor : uint8_t {
@@ -152,28 +152,17 @@ enum class BackendFlavor : uint8_t {
 std::string BackendTypeToString(BackendType backendType);
 
 ///--------------------------------------
-/// MARK: - Rect<T>
+/// MARK: - ScissorRect
 
-/// Use value-initialization (i.e. braces) to 0-initialize: `Rect<float> myRect{};`
-template<typename T>
-struct Rect {
- private:
-  static constexpr T kNullValue = std::numeric_limits<T>::has_infinity
-                                      ? std::numeric_limits<T>::infinity()
-                                      : std::numeric_limits<T>::max();
-
- public:
-  T x = kNullValue;
-  T y = kNullValue;
-  T width{}; // zero-initialize
-  T height{}; // zero-initialize
-
+struct ScissorRect {
+  uint32_t x = 0;
+  uint32_t y = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
   [[nodiscard]] bool isNull() const {
-    return kNullValue == x && kNullValue == y;
+    return width == 0 && height == 0;
   }
 };
-
-using ScissorRect = Rect<uint32_t>;
 
 ///--------------------------------------
 /// MARK: - Size
@@ -333,20 +322,20 @@ class Handle final {
 static_assert(sizeof(Handle<class Foo>) == sizeof(uint64_t));
 
 // specialized with dummy structs for type safety
-using BindGroupTextureHandle = igl::Handle<struct BindGroupTextureTag>;
-using BindGroupBufferHandle = igl::Handle<struct BindGroupBufferTag>;
-using TextureHandle = igl::Handle<struct TextureTag>;
-using SamplerHandle = igl::Handle<struct SamplerTag>;
-using DepthStencilStateHandle = igl::Handle<struct DepthStencilStateTag>;
+using BindGroupTextureHandle = Handle<struct BindGroupTextureTag>;
+using BindGroupBufferHandle = Handle<struct BindGroupBufferTag>;
+using TextureHandle = Handle<struct TextureTag>;
+using SamplerHandle = Handle<struct SamplerTag>;
+using DepthStencilStateHandle = Handle<struct DepthStencilStateTag>;
 
 class IDevice;
 
 // forward declarations to access incomplete type IDevice
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::BindGroupTextureHandle handle);
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::BindGroupBufferHandle handle);
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::TextureHandle handle);
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::SamplerHandle handle);
-void destroy(igl::IDevice* IGL_NULLABLE device, igl::DepthStencilStateHandle handle);
+void destroy(IDevice* IGL_NULLABLE device, BindGroupTextureHandle handle);
+void destroy(IDevice* IGL_NULLABLE device, BindGroupBufferHandle handle);
+void destroy(IDevice* IGL_NULLABLE device, TextureHandle handle);
+void destroy(IDevice* IGL_NULLABLE device, SamplerHandle handle);
+void destroy(IDevice* IGL_NULLABLE device, DepthStencilStateHandle handle);
 
 ///--------------------------------------
 /// MARK: - Holder
@@ -357,7 +346,7 @@ template<typename HandleType>
 class Holder final {
  public:
   Holder() noexcept = default;
-  Holder(igl::IDevice* IGL_NULLABLE device, HandleType handle) noexcept :
+  Holder(IDevice* IGL_NULLABLE device, HandleType handle) noexcept :
     device_(device), handle_(handle) {}
   ~Holder() {
     igl::destroy(device_, handle_);
@@ -412,7 +401,7 @@ class Holder final {
   }
 
  private:
-  igl::IDevice* IGL_NULLABLE device_ = nullptr;
+  IDevice* IGL_NULLABLE device_ = nullptr;
   HandleType handle_ = {};
 };
 

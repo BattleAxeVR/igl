@@ -7,13 +7,13 @@
 
 #pragma once
 
-#include <igl/Config.h>
 #include <memory>
 #include <shell/shared/renderSession/IRenderSessionFactory.h>
+#include <igl/Config.h>
 
 namespace igl::shell {
 
-#if IGL_PLATFORM_LINUX
+#if IGL_PLATFORM_LINUX || IGL_PLATFORM_APPLE
 __attribute__((weak))
 #endif // IGL_PLATFORM_LINUX
 std::unique_ptr<IRenderSessionFactory>

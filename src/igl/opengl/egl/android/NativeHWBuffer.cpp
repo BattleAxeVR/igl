@@ -5,20 +5,17 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include "NativeHWBuffer.h"
+// @fb-only
+// @fb-only
 
-#include "../Context.h"
-
-#include <android/api-level.h>
-#include <android/hardware_buffer.h>
-#include <android/log.h>
-#include <igl/Macros.h>
-#include <igl/opengl/Errors.h>
-#include <igl/opengl/GLIncludes.h>
+#include <igl/opengl/egl/android/NativeHWBuffer.h>
 
 #if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
-#if defined(IGL_API_LOG) && (IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS))
+#include <igl/opengl/Config.h>
+#include <igl/opengl/egl/Context.h>
+
+#if IGL_API_LOG && IGL_LOGGING_ENABLED
 #define APILOG_DEC_DRAW_COUNT() \
   if (apiLogDrawsLeft_) {       \
     apiLogDrawsLeft_--;         \
@@ -30,7 +27,7 @@
 #else
 #define APILOG_DEC_DRAW_COUNT() static_cast<void>(0)
 #define APILOG(format, ...) static_cast<void>(0)
-#endif // defined(IGL_API_LOG) && (IGL_DEBUG || defined(IGL_FORCE_ENABLE_LOGS))
+#endif // IGL_API_LOGs && IGL_LOGGING_ENABLED
 
 namespace igl::opengl::egl::android {
 

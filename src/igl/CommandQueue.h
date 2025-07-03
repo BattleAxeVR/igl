@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <memory>
 #include <igl/Common.h>
 
 namespace igl {
@@ -50,20 +51,20 @@ class ICommandQueue {
                                                               Result* IGL_NULLABLE outResult) = 0;
   virtual SubmitHandle submit(const ICommandBuffer& commandBuffer, bool endOfFrame = false) = 0;
   [[nodiscard]] uint32_t getLastFrameDrawCount() const {
-    return statistics.lastFrameDrawCount;
+    return statistics_.lastFrameDrawCount;
   }
   void endFrame() {
-    statistics.lastFrameDrawCount = statistics.currentDrawCount;
-    statistics.currentDrawCount = 0;
+    statistics_.lastFrameDrawCount = statistics_.currentDrawCount;
+    statistics_.currentDrawCount = 0;
   }
 
  protected:
   void incrementDrawCount(uint32_t newDrawCount) {
-    statistics.currentDrawCount += newDrawCount;
+    statistics_.currentDrawCount += newDrawCount;
   }
 
  private:
-  CommandQueueStatistics statistics;
+  CommandQueueStatistics statistics_;
 };
 
 } // namespace igl
