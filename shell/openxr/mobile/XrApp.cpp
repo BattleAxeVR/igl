@@ -266,7 +266,7 @@ bool XrApp::createInstance() {
                XR_VERSION_MINOR(instanceProps_.runtimeVersion),
                XR_VERSION_PATCH(instanceProps_.runtimeVersion));
 
-#if ENABLE_META_OPENXR_FEATURES
+#if (ENABLE_META_OPENXR_FEATURES && 0)
   if (simultaneousHandsAndControllersSupported()) {
     XR_CHECK(xrGetInstanceProcAddr(instance_,
                                    "xrResumeSimultaneousHandsAndControllersTrackingMETA",
