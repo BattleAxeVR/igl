@@ -20,7 +20,6 @@ namespace igl {
 struct BindGroupBufferDesc;
 struct BindGroupTextureDesc;
 struct BufferDesc;
-struct CommandQueueDesc;
 struct ComputePipelineDesc;
 struct DepthStencilStateDesc;
 struct FramebufferDesc;
@@ -29,21 +28,17 @@ struct SamplerStateDesc;
 struct ShaderLibraryDesc;
 struct ShaderModuleDesc;
 struct ShaderStagesDesc;
-struct TextureDesc;
 struct VertexInputStateDesc;
 class IBuffer;
-class ICommandQueue;
 class ICommandBuffer;
 class IComputePipelineState;
 class IDepthStencilState;
-class IDevice;
 class IFramebuffer;
 class IRenderPipelineState;
 class ISamplerState;
 class IShaderLibrary;
 class IShaderModule;
 class IShaderStages;
-class ITexture;
 class IVertexInputState;
 
 /**
@@ -92,9 +87,9 @@ class IDevice : public ICapabilities {
       const BindGroupBufferDesc& desc,
       Result* IGL_NULLABLE outResult = nullptr) = 0;
 
-  virtual void destroy(igl::BindGroupTextureHandle handle) = 0;
-  virtual void destroy(igl::BindGroupBufferHandle handle) = 0;
-  virtual void destroy(igl::SamplerHandle handle) = 0;
+  virtual void destroy(BindGroupTextureHandle handle) = 0;
+  virtual void destroy(BindGroupBufferHandle handle) = 0;
+  virtual void destroy(SamplerHandle handle) = 0;
 
   /**
    * @brief Creates a command queue.
@@ -301,7 +296,7 @@ class IDevice : public ICapabilities {
    * render to. For all other clients, this is a no-op.
    * @param nativeWindowType Pointer to the native window to be rendered to.
    */
-  virtual void updateSurface(void* IGL_NONNULL nativeWindowType);
+  virtual void updateSurface(void* IGL_NONNULL /*nativeWindowType*/) {}
 
   /**
    * @brief Creates a shader stages object.
@@ -391,8 +386,12 @@ class IDevice : public ICapabilities {
   } // NOTE: for now, this is implemented only in IGL/Vulkan and IGL/OpenGL
 
  protected:
-  virtual void beginScope();
-  virtual void endScope();
+  virtual void beginScope() {
+    ++scopeDepth_;
+  }
+  virtual void endScope() {
+    --scopeDepth_;
+  }
   [[nodiscard]] TextureDesc sanitize(const TextureDesc& desc) const;
   IDevice() = default;
 

@@ -138,6 +138,11 @@ class IContext {
                                GLenum format,
                                GLsizei imageSize,
                                const GLvoid* data);
+  void copyBufferSubData(GLenum readtarget,
+                         GLenum writetarget,
+                         GLintptr readoffset,
+                         GLintptr writeoffset,
+                         GLsizeiptr size);
   void copyTexSubImage2D(GLenum target,
                          GLint level,
                          GLint xoffset,
@@ -478,6 +483,10 @@ class IContext {
    */
   bool isLikelyValidObject() const {
     return zombieGuard_ == kNotAZombie;
+  }
+
+  virtual bool eglSupportssRGB() {
+    return true; // we don't have egl so assume support is good.
   }
 
  public:

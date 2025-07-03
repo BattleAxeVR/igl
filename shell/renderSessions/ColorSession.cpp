@@ -9,7 +9,6 @@
 
 #include <cstring>
 
-#include <IGLU/simdtypes/SimdTypes.h>
 #include <glm/gtc/color_space.hpp>
 #include <igl/NameHandle.h>
 #include <igl/ShaderCreator.h>
@@ -23,10 +22,6 @@
 namespace igl::shell {
 
 namespace {
-const glm::vec3 kLinearOrangeColor = glm::convertSRGBToLinear(glm::dvec3{1.0, 0.5, 0.0});
-const iglu::simdtypes::float3 kGPULinearOrangeColor = {static_cast<float>(kLinearOrangeColor.x),
-                                                       static_cast<float>(kLinearOrangeColor.y),
-                                                       static_cast<float>(kLinearOrangeColor.z)};
 
 struct VertexPosUv {
   iglu::simdtypes::float3 position;
@@ -154,7 +149,7 @@ std::string getVulkanFragmentShaderSource() {
 
 // @fb-only
 
-std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
+std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
     IGL_DEBUG_ASSERT_NOT_REACHED();
@@ -203,9 +198,12 @@ std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
 }
 } // namespace
 
-// clang-tidy off
 void ColorSession::initialize() noexcept {
-  // clang-tidy on
+  static const glm::vec3 kLinearOrangeColor = glm::convertSRGBToLinear(glm::dvec3{1.0, 0.5, 0.0});
+  const iglu::simdtypes::float3 kGPULinearOrangeColor = {static_cast<float>(kLinearOrangeColor.x),
+                                                         static_cast<float>(kLinearOrangeColor.y),
+                                                         static_cast<float>(kLinearOrangeColor.z)};
+
   auto& device = getPlatform().getDevice();
 
   // Vertex & Index buffer
@@ -243,7 +241,7 @@ void ColorSession::initialize() noexcept {
   } else if (colorTestModes_ == ColorTestModes::eOrangeClear) {
     tex0_ = getPlatform().loadTexture(igl::shell::ImageLoader::white());
     setPreferredClearColor(
-        igl::Color{kLinearOrangeColor.x, kLinearOrangeColor.y, kLinearOrangeColor.z, 1.0f});
+        Color{kLinearOrangeColor.x, kLinearOrangeColor.y, kLinearOrangeColor.z, 1.0f});
   }
 
   shaderStages_ = getShaderStagesForBackend(device);
@@ -278,10 +276,10 @@ void ColorSession::initialize() noexcept {
   IGL_DEBUG_ASSERT(fragmentParamBuffer_ != nullptr);
 }
 
-void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
-  igl::Result ret;
+void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
+  Result ret;
   if (framebuffer_ == nullptr) {
-    igl::FramebufferDesc framebufferDesc;
+    FramebufferDesc framebufferDesc;
     framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
     framebufferDesc.depthAttachment.texture = surfaceTextures.depth;
     framebufferDesc.mode = surfaceTextures.color->getNumLayers() > 1 ? FramebufferMode::Stereo
@@ -352,7 +350,7 @@ void ColorSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
   fragmentParamBuffer_->upload(&fragmentParameters_, {sizeof(fragmentParameters_)});
 
   // Submit commands
-  const std::shared_ptr<igl::IRenderCommandEncoder> commands =
+  const std::shared_ptr<IRenderCommandEncoder> commands =
       buffer->createRenderCommandEncoder(renderPass_, framebuffer_);
   IGL_DEBUG_ASSERT(commands != nullptr);
   if (commands) {

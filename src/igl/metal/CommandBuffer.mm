@@ -10,13 +10,14 @@
 #import <Foundation/Foundation.h>
 
 #import <Metal/Metal.h>
+#include <igl/metal/Buffer.h>
 #include <igl/metal/ComputeCommandEncoder.h>
 #include <igl/metal/RenderCommandEncoder.h>
 #include <igl/metal/Texture.h>
 
 namespace igl::metal {
 
-CommandBuffer::CommandBuffer(igl::metal::Device& device, id<MTLCommandBuffer> value) :
+CommandBuffer::CommandBuffer(Device& device, id<MTLCommandBuffer> value) :
   device_(device), value_(value) {}
 
 std::unique_ptr<IComputeCommandEncoder> CommandBuffer::createComputeCommandEncoder() {
@@ -49,6 +50,39 @@ void CommandBuffer::pushDebugGroupLabel(const char* label, const igl::Color& /*c
 
 void CommandBuffer::popDebugGroupLabel() const {
   [value_ popDebugGroup];
+}
+
+void CommandBuffer::copyBuffer(IBuffer& src,
+                               IBuffer& dst,
+                               uint64_t srcOffset,
+                               uint64_t dstOffset,
+                               uint64_t size) {
+  auto srcBuffer = static_cast<Buffer&>(src).get();
+  auto dstBuffer = static_cast<Buffer&>(dst).get();
+
+  auto blitCommandEncoder = [value_ blitCommandEncoder];
+  [blitCommandEncoder copyFromBuffer:srcBuffer
+                        sourceOffset:srcOffset
+                            toBuffer:dstBuffer
+                   destinationOffset:dstOffset
+                                size:size];
+  [blitCommandEncoder endEncoding];
+}
+
+void CommandBuffer::copyTextureToBuffer(ITexture& src,
+                                        IBuffer& dst,
+                                        uint64_t dstOffset,
+                                        uint32_t level,
+                                        uint32_t layer) {
+  (void)src;
+  (void)dst;
+  (void)dstOffset;
+  (void)level;
+  (void)layer;
+
+  // TODO:
+  // https://developer.apple.com/documentation/metal/mtlblitcommandencoder#Copying-Texture-Data-to-a-Buffer
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 }
 
 void CommandBuffer::waitUntilScheduled() {

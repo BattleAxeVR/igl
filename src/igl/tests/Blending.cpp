@@ -10,10 +10,15 @@
 #include "data/VertexIndexData.h"
 #include "igl/Texture.h"
 #include "util/Common.h"
-#include "util/TestDevice.h"
 
 #include <gtest/gtest.h>
+#include <igl/CommandBuffer.h>
+#include <igl/Framebuffer.h>
 #include <igl/NameHandle.h>
+#include <igl/RenderPass.h>
+#include <igl/RenderPipelineState.h>
+#include <igl/SamplerState.h>
+#include <igl/VertexInputState.h>
 #include <string>
 
 namespace igl::tests {

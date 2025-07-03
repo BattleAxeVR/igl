@@ -8,7 +8,6 @@
 #include <igl/metal/DeviceFeatureSet.h>
 
 #include "../util/Common.h"
-#include "../util/TestDevice.h"
 
 #include <gtest/gtest.h>
 #include <igl/IGL.h>
@@ -59,6 +58,7 @@ TEST_F(DeviceFeatureSetMTLTest, HasFeatureTest) {
   ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::ShaderLibrary), true);
   ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::BindBytes), true);
   ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::SRGB), true);
+  ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::SRGBSwapchain), true);
   ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::DrawIndexedIndirect), true);
   ASSERT_EQ(mtlDeviceFeatureSet.hasFeature(DeviceFeatures::ExplicitBinding), true);
 

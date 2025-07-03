@@ -52,10 +52,6 @@ Result NativeHWTextureBuffer::createTextureInternal(AHardwareBuffer* hwBuffer) {
   }
   AHardwareBuffer_Desc hwbDesc;
   AHardwareBuffer_describe(hwBuffer, &hwbDesc);
-  TextureDesc desc;
-  desc.width = hwbDesc.width;
-  desc.height = hwbDesc.height;
-  desc.usage = ::igl::android::getIglBufferUsage(hwbDesc.usage);
 
   auto& ctx = device_.getVulkanContext();
   auto device = device_.getVulkanContext().getVkDevice();
@@ -101,7 +97,11 @@ Result NativeHWTextureBuffer::createTextureInternal(AHardwareBuffer* hwBuffer) {
       .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID,
   };
 
-  desc.format = igl::vulkan::vkFormatToTextureFormat(ahb_format_props.format);
+  auto desc = TextureDesc::newNativeHWBufferImage(
+      igl::vulkan::vkFormatToTextureFormat(ahb_format_props.format),
+      igl::android::getIglBufferUsage(hwbDesc.usage),
+      hwbDesc.width,
+      hwbDesc.height);
 
   VkImage vk_image;
 
@@ -221,7 +221,7 @@ Result NativeHWTextureBuffer::createTextureInternal(AHardwareBuffer* hwBuffer) {
 
   if (ahb_format_props.format == VK_FORMAT_UNDEFINED && external_format.externalFormat) {
     viewInfo.pNext = &conversionInfo;
-    VkSamplerYcbcrConversionCreateInfo createInfo = {
+    vulkanImage.samplerYcbcrConversionCreateInfo_ = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_CREATE_INFO,
         .pNext = &external_format,
         .format = ahb_format_props.format,
@@ -236,8 +236,10 @@ Result NativeHWTextureBuffer::createTextureInternal(AHardwareBuffer* hwBuffer) {
         .chromaFilter = VK_FILTER_LINEAR,
         .forceExplicitReconstruction = VK_FALSE};
 
-    ctx.vf_.vkCreateSamplerYcbcrConversion(
-        device, &createInfo, nullptr, &conversionInfo.conversion);
+    ctx.vf_.vkCreateSamplerYcbcrConversion(device,
+                                           &vulkanImage.samplerYcbcrConversionCreateInfo_,
+                                           nullptr,
+                                           &conversionInfo.conversion);
     IGL_LOG_INFO("created sampler ycbcr conversion at %x with %d %d %d and %d",
                  conversionInfo.conversion,
                  ahb_format_props.suggestedYcbcrModel,
@@ -258,7 +260,8 @@ Result NativeHWTextureBuffer::createTextureInternal(AHardwareBuffer* hwBuffer) {
     return Result(Result::Code::RuntimeError, "Failed to create vulkan texture");
   }
 
-  desc_ = std::move(desc);
+  desc_ = desc; // Field within the Texture class
+  textureDesc_ = desc; // Field within the NativeHWTextureBuffer class
   texture_ = std::move(vkTexture);
 
   return Result{Result::Code::Ok};

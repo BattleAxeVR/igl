@@ -6,9 +6,8 @@
  */
 
 #include "../util/Common.h"
-#include "../util/TestDevice.h"
 
-#include <string>
+#include <igl/VertexInputState.h>
 
 namespace igl::tests {
 

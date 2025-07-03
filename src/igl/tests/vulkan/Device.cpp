@@ -6,10 +6,10 @@
  */
 
 #include <gtest/gtest.h>
-#include <igl/IGL.h>
 
 #include "../util/TestDevice.h"
 
+#include <igl/CommandBuffer.h>
 #if IGL_PLATFORM_WINDOWS || IGL_PLATFORM_ANDROID || IGL_PLATFORM_MACOSX || IGL_PLATFORM_LINUX
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/HWDevice.h>
@@ -75,6 +75,7 @@ TEST_F(DeviceVulkanTest, PlatformDevice) {
   auto cmdBuf = cmdQueue->createCommandBuffer(CommandBufferDesc(), &ret);
   auto submitHandle = cmdQueue->submit(*cmdBuf);
 
+  // NOLINTNEXTLINE(readability-qualified-auto)
   auto fence1 = vulkanPlatformDevice.getVkFenceFromSubmitHandle(submitHandle);
   ASSERT_NE(fence1, VK_NULL_HANDLE);
 
@@ -174,11 +175,11 @@ TEST_F(DeviceVulkanTest, StagingDeviceLargeBufferTest) {
 }
 
 TEST_F(DeviceVulkanTest, DestroyEmptyHandles) {
-  igl::destroy(iglDev_.get(), igl::BindGroupTextureHandle{});
-  igl::destroy(iglDev_.get(), igl::BindGroupBufferHandle{});
-  igl::destroy(iglDev_.get(), igl::TextureHandle{});
-  igl::destroy(iglDev_.get(), igl::SamplerHandle{});
-  igl::destroy(iglDev_.get(), igl::DepthStencilStateHandle{});
+  igl::destroy(iglDev_.get(), BindGroupTextureHandle{});
+  igl::destroy(iglDev_.get(), BindGroupBufferHandle{});
+  igl::destroy(iglDev_.get(), TextureHandle{});
+  igl::destroy(iglDev_.get(), SamplerHandle{});
+  igl::destroy(iglDev_.get(), DepthStencilStateHandle{});
 }
 
 TEST_F(DeviceVulkanTest, CurrentThreadIdTest) {
@@ -242,7 +243,7 @@ TEST_F(DeviceVulkanTest, UpdateGlslangResource) {
 }
 
 GTEST_TEST(VulkanContext, BufferDeviceAddress) {
-  std::shared_ptr<igl::IDevice> iglDev = nullptr;
+  std::shared_ptr<IDevice> iglDev = nullptr;
 
   igl::vulkan::VulkanContextConfig config;
 #if IGL_PLATFORM_MACOSX
@@ -324,7 +325,7 @@ GTEST_TEST(VulkanContext, BufferDeviceAddress) {
 }
 
 GTEST_TEST(VulkanContext, DescriptorIndexing) {
-  std::shared_ptr<igl::IDevice> iglDev = nullptr;
+  std::shared_ptr<IDevice> iglDev = nullptr;
 
   igl::vulkan::VulkanContextConfig config;
 #if IGL_PLATFORM_MACOSX

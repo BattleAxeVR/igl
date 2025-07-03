@@ -17,7 +17,7 @@ class Device;
 class CommandBuffer final : public ICommandBuffer,
                             public std::enable_shared_from_this<CommandBuffer> {
  public:
-  CommandBuffer(igl::metal::Device& device, id<MTLCommandBuffer> value);
+  CommandBuffer(Device& device, id<MTLCommandBuffer> value);
   ~CommandBuffer() override = default;
 
   std::unique_ptr<IComputeCommandEncoder> createComputeCommandEncoder() override;
@@ -34,6 +34,17 @@ class CommandBuffer final : public ICommandBuffer,
 
   void popDebugGroupLabel() const override;
 
+  void copyBuffer(IBuffer& src,
+                  IBuffer& dst,
+                  uint64_t srcOffset,
+                  uint64_t dstOffset,
+                  uint64_t size) override;
+  void copyTextureToBuffer(ITexture& src,
+                           IBuffer& dst,
+                           uint64_t dstOffset,
+                           uint32_t level,
+                           uint32_t layer) override;
+
   void waitUntilScheduled() override;
 
   void waitUntilCompleted() override;
@@ -42,12 +53,12 @@ class CommandBuffer final : public ICommandBuffer,
     return value_;
   }
 
-  igl::metal::Device& device() {
+  Device& device() {
     return device_;
   }
 
  private:
-  igl::metal::Device& device_;
+  Device& device_;
   id<MTLCommandBuffer> value_;
 };
 

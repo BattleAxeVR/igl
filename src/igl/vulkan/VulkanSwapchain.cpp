@@ -193,6 +193,7 @@ VulkanSwapchain::VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t he
   for (uint32_t i = 0; i < numSwapchainImages_; i++) {
     auto image = VulkanImage(
         ctx_, device_, swapchainImages[i], IGL_FORMAT("Image: swapchain #{}", i).c_str());
+    image.extent_ = {width, height, 1};
     // set usage flags for retrieved images
     image.usageFlags_ = usageFlags;
     image.imageFormat_ = surfaceFormat_.format;
@@ -208,16 +209,19 @@ VulkanSwapchain::VulkanSwapchain(VulkanContext& ctx, uint32_t width, uint32_t he
     swapchainTextures_[i] = std::make_shared<VulkanTexture>(std::move(image), std::move(imageView));
   }
 
-  // Create semaphores and sfence used to check the status of the acquire semaphore
+  // create semaphores and fences for swapchain images
   for (uint32_t i = 0; i < numSwapchainImages_; ++i) {
+    timelineWaitValues_.emplace_back(0);
     acquireSemaphores_.emplace_back(
         ctx_.vf_, device_, false, IGL_FORMAT("Semaphore: swapchain-acquire #{}", i).c_str());
-
-    acquireFences_.emplace_back(ctx_.vf_,
-                                device_,
-                                VK_FENCE_CREATE_SIGNALED_BIT,
-                                false,
-                                IGL_FORMAT("Fence: swapchain-acquire #{}", i).c_str());
+    if (!ctx_.timelineSemaphore_) {
+      // this can be removed once we switch to timeline semaphores
+      acquireFences_.emplace_back(ctx_.vf_,
+                                  device_,
+                                  VK_FENCE_CREATE_SIGNALED_BIT,
+                                  false,
+                                  IGL_FORMAT("Fence: swapchain-acquire #{}", i).c_str());
+    }
   }
 }
 
@@ -276,6 +280,7 @@ VkSemaphore VulkanSwapchain::getSemaphore() const noexcept {
 
 VulkanSwapchain::~VulkanSwapchain() {
   for (auto& fence : acquireFences_) {
+    // this can be removed once we switch to timeline semaphores
     fence.wait();
   }
   ctx_.vf_.vkDestroySwapchainKHR(device_, swapchain_, nullptr);
@@ -284,23 +289,51 @@ VulkanSwapchain::~VulkanSwapchain() {
 Result VulkanSwapchain::acquireNextImage() {
   IGL_PROFILER_FUNCTION();
 
-  // Check whether the semaphore can be used for acquiring by waiting on the acquireFence_
-  //   If semaphore is not VK_NULL_HANDLE it must not have any uncompleted signal or wait operations
-  //   pending
-  //   (https://vulkan.lunarg.com/doc/view/1.3.275.0/windows/1.3-extensions/vkspec.html#VUID-vkAcquireNextImageKHR-semaphore-01779)
-  acquireFences_[currentImageIndex_].wait();
-  acquireFences_[currentImageIndex_].reset();
+  VkResult acquireResult = VK_SUCCESS;
 
-  currentSemaphoreIndex_ = currentImageIndex_;
+  if (ctx_.timelineSemaphore_) {
+    const VkSemaphoreWaitInfo waitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO,
+        .semaphoreCount = 1,
+        .pSemaphores = &ctx_.timelineSemaphore_->vkSemaphore_,
+        .pValues = &timelineWaitValues_[currentImageIndex_],
+    };
+    VK_ASSERT(ctx_.vf_.vkWaitSemaphoresKHR(device_, &waitInfo, UINT64_MAX));
 
-  // when timeout is set to UINT64_MAX, we wait until the next image has been acquired
-  const auto acquireResult =
-      ctx_.vf_.vkAcquireNextImageKHR(device_,
-                                     swapchain_,
-                                     UINT64_MAX,
-                                     acquireSemaphores_[currentImageIndex_].vkSemaphore_,
-                                     acquireFences_[currentImageIndex_].vkFence_,
-                                     &currentImageIndex_);
+    VkSemaphore acquireSemaphore = acquireSemaphores_[currentImageIndex_].getVkSemaphore();
+    // when timeout is set to UINT64_MAX, we wait until the next image has been acquired
+    acquireResult = ctx_.vf_.vkAcquireNextImageKHR(
+        device_, swapchain_, UINT64_MAX, acquireSemaphore, VK_NULL_HANDLE, &currentImageIndex_);
+
+    currentSemaphoreIndex_ =
+        currentImageIndex_; // remove `currentSemaphoreIndex_` once we switch to timeline semaphores
+                            // (use `currentImageIndex_` instead)
+
+    getNextImage_ = false;
+
+    ctx_.immediate_->waitSemaphore(acquireSemaphore);
+  } else {
+    // this entire branch can be removed once we switch to timeline semaphores
+
+    // Check whether the semaphore can be used for acquiring by waiting on the acquireFence_
+    //   If semaphore is not VK_NULL_HANDLE it must not have any uncompleted signal or wait
+    //   operations pending
+    //   (https://vulkan.lunarg.com/doc/view/1.3.275.0/windows/1.3-extensions/vkspec.html#VUID-vkAcquireNextImageKHR-semaphore-01779)
+    acquireFences_[currentImageIndex_].wait();
+    acquireFences_[currentImageIndex_].reset();
+
+    currentSemaphoreIndex_ = currentImageIndex_;
+
+    // when timeout is set to UINT64_MAX, we wait until the next image has been acquired
+    acquireResult =
+        ctx_.vf_.vkAcquireNextImageKHR(device_,
+                                       swapchain_,
+                                       UINT64_MAX,
+                                       acquireSemaphores_[currentImageIndex_].vkSemaphore_,
+                                       acquireFences_[currentImageIndex_].vkFence_,
+                                       &currentImageIndex_);
+  }
+
   if (acquireResult == VK_SUBOPTIMAL_KHR) {
     IGL_LOG_INFO_ONCE(
         "vkAcquireNextImageKHR returned VK_SUBOPTIMAL_KHR. The Vulkan swapchain is no longer "
@@ -309,21 +342,27 @@ Result VulkanSwapchain::acquireNextImage() {
     VK_ASSERT_RETURN(acquireResult);
   }
 
-  // increase the frame number every time we acquire a new swapchain image
-  frameNumber_++;
   return Result();
 }
 
 Result VulkanSwapchain::present(VkSemaphore waitSemaphore) {
   IGL_PROFILER_FUNCTION();
 
-  IGL_PROFILER_ZONE("vkQueuePresent()", IGL_PROFILER_COLOR_PRESENT);
-  const auto presentResult =
-      ivkQueuePresent(&ctx_.vf_, graphicsQueue_, waitSemaphore, swapchain_, currentImageIndex_);
+  IGL_PROFILER_ZONE("vkQueuePresentKHR()", IGL_PROFILER_COLOR_PRESENT);
+  const VkPresentInfoKHR pi = {
+      .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+      .waitSemaphoreCount = 1u,
+      .pWaitSemaphores = &waitSemaphore,
+      .swapchainCount = 1u,
+      .pSwapchains = &swapchain_,
+      .pImageIndices = &currentImageIndex_,
+  };
+  const VkResult presentResult = ctx_.vf_.vkQueuePresentKHR(graphicsQueue_, &pi);
+
   if (presentResult == VK_SUBOPTIMAL_KHR) {
     IGL_LOG_INFO_ONCE(
-        "vkQueuePresent returned VK_SUBOPTIMAL_KHR. The Vulkan swapchain is no longer compatible "
-        "with the surface");
+        "vkQueuePresentKHR() returned VK_SUBOPTIMAL_KHR. The Vulkan swapchain is no longer "
+        "compatible with the surface");
   } else {
     VK_ASSERT_RETURN(presentResult);
   }
@@ -331,6 +370,7 @@ Result VulkanSwapchain::present(VkSemaphore waitSemaphore) {
 
   // Ready to call acquireNextImage() on the next getCurrentVulkanTexture();
   getNextImage_ = true;
+  frameNumber_++;
 
   IGL_PROFILER_FRAME(nullptr);
 

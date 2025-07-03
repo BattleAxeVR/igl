@@ -24,7 +24,7 @@ class RenderSession {
   virtual bool pre_update() noexcept { return true; }
   virtual bool post_update() noexcept { return true; }
   // NOLINTNEXTLINE(performance-unnecessary-value-param)
-  virtual void update(IGL_MAYBE_UNUSED igl::SurfaceTextures surfaceTextures) noexcept {}
+  virtual void update(IGL_MAYBE_UNUSED SurfaceTextures surfaceTextures) noexcept {}
   virtual void teardown() noexcept {}
 
 #if 1//DRAW_UI
@@ -70,7 +70,7 @@ class RenderSession {
   }
 
   void setPreferredClearColor(const igl::Color& color) noexcept;
-  igl::Color getPreferredClearColor() noexcept;
+  Color getPreferredClearColor() noexcept;
 
  protected:
   Platform& getPlatform() noexcept;
@@ -88,7 +88,7 @@ class RenderSession {
  private:
   std::shared_ptr<Platform> platform_;
   std::shared_ptr<AppParams> appParams_;
-  std::optional<igl::Color> preferredClearColor_;
+  std::optional<Color> preferredClearColor_;
   const ShellParams* shellParams_ = nullptr;
 };
 

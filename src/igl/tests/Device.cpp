@@ -8,8 +8,11 @@
 #include "data/ShaderData.h"
 #include "data/VertexIndexData.h"
 #include "util/Common.h"
-#include "util/TestDevice.h"
 
+#include <igl/CommandBuffer.h>
+#include <igl/RenderPass.h>
+#include <igl/RenderPipelineState.h>
+#include <igl/VertexInputState.h>
 #include <string>
 
 // Use a 1x1 Framebuffer for this test

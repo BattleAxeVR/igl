@@ -50,4 +50,20 @@ void CommandBuffer::popDebugGroupLabel() const {
   IGLU_SENTINEL_ASSERT_IF_NOT(shouldAssert_);
 }
 
+void CommandBuffer::copyBuffer(igl::IBuffer& src,
+                               igl::IBuffer& dst,
+                               uint64_t srcOffset,
+                               uint64_t dstOffset,
+                               uint64_t size) {
+  IGLU_SENTINEL_ASSERT_IF_NOT(shouldAssert_);
+}
+
+void CommandBuffer::copyTextureToBuffer(igl::ITexture& src,
+                                        igl::IBuffer& dst,
+                                        uint64_t dstOffset,
+                                        uint32_t level,
+                                        uint32_t layer) {
+  IGLU_SENTINEL_ASSERT_IF_NOT(shouldAssert_);
+}
+
 } // namespace iglu::sentinel

@@ -393,6 +393,7 @@ void transitionToGeneral(VkCommandBuffer cmdBuf, ITexture* texture) {
 
   const vulkan::Texture& tex = static_cast<Texture&>(*texture);
   const vulkan::VulkanImage& img = tex.getVulkanTexture().image_;
+  const vulkan::VulkanImageView& imgView = tex.getVulkanTexture().imageView_;
 
   if (!img.isStorageImage()) {
     IGL_DEBUG_ABORT("Did you forget to specify TextureUsageBits::Storage on your texture?");
@@ -405,13 +406,15 @@ void transitionToGeneral(VkCommandBuffer cmdBuf, ITexture* texture) {
       (img.imageLayout_ == VK_IMAGE_LAYOUT_GENERAL) ? VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
       : img.isDepthOrStencilFormat_                 ? VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
                                                     : VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  img.transitionLayout(
-      cmdBuf,
-      VK_IMAGE_LAYOUT_GENERAL,
-      srcStage,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VkImageSubresourceRange{
-          img.getImageAspectFlags(), 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS});
+  img.transitionLayout(cmdBuf,
+                       VK_IMAGE_LAYOUT_GENERAL,
+                       srcStage,
+                       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                       VkImageSubresourceRange{imgView.getVkImageAspectFlags(),
+                                               0,
+                                               VK_REMAINING_MIP_LEVELS,
+                                               0,
+                                               VK_REMAINING_ARRAY_LAYERS});
 }
 
 void transitionToColorAttachment(VkCommandBuffer cmdBuf, ITexture* colorTex) {
@@ -428,7 +431,8 @@ void transitionToColorAttachment(VkCommandBuffer cmdBuf, ITexture* colorTex) {
     IGL_LOG_ERROR("Color attachments cannot have depth/stencil formats");
     return;
   }
-  IGL_DEBUG_ASSERT(img.imageFormat_ != VK_FORMAT_UNDEFINED, "Invalid color attachment format");
+  IGL_DEBUG_ASSERT(img.imageFormat_ != VK_FORMAT_UNDEFINED || vkTex.getVkExtendedFormat() != 0,
+                   "Invalid color attachment format");
   if (!IGL_DEBUG_VERIFY((img.usageFlags_ & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) != 0)) {
     IGL_DEBUG_ABORT("Did you forget to specify TextureUsageBit::Attachment usage bit?");
     IGL_LOG_ERROR("Did you forget to specify TextureUsageBit::Attachment usage bit?");
@@ -496,20 +500,24 @@ void transitionToShaderReadOnly(VkCommandBuffer cmdBuf, ITexture* texture) {
 
   const vulkan::Texture& tex = static_cast<Texture&>(*texture);
   const vulkan::VulkanImage& img = tex.getVulkanTexture().image_;
+  const igl::vulkan::VulkanImageView& imgView = tex.getVulkanTexture().imageView_;
 
-  const bool isColor = (img.getImageAspectFlags() & VK_IMAGE_ASPECT_COLOR_BIT) > 0;
+  const bool isColor = (imgView.getVkImageAspectFlags() & VK_IMAGE_ASPECT_COLOR_BIT) > 0;
 
   if (img.usageFlags_ & VK_IMAGE_USAGE_SAMPLED_BIT) {
     // transition sampled images to VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-    img.transitionLayout(
-        cmdBuf,
-        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        isColor ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
-            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // wait for subsequent fragment/compute shaders
-        VkImageSubresourceRange{
-            img.getImageAspectFlags(), 0, VK_REMAINING_MIP_LEVELS, 0, VK_REMAINING_ARRAY_LAYERS});
+    img.transitionLayout(cmdBuf,
+                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                         isColor ? VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                 : VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+                             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, // wait for subsequent
+                                                                   // fragment/compute shaders
+                         VkImageSubresourceRange{imgView.getVkImageAspectFlags(),
+                                                 0,
+                                                 VK_REMAINING_MIP_LEVELS,
+                                                 0,
+                                                 VK_REMAINING_ARRAY_LAYERS});
   }
 }
 
@@ -603,7 +611,6 @@ PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() {
   }
   return (PFN_vkGetInstanceProcAddr)dlsym(lib, "vkGetInstanceProcAddr");
 #endif
-  return nullptr;
 }
 } // namespace
 
@@ -616,9 +623,12 @@ void initialize(VulkanFunctionTable& table) {
   }
 }
 
-void loadInstanceFunctions(VulkanFunctionTable& table, VkInstance instance) {
+void loadInstanceFunctions(VulkanFunctionTable& table,
+                           VkInstance instance,
+                           bool enableExtDebugUtils) {
   IGL_DEBUG_ASSERT(table.vkGetInstanceProcAddr != nullptr);
-  loadVulkanInstanceFunctions(&table, instance, table.vkGetInstanceProcAddr);
+  loadVulkanInstanceFunctions(
+      &table, instance, table.vkGetInstanceProcAddr, enableExtDebugUtils ? VK_TRUE : VK_FALSE);
 }
 
 void loadDeviceFunctions(VulkanFunctionTable& table, VkDevice device) {

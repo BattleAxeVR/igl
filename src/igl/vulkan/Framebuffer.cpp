@@ -102,6 +102,7 @@ void Framebuffer::copyBytesColorAttachment(ICommandQueue& /* Not Used */,
                                      vkTex.getProperties(),
                                      VK_FORMAT_R8G8B8A8_UNORM,
                                      vkTex.getVulkanTexture().image_.imageLayout_,
+                                     vkTex.getVulkanTexture().imageView_.getVkImageAspectFlags(),
                                      pixelBytes,
                                      static_cast<uint32_t>(bytesPerRow),
                                      true); // Flip the image vertically
@@ -175,6 +176,7 @@ void Framebuffer::copyTextureColorAttachment(ICommandQueue& cmdQueue,
   // 3. Copy Image
   const VkImageCopy copy =
       ivkGetImageCopy2D(VkOffset2D{static_cast<int32_t>(range.x), static_cast<int32_t>(range.y)},
+                        VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
                         VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
                         VkExtent2D{range.width, range.height});
 
@@ -281,7 +283,7 @@ void Framebuffer::validateAttachments() {
       IGL_DEBUG_ASSERT(height_ == attachmentHeight);
     }
 
-    IGL_DEBUG_ASSERT(tex.getVkFormat() != VK_FORMAT_UNDEFINED,
+    IGL_DEBUG_ASSERT(tex.getVkFormat() != VK_FORMAT_UNDEFINED || tex.getVkExtendedFormat() != 0,
                      "Invalid texture format: %d",
                      static_cast<int>(tex.getVkFormat()));
   };

@@ -7,11 +7,9 @@
 
 // @fb-only
 
-#include "BasicFramebufferSession.h"
+#include <shell/renderSessions/BasicFramebufferSession.h>
 
-#if !defined(IGL_PLATFORM_UWP)
 #include <igl/Common.h>
-#endif
 #include <shell/shared/platform/Platform.h>
 #include <shell/shared/renderSession/ShellParams.h>
 
@@ -30,11 +28,11 @@ void BasicFramebufferSession::initialize() noexcept {
   renderPass_.colorAttachments[0].clearColor = getPreferredClearColor();
 }
 
-void BasicFramebufferSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
-  igl::Result ret;
+void BasicFramebufferSession::update(SurfaceTextures surfaceTextures) noexcept {
+  Result ret;
   // Create/update framebuffer
   if (framebuffer_ == nullptr) {
-    igl::FramebufferDesc framebufferDesc;
+    FramebufferDesc framebufferDesc;
     framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
     framebuffer_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, &ret);
     IGL_DEBUG_ASSERT(ret.isOk());

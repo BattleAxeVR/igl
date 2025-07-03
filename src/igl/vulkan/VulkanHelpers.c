@@ -1201,8 +1201,8 @@ void ivkBufferBarrier(const struct VulkanFunctionTable* vt,
                       VkPipelineStageFlags dstStageMask) {
   VkBufferMemoryBarrier barrier = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
-      .srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+      .srcAccessMask = 0,
+      .dstAccessMask = 0,
       .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
       .buffer = buffer,
@@ -1210,9 +1210,29 @@ void ivkBufferBarrier(const struct VulkanFunctionTable* vt,
       .size = VK_WHOLE_SIZE,
   };
 
+  if (srcStageMask & VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) {
+    barrier.srcAccessMask |= VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  }
+  if (srcStageMask & VK_PIPELINE_STAGE_TRANSFER_BIT) {
+    barrier.srcAccessMask |= VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+  }
+  if (srcStageMask & VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) {
+    barrier.srcAccessMask |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  }
+
+  if (dstStageMask & VK_PIPELINE_STAGE_TRANSFER_BIT) {
+    barrier.dstAccessMask |= VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
+  }
+  if (dstStageMask & VK_PIPELINE_STAGE_ALL_COMMANDS_BIT) {
+    barrier.dstAccessMask |= VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT;
+  }
   if (dstStageMask & VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT) {
     barrier.dstAccessMask |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
   }
+  if (dstStageMask & VK_PIPELINE_STAGE_VERTEX_SHADER_BIT) {
+    barrier.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+  }
+
   if (usageFlags & VK_BUFFER_USAGE_INDEX_BUFFER_BIT) {
     barrier.dstAccessMask |= VK_ACCESS_INDEX_READ_BIT;
   }
@@ -1263,22 +1283,6 @@ void ivkCmdBlitImage(const struct VulkanFunctionTable* vt,
       .dstOffsets = {dstOffsets[0], dstOffsets[1]},
   };
   vt->vkCmdBlitImage(buffer, srcImage, srcImageLayout, dstImage, dstImageLayout, 1, &blit, filter);
-}
-
-VkResult ivkQueuePresent(const struct VulkanFunctionTable* vt,
-                         VkQueue graphicsQueue,
-                         VkSemaphore waitSemaphore,
-                         VkSwapchainKHR swapchain,
-                         uint32_t currentSwapchainImageIndex) {
-  const VkPresentInfoKHR pi = {
-      .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-      .waitSemaphoreCount = 1,
-      .pWaitSemaphores = &waitSemaphore,
-      .swapchainCount = 1,
-      .pSwapchains = &swapchain,
-      .pImageIndices = &currentSwapchainImageIndex,
-  };
-  return vt->vkQueuePresentKHR(graphicsQueue, &pi);
 }
 
 VkResult ivkSetDebugObjectName(const struct VulkanFunctionTable* vt,
@@ -1416,12 +1420,13 @@ VkBufferImageCopy ivkGetBufferImageCopy3D(uint32_t bufferOffset,
 }
 
 VkImageCopy ivkGetImageCopy2D(VkOffset2D srcDstOffset,
-                              VkImageSubresourceLayers srcDstImageSubresource,
+                              VkImageSubresourceLayers srcImageSubresource,
+                              VkImageSubresourceLayers dstImageSubresource,
                               const VkExtent2D imageRegion) {
   const VkImageCopy copy = {
-      .srcSubresource = srcDstImageSubresource,
+      .srcSubresource = srcImageSubresource,
       .srcOffset = {.x = srcDstOffset.x, .y = srcDstOffset.y, .z = 0},
-      .dstSubresource = srcDstImageSubresource,
+      .dstSubresource = dstImageSubresource,
       .dstOffset = {.x = srcDstOffset.x, .y = srcDstOffset.y, .z = 0},
       .extent = {.width = imageRegion.width, .height = imageRegion.height, .depth = 1u},
   };

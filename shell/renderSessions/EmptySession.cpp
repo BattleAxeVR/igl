@@ -7,7 +7,7 @@
 
 // @fb-only
 
-#include "EmptySession.h"
+#include <shell/renderSessions/EmptySession.h>
 
 namespace igl::shell {
 
@@ -15,6 +15,6 @@ void EmptySession::initialize() noexcept {
   getPlatform().getDevice();
 }
 
-void EmptySession::update(igl::SurfaceTextures surfaceTextures) noexcept {}
+void EmptySession::update(SurfaceTextures surfaceTextures) noexcept {}
 
 } // namespace igl::shell

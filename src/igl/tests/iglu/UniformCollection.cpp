@@ -7,7 +7,6 @@
 
 #include "../data/ShaderData.h"
 #include "../util/Common.h"
-#include "../util/TestDevice.h"
 #include "UniformTests.h"
 
 #include <IGLU/uniform/Collection.h>
@@ -37,9 +36,6 @@ class UniformCollectionTest : public ::testing::Test {
 };
 
 // ----------------------------------------------------------------------------
-
-template<typename T>
-class debug_t;
 
 //
 // Value Test

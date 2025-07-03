@@ -7,7 +7,8 @@
 
 // @fb-only
 
-#include "HelloWorldSession.h"
+#include <shell/renderSessions/HelloWorldSession.h>
+
 #include <igl/NameHandle.h>
 #include <igl/ShaderCreator.h>
 #include <igl/opengl/GLIncludes.h>
@@ -113,7 +114,7 @@ std::string getVulkanFragmentShaderSource() {
                 )";
 }
 
-std::unique_ptr<IShaderStages> getShaderStagesForBackend(igl::IDevice& device) {
+std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
     IGL_DEBUG_ASSERT_NOT_REACHED();
@@ -187,10 +188,10 @@ void HelloWorldSession::initialize() noexcept {
   renderPass_.depthAttachment.clearDepth = 1.0;
 }
 
-void HelloWorldSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
-  igl::Result ret;
+void HelloWorldSession::update(SurfaceTextures surfaceTextures) noexcept {
+  Result ret;
   if (framebuffer_ == nullptr) {
-    igl::FramebufferDesc framebufferDesc;
+    FramebufferDesc framebufferDesc;
     framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
     framebufferDesc.depthAttachment.texture = surfaceTextures.depth;
     if (surfaceTextures.depth && surfaceTextures.depth->getProperties().hasStencil()) {
@@ -230,7 +231,7 @@ void HelloWorldSession::update(igl::SurfaceTextures surfaceTextures) noexcept {
   auto drawableSurface = framebuffer_->getColorAttachment(0);
 
   // Submit commands
-  const std::shared_ptr<igl::IRenderCommandEncoder> commands =
+  const std::shared_ptr<IRenderCommandEncoder> commands =
       buffer->createRenderCommandEncoder(renderPass_, framebuffer_);
   IGL_DEBUG_ASSERT(commands != nullptr);
   if (commands) {

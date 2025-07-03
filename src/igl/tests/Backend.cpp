@@ -9,13 +9,16 @@
 #include "data/TextureData.h"
 #include "data/VertexIndexData.h"
 #include "util/Common.h"
-#include "util/TestDevice.h"
 
 #include <gtest/gtest.h>
+#include <igl/CommandBuffer.h>
 #include <igl/NameHandle.h>
+#include <igl/RenderPass.h>
+#include <igl/RenderPipelineState.h>
+#include <igl/SamplerState.h>
 #include <igl/Shader.h>
+#include <igl/VertexInputState.h>
 #include <memory>
-#include <string>
 
 namespace igl::tests {
 

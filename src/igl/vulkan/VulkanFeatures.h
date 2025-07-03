@@ -65,7 +65,7 @@ class VulkanFeatures final {
   /// @brief Checks the features enabled in this class against the ones passed
   /// in as a parameter in 'availableFeatures'. If a requested feature is not present, the class
   /// logs the message and returns a failure
-  [[nodiscard]] igl::Result checkSelectedFeatures(
+  [[nodiscard]] Result checkSelectedFeatures(
       const VulkanFeatures& availableFeatures) const noexcept;
 
   // Vulkan 1.1
@@ -97,6 +97,14 @@ class VulkanFeatures final {
   VkPhysicalDeviceIndexTypeUint8FeaturesEXT VkPhysicalDeviceIndexTypeUint8Features_ = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INDEX_TYPE_UINT8_FEATURES_EXT};
 #endif
+  VkPhysicalDeviceSynchronization2FeaturesKHR VkPhysicalDeviceSynchronization2Features_ = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
+      .synchronization2 = VK_TRUE,
+  };
+  VkPhysicalDeviceTimelineSemaphoreFeaturesKHR VkPhysicalDeviceTimelineSemaphoreFeatures_ = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES_KHR,
+      .timelineSemaphore = VK_TRUE,
+  };
 
   // Assignment operator. We need to reassemble the feature chain because of the
   // pNext pointers

@@ -17,9 +17,14 @@
 #include "util/Common.h"
 
 #include <igl/Buffer.h>
+#include <igl/CommandBuffer.h>
 #include <igl/DepthStencilState.h>
 #include <igl/NameHandle.h>
+#include <igl/RenderCommandEncoder.h>
+#include <igl/RenderPass.h>
 #include <igl/RenderPipelineState.h>
+#include <igl/SamplerState.h>
+#include <igl/VertexInputState.h>
 
 #define OFFSCREEN_RT_WIDTH 4
 #define OFFSCREEN_RT_HEIGHT 4
@@ -168,9 +173,8 @@ class RenderCommandEncoderTest : public ::testing::Test {
     const auto rangeDesc = TextureRangeDesc::new2D(0, 0, OFFSCREEN_TEX_WIDTH, OFFSCREEN_TEX_HEIGHT);
     texture_->upload(rangeDesc, data::texture::TEX_RGBA_GRAY_4x4);
 
-    auto createPipeline =
-        [&renderPipelineDesc_, &ret, this](
-            igl::PrimitiveType topology) -> std::shared_ptr<igl::IRenderPipelineState> {
+    auto createPipeline = [&renderPipelineDesc_, &ret, this](
+                              PrimitiveType topology) -> std::shared_ptr<IRenderPipelineState> {
       renderPipelineDesc_.topology = topology;
       return iglDev_->createRenderPipeline(renderPipelineDesc_, &ret);
     };
@@ -195,12 +199,12 @@ class RenderCommandEncoderTest : public ::testing::Test {
     ASSERT_TRUE(depthStencilState_ != nullptr);
 
     bindGroupTexture_ = iglDev_->createBindGroup(
-        igl::BindGroupTextureDesc{{texture_}, {samp_}, "Offscreen texture test"}, nullptr, &ret);
+        BindGroupTextureDesc{{texture_}, {samp_}, "Offscreen texture test"}, nullptr, &ret);
     ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
   }
 
   void encodeAndSubmit(
-      const std::function<void(const std::unique_ptr<igl::IRenderCommandEncoder>&)>& func,
+      const std::function<void(const std::unique_ptr<IRenderCommandEncoder>&)>& func,
       bool useBindGroup = false,
       bool useNewBindTexture = false) {
     Result ret;
@@ -361,7 +365,7 @@ class RenderCommandEncoderTest : public ::testing::Test {
   std::shared_ptr<IRenderPipelineState> renderPipelineState_Triangle_;
   std::shared_ptr<IRenderPipelineState> renderPipelineState_TriangleStrip_;
   std::shared_ptr<IDepthStencilState> depthStencilState_;
-  igl::Holder<BindGroupTextureHandle> bindGroupTexture_;
+  Holder<BindGroupTextureHandle> bindGroupTexture_;
 
   const std::string backend_ = IGL_BACKEND_TYPE;
 
@@ -375,7 +379,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawAPoint) {
       { 0.5, 0.5 } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Point_);
     encoder->draw(1);
   });
@@ -401,7 +405,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawAPointNewBindTexture) {
   );
 
   encodeAndSubmit(
-      [this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+      [this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
         encoder->bindRenderPipelineState(renderPipelineState_Point_);
         encoder->draw(1);
       },
@@ -434,7 +438,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawALine) {
       } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Line_);
     encoder->draw(2);
   });
@@ -469,7 +473,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawLineStrip) {
       } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_LineStrip_);
     encoder->draw(4);
   });
@@ -511,7 +515,7 @@ TEST_F(RenderCommandEncoderTest, drawIndexedFirstIndex) {
 
   ASSERT_TRUE(ib_ != nullptr);
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Triangle_);
     encoder->drawIndexed(3, 1, 3); // skip the first 3 dummy indices
   });
@@ -551,7 +555,7 @@ TEST_F(RenderCommandEncoderTest, drawIndexed8Bit) {
 
   ASSERT_TRUE(ib_ != nullptr);
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Triangle_);
     encoder->bindIndexBuffer(*ib_, IndexFormat::UInt8);
     encoder->drawIndexed(3);
@@ -594,7 +598,7 @@ TEST_F(RenderCommandEncoderTest, drawInstanced) {
 
   ASSERT_TRUE(ib_ != nullptr);
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Triangle_);
     // draw 2 indentical instances, one on top of another; this will trigger drawElementsInstanced()
     // in OpenGL
@@ -629,7 +633,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawATriangle) {
       } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Triangle_);
     encoder->draw(3);
   });
@@ -663,7 +667,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawTriangleStrip) {
       } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->insertDebugEventLabel("Rendering a triangle strip...");
     encoder->bindRenderPipelineState(renderPipelineState_TriangleStrip_);
     encoder->draw(4);
@@ -674,6 +678,77 @@ TEST_F(RenderCommandEncoderTest, shouldDrawTriangleStrip) {
       ASSERT_EQ(pixel, data::texture::TEX_RGBA_GRAY_4x4[0]);
     }
   });
+}
+
+TEST_F(RenderCommandEncoderTest, shouldDrawTriangleStripCopyTextureToBuffer) {
+  if (iglDev_->getBackendType() != igl::BackendType::Vulkan) {
+    GTEST_SKIP() << "Not implemented for non-Vulkan backends";
+    return;
+  }
+
+  initializeBuffers(
+      // clang-format off
+      {
+        -1.0f,  1.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 1.0f,
+         1.0f,  1.0f, 0.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f,
+      },
+      {
+        0.0, 1.0,
+        0.0, 0.0,
+        1.0, 1.0,
+        1.0, 0.0,
+      } // clang-format on
+  );
+
+  Result ret;
+
+  std ::shared_ptr<IBuffer> screenCopy =
+      iglDev_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Storage,
+                                       nullptr,
+                                       OFFSCREEN_RT_WIDTH * OFFSCREEN_RT_HEIGHT * sizeof(uint32_t),
+                                       ResourceStorage::Shared,
+                                       0,
+                                       "Buffer: screen copy"),
+                            &ret);
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
+
+  auto cmdBuffer = cmdQueue_->createCommandBuffer({}, &ret);
+  ASSERT_TRUE(ret.isOk()) << ret.message.c_str();
+  ASSERT_TRUE(cmdBuffer != nullptr);
+
+  auto encoder = cmdBuffer->createRenderCommandEncoder(renderPass_, framebuffer_);
+
+  encoder->bindTexture(textureUnit_, texture_.get());
+  encoder->bindSamplerState(textureUnit_, BindTarget::kFragment, samp_.get());
+
+  encoder->bindVertexBuffer(data::shader::simplePosIndex, *vb_);
+  encoder->bindVertexBuffer(data::shader::simpleUvIndex, *uv_);
+
+  encoder->bindDepthStencilState(depthStencilState_);
+
+  encoder->bindViewport(
+      {0.0f, 0.0f, (float)OFFSCREEN_RT_WIDTH, (float)OFFSCREEN_RT_HEIGHT, 0.0f, +1.0f});
+  encoder->bindScissorRect({0, 0, (uint32_t)OFFSCREEN_RT_WIDTH, (uint32_t)OFFSCREEN_RT_HEIGHT});
+
+  encoder->insertDebugEventLabel("Rendering a triangle strip...");
+  encoder->bindRenderPipelineState(renderPipelineState_TriangleStrip_);
+  encoder->draw(4);
+
+  encoder->endEncoding();
+
+  cmdBuffer->copyTextureToBuffer(*framebuffer_->getColorAttachment(0), *screenCopy, 0);
+
+  cmdQueue_->submit(*cmdBuffer);
+  cmdBuffer->waitUntilCompleted();
+
+  const uint32_t* data = static_cast<const uint32_t*>(
+      screenCopy->map(BufferRange(screenCopy->getSizeInBytes()), nullptr));
+  for (size_t i = 0; i != OFFSCREEN_RT_HEIGHT * OFFSCREEN_RT_HEIGHT; i++) {
+    ASSERT_EQ(data[i], data::texture::TEX_RGBA_GRAY_4x4[0]);
+  }
+  screenCopy->unmap();
 }
 
 TEST_F(RenderCommandEncoderTest, shouldNotDraw) {
@@ -697,7 +772,7 @@ TEST_F(RenderCommandEncoderTest, shouldNotDraw) {
       } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Point_);
     encoder->draw(0);
     encoder->bindRenderPipelineState(renderPipelineState_Line_);
@@ -741,7 +816,7 @@ TEST_F(RenderCommandEncoderTest, shouldDrawATriangleBindGroup) {
   );
 
   encodeAndSubmit(
-      [this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+      [this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
         encoder->insertDebugEventLabel("Rendering a triangle...");
         encoder->bindRenderPipelineState(renderPipelineState_Triangle_);
         encoder->draw(3);
@@ -767,7 +842,7 @@ TEST_F(RenderCommandEncoderTest, DepthBiasShouldDrawAPoint) {
       { 0.5, 0.5 } // clang-format on
   );
 
-  encodeAndSubmit([this](const std::unique_ptr<igl::IRenderCommandEncoder>& encoder) {
+  encodeAndSubmit([this](const std::unique_ptr<IRenderCommandEncoder>& encoder) {
     encoder->bindRenderPipelineState(renderPipelineState_Point_);
     encoder->setDepthBias(0, 0, 0);
     encoder->draw(1);

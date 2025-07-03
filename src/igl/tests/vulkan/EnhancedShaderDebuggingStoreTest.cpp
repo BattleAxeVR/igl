@@ -6,12 +6,13 @@
  */
 
 #include <gtest/gtest.h>
-#include <igl/IGL.h>
 
 #include "../data/ShaderData.h"
 #include "../data/VertexIndexData.h"
 #include "../util/Common.h"
 
+#include <igl/RenderPipelineState.h>
+#include <igl/SamplerState.h>
 #if IGL_PLATFORM_WINDOWS || IGL_PLATFORM_ANDROID || IGL_PLATFORM_MACOSX || IGL_PLATFORM_LINUX
 #include <igl/vulkan/CommandBuffer.h>
 #include <igl/vulkan/Device.h>
@@ -177,7 +178,7 @@ class EnhancedShaderDebuggingStoreTest : public ::testing::Test {
  public:
   std::shared_ptr<IDevice> iglDev_;
   std::shared_ptr<ICommandQueue> cmdQueue_;
-  vulkan::Device* device_;
+  vulkan::Device* device_{};
   RenderPipelineDesc renderPipelineDesc_;
   CommandBufferDesc cbDesc_ = {};
   RenderPassDesc renderPass_;
@@ -258,7 +259,7 @@ TEST_F(EnhancedShaderDebuggingStoreTest, Pipeline) {
   Result ret;
   std::shared_ptr<IRenderPipelineState> pipelineState;
 
-  std::shared_ptr<igl::IDepthStencilState> depthStencilState;
+  std::shared_ptr<IDepthStencilState> depthStencilState;
   DepthStencilStateDesc desc;
   desc.isDepthWriteEnabled = true;
 
@@ -305,7 +306,7 @@ TEST_F(EnhancedShaderDebuggingStoreTest, InstallBufferBarrier) {
   Result ret;
   std::shared_ptr<IRenderPipelineState> pipelineState;
 
-  std::shared_ptr<igl::IDepthStencilState> depthStencilState;
+  std::shared_ptr<IDepthStencilState> depthStencilState;
   DepthStencilStateDesc desc;
   desc.isDepthWriteEnabled = true;
 
