@@ -38,8 +38,9 @@ Device::Device(id<MTLDevice> device) :
 
 Device::~Device() = default;
 
-std::shared_ptr<ICommandQueue> Device::createCommandQueue(const CommandQueueDesc& /*desc*/,
-                                                          Result* outResult) {
+std::shared_ptr<ICommandQueue> Device::createCommandQueue(
+    const CommandQueueDesc& /*desc*/,
+    Result* outResult) noexcept { // NOLINT(bugprone-exception-escape)
   id<MTLCommandQueue> metalObject = [device_ newCommandQueue];
   auto resource =
       std::make_shared<CommandQueue>(*this, metalObject, bufferSyncManager_, deviceStatistics_);
@@ -62,8 +63,9 @@ id<MTLBuffer> createMetalBuffer(id<MTLDevice> device,
 }
 } // namespace
 
-std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
-                                              Result* outResult) const noexcept {
+std::unique_ptr<IBuffer> Device::createBuffer(
+    const BufferDesc& desc,
+    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   if (desc.hint & BufferDesc::BufferAPIHintBits::Ring) {
     return createRingBuffer(desc, outResult);
   }
@@ -83,8 +85,9 @@ std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
   return resource;
 }
 
-std::unique_ptr<IBuffer> Device::createRingBuffer(const BufferDesc& desc,
-                                                  Result* outResult) const noexcept {
+std::unique_ptr<IBuffer> Device::createRingBuffer(
+    const BufferDesc& desc,
+    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   const MTLStorageMode storage = toMTLStorageMode(desc.storage);
   const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
 
@@ -130,8 +133,9 @@ std::shared_ptr<ISamplerState> Device::createSamplerState(const SamplerStateDesc
   return platformDevice_.createSamplerState(desc, outResult);
 }
 
-std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
-                                                Result* outResult) const noexcept {
+std::shared_ptr<ITexture> Device::createTexture(
+    const TextureDesc& desc,
+    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   const auto sanitized = sanitize(desc);
   if (desc.numLayers > 1 && desc.type != TextureType::TwoDArray) {
     Result::setResult(outResult,
@@ -211,9 +215,10 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   return iglObject;
 }
 
-std::shared_ptr<ITexture> Device::createTextureView(std::shared_ptr<ITexture> texture,
-                                                    const TextureViewDesc& desc,
-                                                    Result* IGL_NULLABLE outResult) const noexcept {
+std::shared_ptr<ITexture> Device::createTextureView(
+    std::shared_ptr<ITexture> texture,
+    const TextureViewDesc& desc,
+    Result* IGL_NULLABLE outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 
   Result::setResult(
@@ -575,6 +580,20 @@ const PlatformDevice& Device::getPlatformDevice() const noexcept {
   return platformDevice_;
 }
 
+bool Device::isAppleGpu() const {
+#if IGL_PLATFORM_IOS
+  return true;
+#else
+  if (@available(macOS 10.15, *)) {
+    std::string gpuName = [device_.name UTF8String];
+    return gpuName.find("Apple") != std::string::npos;
+  } else {
+    // Apple Macs didn't exist yet.
+    return false;
+  }
+#endif
+}
+
 bool Device::hasFeature(DeviceFeatures feature) const {
   return deviceFeatureSet_.hasFeature(feature);
 }
@@ -647,7 +666,7 @@ ShaderVersion Device::getShaderVersion() const {
 
 BackendVersion Device::getBackendVersion() const {
   if (@available(macOS 13.0, iOS 16.0, *)) {
-    return {BackendFlavor::Metal, 3, 0};
+    return {.flavor = BackendFlavor::Metal, .majorVersion = 3, .minorVersion = 0};
   }
 #if TARGET_OS_OSX
 #if TARGET_CPU_ARM64
@@ -661,7 +680,7 @@ BackendVersion Device::getBackendVersion() const {
 #endif
 #endif
 
-  return {BackendFlavor::Metal, 1, 0};
+  return {.flavor = BackendFlavor::Metal, .majorVersion = 1, .minorVersion = 0};
 }
 
 size_t Device::getCurrentDrawCount() const {

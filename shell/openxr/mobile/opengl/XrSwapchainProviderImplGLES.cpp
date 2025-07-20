@@ -113,7 +113,7 @@ void XrSwapchainProviderImplGLES::enumerateImages(
     XrSwapchain colorSwapchain,
     XrSwapchain depthSwapchain,
     const impl::SwapchainImageInfo& /* swapchainImageInfo */,
-    uint8_t /* numViews */) noexcept {
+    uint8_t /* numViews */) noexcept { // NOLINT(bugprone-exception-escape)
   enumerateSwapchainImages(colorSwapchain, colorImages_);
   enumerateSwapchainImages(depthSwapchain, depthImages_);
 }
@@ -123,7 +123,7 @@ SurfaceTextures XrSwapchainProviderImplGLES::getSurfaceTextures(
     XrSwapchain colorSwapchain,
     XrSwapchain depthSwapchain,
     const impl::SwapchainImageInfo& swapchainImageInfo,
-    uint8_t numViews) noexcept {
+    uint8_t numViews) noexcept { // NOLINT(bugprone-exception-escape)
   // Assume sized format so format / type are not needed.
   auto iglColorFormat = igl::opengl::Texture::glInternalFormatToTextureFormat(
       static_cast<GLuint>(swapchainImageInfo.colorFormat), 0, 0);
@@ -145,6 +145,6 @@ SurfaceTextures XrSwapchainProviderImplGLES::getSurfaceTextures(
                                         iglDepthFormat,
                                         depthTextures_);
 
-  return {colorTexture, depthTexture};
+  return {.color = colorTexture, .depth = depthTexture};
 }
 } // namespace igl::shell::openxr::mobile

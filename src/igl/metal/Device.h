@@ -38,7 +38,8 @@ class Device : public IDevice {
 
   // Command Queue
   std::shared_ptr<ICommandQueue> createCommandQueue(const CommandQueueDesc& desc,
-                                                    Result* IGL_NULLABLE outResult) override;
+                                                    Result* IGL_NULLABLE
+                                                        outResult) noexcept override;
 
   // Resources
   std::unique_ptr<IBuffer> createBuffer(const BufferDesc& desc,
@@ -86,6 +87,7 @@ class Device : public IDevice {
   }
 
   // ICapabilities
+  [[nodiscard]] bool isAppleGpu() const;
   [[nodiscard]] bool hasFeature(DeviceFeatures feature) const override;
   [[nodiscard]] bool hasRequirement(DeviceRequirement requirement) const override;
   bool getFeatureLimits(DeviceFeatureLimits featureLimits, size_t& result) const override;

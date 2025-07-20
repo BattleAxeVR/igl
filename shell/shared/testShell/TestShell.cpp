@@ -6,7 +6,6 @@
  */
 
 #include <memory>
-#include <shell/shared/imageLoader/ImageLoader.h>
 #include <shell/shared/platform/android/PlatformAndroid.h>
 #include <shell/shared/platform/ios/PlatformIos.h>
 #include <shell/shared/platform/linux/PlatformLinux.h>
@@ -60,7 +59,7 @@ void ensureCommandLineArgsInitialized() {
 
 } // namespace
 
-void TestShellBase::SetUp(ScreenSize screenSize, bool needsRGBSwapchainSupport) {
+void TestShellBase::setUpInternal(ScreenSize screenSize, bool prefersRGB) {
   ensureCommandLineArgsInitialized();
 
   // Create igl device for requested backend
@@ -90,12 +89,10 @@ void TestShellBase::SetUp(ScreenSize screenSize, bool needsRGBSwapchainSupport) 
   }
   // Create an offscreen texture to render to
   Result ret;
-  auto hasNativeSwapchainSupport = platform_->getDevice().hasFeature(DeviceFeatures::SRGBSwapchain);
-  auto colorFormat = platform_->getDevice().getBackendType() == igl::BackendType::Metal
-                         ? igl::TextureFormat::BGRA_SRGB
-                         : igl::TextureFormat::RGBA_SRGB;
-  colorFormat = needsRGBSwapchainSupport && !hasNativeSwapchainSupport ? sRGBToUNorm(colorFormat)
-                                                                       : colorFormat;
+  auto hasNativesRGBSupport = platform_->getDevice().hasFeature(DeviceFeatures::SRGB);
+  auto colorFormat = prefersRGB && hasNativesRGBSupport ? igl::TextureFormat::RGBA_SRGB
+                                                        : igl::TextureFormat::RGBA_UNorm8;
+
   TextureDesc texDesc = igl::TextureDesc::new2D(colorFormat,
                                                 screenSize.width,
                                                 screenSize.height,
@@ -121,7 +118,7 @@ void TestShell::run(RenderSession& session, size_t numFrames) {
   session.initialize();
   for (size_t i = 0; i < numFrames; ++i) {
     const igl::DeviceScope scope(platform_->getDevice());
-    session.update({offscreenTexture_, offscreenDepthTexture_});
+    session.update({.color = offscreenTexture_, .depth = offscreenDepthTexture_});
   }
   session.teardown();
 }

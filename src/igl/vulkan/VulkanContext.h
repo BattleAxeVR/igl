@@ -83,8 +83,6 @@ class VulkanContext final {
  public:
   VulkanContext(VulkanContextConfig config,
                 void* IGL_NULLABLE window,
-                size_t numExtraInstanceExtensions,
-                const char* IGL_NULLABLE* IGL_NULLABLE extraInstanceExtensions,
                 void* IGL_NULLABLE display = nullptr);
   ~VulkanContext();
 
@@ -251,8 +249,7 @@ class VulkanContext final {
   [[nodiscard]] int getFenceFdFromSubmitHandle(igl::SubmitHandle handle) const noexcept;
 
  private:
-  void createInstance(size_t numExtraExtensions,
-                      const char* IGL_NULLABLE* IGL_NULLABLE extraExtensions);
+  void createInstance();
   VkResult checkAndUpdateDescriptorSets();
   void pruneTextures();
   void querySurfaceCapabilities();

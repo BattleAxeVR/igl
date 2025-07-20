@@ -128,7 +128,7 @@ VulkanFeatures::VulkanFeatures(VulkanContextConfig config) noexcept :
 
 void VulkanFeatures::populateWithAvailablePhysicalDeviceFeatures(
     const VulkanContext& context,
-    VkPhysicalDevice physicalDevice) noexcept {
+    VkPhysicalDevice physicalDevice) noexcept { // NOLINT(bugprone-exception-escape)
   IGL_DEBUG_ASSERT(context.vf_.vkGetPhysicalDeviceFeatures2 != nullptr,
                    "Pointer to function vkGetPhysicalDeviceFeatures2() is nullptr");
   uint32_t numExtensions = 0;
@@ -151,7 +151,7 @@ bool VulkanFeatures::hasExtension(const char* ext) const {
 }
 
 Result VulkanFeatures::checkSelectedFeatures(
-    const VulkanFeatures& availableFeatures) const noexcept {
+    const VulkanFeatures& availableFeatures) const noexcept { // NOLINT(bugprone-exception-escape)
   // Stores missing features
   std::string missingFeatures;
 
@@ -439,6 +439,9 @@ void VulkanFeatures::enableCommonInstanceExtensions(const VulkanContextConfig& c
   }
 #endif // !IGL_PLATFORM_ANDROID
 
+  has_VK_KHR_get_surface_capabilities2 =
+      enable(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME, ExtensionType::Instance);
+
   has_VK_EXT_headless_surface =
       enable(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME, ExtensionType::Instance);
 
@@ -508,9 +511,6 @@ void VulkanFeatures::enableCommonDeviceExtensions(const VulkanContextConfig& con
 
   has_VK_KHR_buffer_device_address =
       enable(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME, ExtensionType::Device);
-
-  has_VK_KHR_create_renderpass2 =
-      enable(VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME, ExtensionType::Device);
 
   has_VK_KHR_vulkan_memory_model =
       enable(VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME, ExtensionType::Device);

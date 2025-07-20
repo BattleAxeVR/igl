@@ -210,11 +210,8 @@ static GLFWwindow* initIGL(bool isHeadless) {
     auto ctx =
         vulkan::HWDevice::createContext(cfg, window ? (void*)glfwGetCocoaWindow(window) : nullptr);
 #elif defined(__linux__)
-    auto ctx = vulkan::HWDevice::createContext(cfg,
-                                               window ? (void*)glfwGetX11Window(window) : nullptr,
-                                               0,
-                                               nullptr,
-                                               (void*)glfwGetX11Display());
+    auto ctx = vulkan::HWDevice::createContext(
+        cfg, window ? (void*)glfwGetX11Window(window) : nullptr, (void*)glfwGetX11Display());
 #else
 #error Unsupported OS
 #endif
@@ -351,8 +348,14 @@ static void render(const std::shared_ptr<ITexture>& nativeDrawable) {
   const CommandBufferDesc cbDesc;
   const std::shared_ptr<ICommandBuffer> buffer = commandQueue->createCommandBuffer(cbDesc, nullptr);
 
-  const igl::Viewport viewport = {0.0f, 0.0f, (float)width, (float)height, 0.0f, +1.0f};
-  const igl::ScissorRect scissor = {0, 0, (uint32_t)width, (uint32_t)height};
+  const igl::Viewport viewport = {.x = 0.0f,
+                                  .y = 0.0f,
+                                  .width = (float)width,
+                                  .height = (float)height,
+                                  .minDepth = 0.0f,
+                                  .maxDepth = +1.0f};
+  const igl::ScissorRect scissor = {
+      .x = 0, .y = 0, .width = (uint32_t)width, .height = (uint32_t)height};
 
   // This will clear the framebuffer
   auto commands = buffer->createRenderCommandEncoder(renderPass, framebuffer);
@@ -408,7 +411,7 @@ int main(int argc, char* argv[]) {
       }
       const char* fileName = "Tiny.png";
       IGLLog(IGLLogInfo, "Writing screenshot to: '%s'\n", fileName);
-      stbi_flip_vertically_on_write(true);
+      stbi_flip_vertically_on_write(1);
       stbi_write_png(fileName, (int)dim.width, (int)dim.height, 3, pixelsRGB.data(), 0);
       break;
     }

@@ -52,7 +52,7 @@ std::unique_ptr<Buffer> allocateBuffer(BufferDesc::BufferType bufferType,
 }
 
 template<class Ptr>
-Ptr verifyResult(Ptr resource, Result inResult, Result* outResult) {
+Ptr verifyResult(Ptr resource, Result inResult, Result* outResult) noexcept {
   if (inResult.isOk()) {
     Result::setOk(outResult);
   } else {
@@ -117,7 +117,7 @@ void Device::popMarker() {
 
 // Command Queue
 std::shared_ptr<ICommandQueue> Device::createCommandQueue(const CommandQueueDesc& /*desc*/,
-                                                          Result* outResult) {
+                                                          Result* outResult) noexcept {
   // we only use a single command queue on OpenGL
   if (!commandQueue_) {
     commandQueue_ = std::make_shared<CommandQueue>();
@@ -128,8 +128,9 @@ std::shared_ptr<ICommandQueue> Device::createCommandQueue(const CommandQueueDesc
 }
 
 // Resources
-std::unique_ptr<IBuffer> Device::createBuffer(const BufferDesc& desc,
-                                              Result* outResult) const noexcept {
+std::unique_ptr<IBuffer> Device::createBuffer(
+    const BufferDesc& desc,
+    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   std::unique_ptr<Buffer> resource = allocateBuffer(desc.type, desc.hint, getContext());
 
   if (resource) {
@@ -160,8 +161,9 @@ std::shared_ptr<ISamplerState> Device::createSamplerState(const SamplerStateDesc
   return resource;
 }
 
-std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
-                                                Result* outResult) const noexcept {
+std::shared_ptr<ITexture> Device::createTexture(
+    const TextureDesc& desc,
+    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   const auto sanitized = sanitize(desc);
 
   std::unique_ptr<Texture> texture;
@@ -212,9 +214,10 @@ std::shared_ptr<ITexture> Device::createTexture(const TextureDesc& desc,
   return texture;
 }
 
-std::shared_ptr<ITexture> Device::createTextureView(std::shared_ptr<ITexture> texture,
-                                                    const TextureViewDesc& desc,
-                                                    Result* IGL_NULLABLE outResult) const noexcept {
+std::shared_ptr<ITexture> Device::createTextureView(
+    std::shared_ptr<ITexture> texture,
+    const TextureViewDesc& desc,
+    Result* IGL_NULLABLE outResult) const noexcept { // NOLINT(bugprone-exception-escape)
   IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 
   Result::setResult(
@@ -273,7 +276,7 @@ std::unique_ptr<IShaderStages> Device::createShaderStages(const ShaderStagesDesc
 }
 
 std::shared_ptr<IFramebuffer> Device::createFramebuffer(const FramebufferDesc& desc,
-                                                        Result* outResult) {
+                                                        Result* outResult) noexcept {
   IGL_DEBUG_ASSERT(deviceFeatureSet_.hasInternalFeature(InternalFeatures::FramebufferObject));
   return getPlatformDevice().createFramebuffer(desc, outResult);
 }

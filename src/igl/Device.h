@@ -100,7 +100,8 @@ class IDevice : public ICapabilities {
    * @return Shared pointer to the created queue.
    */
   virtual std::shared_ptr<ICommandQueue> createCommandQueue(const CommandQueueDesc& desc,
-                                                            Result* IGL_NULLABLE outResult) = 0;
+                                                            Result* IGL_NULLABLE
+                                                                outResult) noexcept = 0;
 
   /**
    * @brief Creates a buffer resource.
@@ -239,7 +240,7 @@ class IDevice : public ICapabilities {
   template<typename T, typename = std::enable_if_t<std::is_base_of<IPlatformDevice, T>::value>>
   const T* IGL_NULLABLE getPlatformDevice() const noexcept {
     const IPlatformDevice& platformDevice = getPlatformDevice();
-    if (platformDevice.isType(T::Type)) {
+    if (platformDevice.isType(T::kType)) {
       return static_cast<const T*>(&platformDevice);
     }
     return nullptr;

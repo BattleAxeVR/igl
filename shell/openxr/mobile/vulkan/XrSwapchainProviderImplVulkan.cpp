@@ -136,7 +136,7 @@ void XrSwapchainProviderImplVulkan::enumerateImages(
     XrSwapchain colorSwapchain,
     XrSwapchain depthSwapchain,
     const impl::SwapchainImageInfo& swapchainImageInfo,
-    uint8_t numViews) noexcept {
+    uint8_t numViews) noexcept { // NOLINT(bugprone-exception-escape)
   enumerateSwapchainImages(device,
                            colorSwapchain,
                            static_cast<VkFormat>(swapchainImageInfo.colorFormat),
@@ -185,6 +185,6 @@ SurfaceTextures XrSwapchainProviderImplVulkan::getSurfaceTextures(
                                         static_cast<VkFormat>(swapchainImageInfo.depthFormat),
                                         depthTextures_);
 
-  return {colorTexture, depthTexture};
+  return {.color = colorTexture, .depth = depthTexture};
 }
 } // namespace igl::shell::openxr::mobile

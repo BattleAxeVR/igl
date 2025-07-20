@@ -137,11 +137,65 @@ void Framebuffer::copyBytes(ICommandQueue& cmdQueue,
   if (bytesPerRow == 0) {
     bytesPerRow = iglTexture->getProperties().getBytesPerRow(range);
   }
-  if (IGL_DEBUG_VERIFY(canCopy(cmdQueue, mtlTexture->get(), range))) {
+  if (canCopy(cmdQueue, mtlTexture->get(), range)) {
     mtlTexture->getBytes(range, pixelBytes, bytesPerRow);
   } else {
-    // Use MTLBlitCommandEncoder to copy into a non-private storage texture that can be read from
-    IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
+    auto& mtlCommandQueue = static_cast<CommandQueue&>(cmdQueue);
+    auto& mtlDevice = mtlCommandQueue.getDevice();
+
+    // Once Intel Mac support is EOL remove the isAppleGpu() check and also the
+    // sychronizeTexture call below.
+    Result result;
+    const TextureDesc desc{
+        .width = iglTexture->getDimensions().width,
+        .height = iglTexture->getDimensions().height,
+        .format = iglTexture->getProperties().format,
+        .type = iglTexture->getType(),
+        .storage = mtlDevice.isAppleGpu() ? ResourceStorage::Shared : ResourceStorage::Managed,
+        .debugName = "stageTexture",
+    };
+
+    // 1. Create a shared stage texture
+    auto stageTexture = mtlDevice.createTexture(desc, &result);
+
+    if (!IGL_DEBUG_VERIFY(stageTexture && result.isOk())) {
+      return;
+    }
+
+    // 2. Copy data from the private texture to the stage texture by MTLBlitCommandEncoder
+    id<MTLTexture> srcMtlTexture = static_cast<Texture&>(*iglTexture).get();
+    id<MTLTexture> dstMtlTexture = static_cast<Texture&>(*stageTexture).get();
+    if (IGL_DEBUG_VERIFY(srcMtlTexture && dstMtlTexture)) {
+      auto iglMtlCmdQueue = static_cast<CommandQueue&>(cmdQueue);
+
+      id<MTLCommandBuffer> cmdBuf = [iglMtlCmdQueue.get() commandBuffer];
+      id<MTLBlitCommandEncoder> blitEncoder = [cmdBuf blitCommandEncoder];
+
+      // NOLINTNEXTLINE(clang-analyzer-nullability.NullabilityBase)
+      [blitEncoder copyFromTexture:srcMtlTexture
+                       sourceSlice:range.layer
+                       sourceLevel:range.mipLevel
+                      sourceOrigin:MTLOriginMake(range.x, range.y, 0)
+                        sourceSize:MTLSizeMake(range.width, range.height, 1)
+                         toTexture:dstMtlTexture
+                  destinationSlice:range.layer
+                  destinationLevel:range.mipLevel
+                 destinationOrigin:MTLOriginMake(range.x, range.y, 0)];
+
+#if IGL_PLATFORM_MACOSX
+      if (desc.storage == ResourceStorage::Managed) {
+        [blitEncoder synchronizeTexture:dstMtlTexture slice:range.layer level:range.mipLevel];
+      }
+#endif
+
+      [blitEncoder endEncoding];
+      [cmdBuf commit];
+      [cmdBuf waitUntilCompleted];
+    }
+
+    // 3. Read data from the shared stage texture
+    auto& mtlStageTexture = static_cast<Texture&>(*stageTexture);
+    mtlStageTexture.getBytes(range, pixelBytes, bytesPerRow);
   }
 }
 

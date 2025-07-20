@@ -17,6 +17,9 @@
 #include <shell/shared/renderSession/ShellParams.h>
 #include <igl/NameHandle.h>
 #include <igl/ShaderCreator.h>
+// @fb-only
+// @fb-only
+// @fb-only
 
 namespace igl::shell {
 
@@ -32,14 +35,55 @@ VertexPosUv vertexData[] = {
     {{-1.f, -1.f, 0.0}, {0.0, 1.0}},
     {{1.f, -1.f, 0.0}, {1.0, 1.0}},
 };
-uint16_t indexData[] = {
-    0,
-    1,
-    2,
-    1,
-    3,
-    2,
-};
+uint16_t indexData[] = {0, 1, 2, 1, 3, 2};
+
+namespace {
+// @fb-only
+// @fb-only
+  // @fb-only
+          // @fb-only
+          // @fb-only
+          // @fb-only
+          // @fb-only
+          // @fb-only
+// @fb-only
+// @fb-only
+
+BufferDesc getVertexBufferDesc(const igl::IDevice& device) {
+// @fb-only
+  // @fb-only
+    // @fb-only
+                                    // @fb-only
+                                    // @fb-only
+                                    // @fb-only
+    // @fb-only
+        // @fb-only
+        // @fb-only
+        // @fb-only
+        // @fb-only
+  // @fb-only
+// @fb-only
+  return {BufferDesc::BufferTypeBits::Vertex, vertexData, sizeof(vertexData)};
+}
+
+uint32_t getVertexBufferIndex(const igl::IDevice& device) {
+// @fb-only
+  // @fb-only
+    return 0;
+  // @fb-only
+// @fb-only
+  return 1;
+}
+
+ResourceStorage getIndexBufferResourceStorage(const igl::IDevice& device) {
+// @fb-only
+  // @fb-only
+    // @fb-only
+  // @fb-only
+// @fb-only
+  return igl::ResourceStorage::Invalid;
+}
+} // namespace
 
 std::string getVersion() {
   return "#version 100";
@@ -65,9 +109,10 @@ std::string getMetalShaderSource() {
               } VertexOut;
 
               vertex VertexOut vertexShader(
-                  uint vid [[vertex_id]], constant VertexIn * vertices [[buffer(1)]]) {
+                  uint vid [[vertex_id]], constant VertexIn * vertices [[buffer(1)]],
+                  constant UniformBlock * ub [[buffer(0)]]) {
                 VertexOut out;
-                out.position = float4(vertices[vid].position, 1.0);
+                out.position = ub->mvp * float4(vertices[vid].position, 1.0);
                 out.uv = vertices[vid].uv;
                 return out;
               }
@@ -76,9 +121,9 @@ std::string getMetalShaderSource() {
                   VertexOut IN [[stage_in]],
                   texture2d<float> diffuseTex [[texture(0)]],
                   sampler linearSampler [[sampler(0)]],
-                  constant UniformBlock * color [[buffer(0)]]) {
+                  constant UniformBlock * ub [[buffer(0)]]) {
                 float4 tex = diffuseTex.sample(linearSampler, IN.uv);
-                return float4(color->color.r, color->color.g, color->color.b, 1.0) *
+                return float4(ub->color.r, ub->color.g, ub->color.b, 1.0) *
                       tex;
               }
     )";
@@ -90,11 +135,17 @@ std::string getOpenGLVertexShaderSource() {
                 attribute vec3 position;
                 attribute vec2 uv_in;
 
+                uniform vec3 color;
+                uniform mat4 mvp;
+                uniform sampler2D inputImage;
+
+                varying vec3 vColor;
                 varying vec2 uv;
 
                 void main() {
-                  gl_Position = vec4(position, 1.0);
+                  gl_Position = mvp * vec4(position, 1.0);
                   uv = uv_in; // position.xy * 0.5 + 0.5;
+                  vColor = color;
                 })";
 }
 
@@ -102,13 +153,14 @@ std::string getOpenGLFragmentShaderSource() {
   return getVersion() + std::string(R"(
                 precision highp float;
                 uniform vec3 color;
+                uniform mat4 mvp;
                 uniform sampler2D inputImage;
-
+                varying vec3 vColor;
                 varying vec2 uv;
 
                 void main() {
                   gl_FragColor =
-                      vec4(color, 1.0) * texture2D(inputImage, uv);
+                      vec4(vColor, 1.0) * texture2D(inputImage, uv);
                 })");
 }
 
@@ -148,7 +200,9 @@ std::string getVulkanFragmentShaderSource() {
 
 // @fb-only
 
-std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
+} // namespace
+
+std::unique_ptr<IShaderStages> ColorSession::getShaderStagesForBackend(IDevice& device) {
   switch (device.getBackendType()) {
   case igl::BackendType::Invalid:
   case igl::BackendType::Custom:
@@ -196,23 +250,27 @@ std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
   }
   IGL_UNREACHABLE_RETURN(nullptr)
 }
-} // namespace
 
 void ColorSession::initialize() noexcept {
-  static const glm::vec3 kLinearOrangeColor = glm::convertSRGBToLinear(glm::dvec3{1.0, 0.5, 0.0});
-  const iglu::simdtypes::float3 kGPULinearOrangeColor = {static_cast<float>(kLinearOrangeColor.x),
-                                                         static_cast<float>(kLinearOrangeColor.y),
-                                                         static_cast<float>(kLinearOrangeColor.z)};
+  glm::dvec3 linearOrangeColor = glm::dvec3{1.0, 0.5, 0.0};
+  if (swapchainColorTextureformat_ == igl::TextureFormat::RGBA_SRGB &&
+      getPlatform().getDevice().hasFeature(DeviceFeatures::SRGB)) {
+    linearOrangeColor = glm::convertSRGBToLinear(linearOrangeColor);
+  }
+  glm::vec3 fLinearOrangeColor = glm::vec3(linearOrangeColor);
+  iglu::simdtypes::float3 gpuLinearOrangeColor = {
+      fLinearOrangeColor.x, fLinearOrangeColor.y, fLinearOrangeColor.z};
 
   auto& device = getPlatform().getDevice();
 
   // Vertex & Index buffer
-  const BufferDesc vbDesc =
-      BufferDesc(BufferDesc::BufferTypeBits::Vertex, vertexData, sizeof(vertexData));
+  const BufferDesc vbDesc = getVertexBufferDesc(device);
   vb0_ = device.createBuffer(vbDesc, nullptr);
   IGL_DEBUG_ASSERT(vb0_ != nullptr);
-  const BufferDesc ibDesc =
-      BufferDesc(BufferDesc::BufferTypeBits::Index, indexData, sizeof(indexData));
+  const BufferDesc ibDesc = BufferDesc(BufferDesc::BufferTypeBits::Index,
+                                       indexData,
+                                       sizeof(indexData),
+                                       getIndexBufferResourceStorage(device));
   ib0_ = device.createBuffer(ibDesc, nullptr);
   IGL_DEBUG_ASSERT(ib0_ != nullptr);
 
@@ -234,14 +292,14 @@ void ColorSession::initialize() noexcept {
   samp0_ = device.createSamplerState(samplerDesc, nullptr);
   IGL_DEBUG_ASSERT(samp0_ != nullptr);
 
-  if (colorTestModes_ == ColorTestModes::eMacbethTexture) {
-    tex0_ = getPlatform().loadTexture("macbeth.png");
-  } else if (colorTestModes_ == ColorTestModes::eOrangeTexture) {
-    tex0_ = getPlatform().loadTexture("orange.png");
-  } else if (colorTestModes_ == ColorTestModes::eOrangeClear) {
+  if (colorTestModes_ == ColorTestModes::MacbethTexture) {
+    tex0_ = getPlatform().loadTexture("macbeth.png", true, swapchainColorTextureformat_);
+  } else if (colorTestModes_ == ColorTestModes::OrangeTexture) {
+    tex0_ = getPlatform().loadTexture("orange.png", true, swapchainColorTextureformat_);
+  } else if (colorTestModes_ == ColorTestModes::OrangeClear) {
     tex0_ = getPlatform().loadTexture(igl::shell::ImageLoader::white());
     setPreferredClearColor(
-        Color{kLinearOrangeColor.x, kLinearOrangeColor.y, kLinearOrangeColor.z, 1.0f});
+        Color{fLinearOrangeColor.x, fLinearOrangeColor.y, fLinearOrangeColor.z, 1.0f});
   }
 
   shaderStages_ = getShaderStagesForBackend(device);
@@ -262,8 +320,8 @@ void ColorSession::initialize() noexcept {
   // init uniforms
   glm::mat4x4 mvp(1.0f);
   memcpy(&fragmentParameters_.mvp, &mvp, sizeof(mvp));
-  fragmentParameters_.color = (colorTestModes_ == ColorTestModes::eOrangeClear)
-                                  ? kGPULinearOrangeColor
+  fragmentParameters_.color = (colorTestModes_ == ColorTestModes::OrangeClear)
+                                  ? gpuLinearOrangeColor
                                   : iglu::simdtypes::float3{1.0f, 1.0f, 1.0f};
 
   BufferDesc fpDesc;
@@ -317,9 +375,6 @@ void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
 
     pipelineState_ = getPlatform().getDevice().createRenderPipeline(graphicsDesc, nullptr);
     IGL_DEBUG_ASSERT(pipelineState_ != nullptr);
-
-    // Set up uniformdescriptors
-    fragmentUniformDescriptors_.emplace_back();
   }
 
   // Command Buffers
@@ -331,19 +386,32 @@ void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
   framebuffer_->updateDrawable(drawableSurface);
 
   // Uniform: "color"
-  if (!fragmentUniformDescriptors_.empty()) {
+  fragmentUniformDescriptors_.emplace_back();
+  // @fb-only
     // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
     // @fb-only
-      if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
-        fragmentUniformDescriptors_.back().location =
-            pipelineState_->getIndexByName("color", igl::ShaderStage::Fragment);
-      }
-    fragmentUniformDescriptors_.back().type = UniformType::Float3;
-    fragmentUniformDescriptors_.back().offset = offsetof(FragmentFormat, color);
-  }
+    // @fb-only
+  // @fb-only
+    if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
+      fragmentUniformDescriptors_.back().location =
+          pipelineState_->getIndexByName("color", igl::ShaderStage::Fragment);
+    }
+  fragmentUniformDescriptors_.back().type = UniformType::Float3;
+  fragmentUniformDescriptors_.back().offset = offsetof(FragmentFormat, color);
+
+  // Uniform: "mvp"
+  fragmentUniformDescriptors_.emplace_back();
+  // @fb-only
+    // @fb-only
+    // @fb-only
+    // @fb-only
+  // @fb-only
+    if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
+      fragmentUniformDescriptors_.back().location =
+          pipelineState_->getIndexByName("mvp", igl::ShaderStage::Fragment);
+    }
+  fragmentUniformDescriptors_.back().type = UniformType::Mat4x4;
+  fragmentUniformDescriptors_.back().offset = offsetof(FragmentFormat, mvp);
 
   const auto& mvp = getPlatform().getDisplayContext().preRotationMatrix;
   memcpy(&fragmentParameters_.mvp, &mvp, sizeof(mvp));
@@ -354,7 +422,7 @@ void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
       buffer->createRenderCommandEncoder(renderPass_, framebuffer_);
   IGL_DEBUG_ASSERT(commands != nullptr);
   if (commands) {
-    commands->bindVertexBuffer(1, *vb0_);
+    commands->bindVertexBuffer(getVertexBufferIndex(getPlatform().getDevice()), *vb0_);
     commands->bindRenderPipelineState(pipelineState_);
     if (getPlatform().getDevice().hasFeature(DeviceFeatures::BindUniform)) {
       // Bind non block uniforms

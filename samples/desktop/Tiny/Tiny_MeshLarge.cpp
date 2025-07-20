@@ -142,7 +142,6 @@ static_assert(IGL_WITH_IGLU != 0,
 namespace {
 
 constexpr uint32_t kMeshCacheVersion = 0xC0DE0009;
-constexpr int kNumSamplesMSAA = 8;
 #if USE_OPENGL_BACKEND
 constexpr bool kEnableCompression = false;
 #else
@@ -651,9 +650,8 @@ using glm::vec2;
 using glm::vec3;
 using glm::vec4;
 
-GLFWwindow* window_ = nullptr;
-int width_ = 0;
-int height_ = 0;
+int width_ = 1024;
+int height_ = 768;
 igl::FPSCounter fps_;
 
 constexpr uint32_t kNumBufferedFrames = 3;
@@ -810,9 +808,10 @@ std::string convertFileName(std::string fileName) {
   }
 }
 
-bool initWindow(GLFWwindow** outWindow) {
+static GLFWwindow* initIGL(bool isHeadless) {
   if (!glfwInit()) {
-    return false;
+    printf("glfwInit() failed");
+    return nullptr;
   }
 
 #if USE_OPENGL_BACKEND
@@ -841,111 +840,101 @@ bool initWindow(GLFWwindow** outWindow) {
 
   glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
 
-  GLFWwindow* window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+  GLFWwindow* window = isHeadless ? nullptr
+                                  : glfwCreateWindow(width, height, title, nullptr, nullptr);
 
-  if (!window) {
-    glfwTerminate();
-    return false;
-  }
+  if (window) {
+    glfwSetWindowPos(window, posX, posY);
 
-  glfwSetWindowPos(window, posX, posY);
+    glfwSetErrorCallback([](int error, const char* description) {
+      printf("GLFW Error (%i): %s\n", error, description);
+    });
 
-  glfwSetErrorCallback([](int error, const char* description) {
-    printf("GLFW Error (%i): %s\n", error, description);
-  });
-
-  glfwSetCursorPosCallback(window, [](auto* window, double x, double y) {
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    mousePos_ = vec2(x / width, 1.0f - y / height);
+    glfwSetCursorPosCallback(window, [](auto* window, double x, double y) {
+      int width, height;
+      glfwGetFramebufferSize(window, &width, &height);
+      mousePos_ = vec2(x / width, 1.0f - y / height);
 #if IGL_WITH_IGLU
-    inputDispatcher_.queueEvent(igl::shell::MouseMotionEvent(x, y, 0, 0));
+      inputDispatcher_.queueEvent(igl::shell::MouseMotionEvent(x, y, 0, 0));
 #endif // IGL_WITH_IGLU
-  });
+    });
 
-  glfwSetMouseButtonCallback(window, [](auto* window, int button, int action, int /*mods*/) {
+    glfwSetMouseButtonCallback(window, [](auto* window, int button, int action, int /*mods*/) {
 #if IGL_WITH_IGLU
-    if (!ImGui::GetIO().WantCaptureMouse) {
+      if (!ImGui::GetIO().WantCaptureMouse) {
 #endif // IGL_WITH_IGLU
-      if (button == GLFW_MOUSE_BUTTON_LEFT) {
-        mousePressed_ = (action == GLFW_PRESS);
+        if (button == GLFW_MOUSE_BUTTON_LEFT) {
+          mousePressed_ = (action == GLFW_PRESS);
+        }
+#if IGL_WITH_IGLU
+      } else {
+        // release the mouse
+        mousePressed_ = false;
       }
-#if IGL_WITH_IGLU
-    } else {
-      // release the mouse
-      mousePressed_ = false;
-    }
-    double xpos, ypos;
-    glfwGetCursorPos(window, &xpos, &ypos);
-    using igl::shell::MouseButton;
-    const MouseButton iglButton =
-        (button == GLFW_MOUSE_BUTTON_LEFT)
-            ? MouseButton::Left
-            : (button == GLFW_MOUSE_BUTTON_RIGHT ? MouseButton::Right : MouseButton::Middle);
-    inputDispatcher_.queueEvent(
-        igl::shell::MouseButtonEvent(iglButton, action == GLFW_PRESS, (float)xpos, (float)ypos));
+      double xpos, ypos;
+      glfwGetCursorPos(window, &xpos, &ypos);
+      using igl::shell::MouseButton;
+      const MouseButton iglButton =
+          (button == GLFW_MOUSE_BUTTON_LEFT)
+              ? MouseButton::Left
+              : (button == GLFW_MOUSE_BUTTON_RIGHT ? MouseButton::Right : MouseButton::Middle);
+      inputDispatcher_.queueEvent(
+          igl::shell::MouseButtonEvent(iglButton, action == GLFW_PRESS, (float)xpos, (float)ypos));
 #endif // IGL_WITH_IGLU
-  });
+    });
 
-  glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int, int action, int mods) {
-    const bool pressed = action != GLFW_RELEASE;
-    if (key == GLFW_KEY_ESCAPE && pressed) {
-      glfwSetWindowShouldClose(window, GLFW_TRUE);
-    }
-    if (key == GLFW_KEY_N && pressed) {
-      perFrame_.bDrawNormals = (perFrame_.bDrawNormals + 1) % 2;
-    }
-    if (key == GLFW_KEY_C && pressed) {
-      enableComputePass_ = !enableComputePass_;
-    }
-    if (key == GLFW_KEY_T && pressed) {
-      enableWireframe_ = !enableWireframe_;
-    }
-    if (key == GLFW_KEY_ESCAPE && pressed) {
-      glfwSetWindowShouldClose(window, GLFW_TRUE);
-    }
-    if (key == GLFW_KEY_W) {
-      positioner_.movement_.forward_ = pressed;
-    }
-    if (key == GLFW_KEY_S) {
-      positioner_.movement_.backward_ = pressed;
-    }
-    if (key == GLFW_KEY_A) {
-      positioner_.movement_.left_ = pressed;
-    }
-    if (key == GLFW_KEY_D) {
-      positioner_.movement_.right_ = pressed;
-    }
-    if (key == GLFW_KEY_1) {
-      positioner_.movement_.up_ = pressed;
-    }
-    if (key == GLFW_KEY_2) {
-      positioner_.movement_.down_ = pressed;
-    }
-    if (mods & GLFW_MOD_SHIFT) {
-      positioner_.movement_.fastSpeed_ = pressed;
-    }
-    if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
-      positioner_.movement_.fastSpeed_ = pressed;
-    }
-    if (key == GLFW_KEY_SPACE) {
-      positioner_.setUpVector(vec3(0.0f, 1.0f, 0.0f));
-    }
-    if (key == GLFW_KEY_L && pressed) {
-      perFrame_.bDebugLines = (perFrame_.bDebugLines + 1) % 2;
-    }
-  });
+    glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int, int action, int mods) {
+      const bool pressed = action != GLFW_RELEASE;
+      if (key == GLFW_KEY_ESCAPE && pressed) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+      }
+      if (key == GLFW_KEY_N && pressed) {
+        perFrame_.bDrawNormals = (perFrame_.bDrawNormals + 1) % 2;
+      }
+      if (key == GLFW_KEY_C && pressed) {
+        enableComputePass_ = !enableComputePass_;
+      }
+      if (key == GLFW_KEY_T && pressed) {
+        enableWireframe_ = !enableWireframe_;
+      }
+      if (key == GLFW_KEY_ESCAPE && pressed) {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
+      }
+      if (key == GLFW_KEY_W) {
+        positioner_.movement_.forward_ = pressed;
+      }
+      if (key == GLFW_KEY_S) {
+        positioner_.movement_.backward_ = pressed;
+      }
+      if (key == GLFW_KEY_A) {
+        positioner_.movement_.left_ = pressed;
+      }
+      if (key == GLFW_KEY_D) {
+        positioner_.movement_.right_ = pressed;
+      }
+      if (key == GLFW_KEY_1) {
+        positioner_.movement_.up_ = pressed;
+      }
+      if (key == GLFW_KEY_2) {
+        positioner_.movement_.down_ = pressed;
+      }
+      if (mods & GLFW_MOD_SHIFT) {
+        positioner_.movement_.fastSpeed_ = pressed;
+      }
+      if (key == GLFW_KEY_LEFT_SHIFT || key == GLFW_KEY_RIGHT_SHIFT) {
+        positioner_.movement_.fastSpeed_ = pressed;
+      }
+      if (key == GLFW_KEY_SPACE) {
+        positioner_.setUpVector(vec3(0.0f, 1.0f, 0.0f));
+      }
+      if (key == GLFW_KEY_L && pressed) {
+        perFrame_.bDebugLines = (perFrame_.bDebugLines + 1) % 2;
+      }
+    });
 
-  glfwGetWindowSize(window, &width_, &height_);
-
-  if (outWindow) {
-    *outWindow = window;
+    glfwGetWindowSize(window, &width_, &height_);
   }
 
-  return true;
-}
-
-void initIGL() {
   // create a device
   {
     {
@@ -970,16 +959,19 @@ void initIGL() {
           .enhancedShaderDebugging = false,
           .enableValidation = kEnableValidationLayers,
           .enableDescriptorIndexing = true,
+          .headless = isHeadless,
       };
 #ifdef _WIN32
-      auto ctx = vulkan::HWDevice::createContext(cfg, (void*)glfwGetWin32Window(window_));
+      auto ctx = vulkan::HWDevice::createContext(
+          cfg, window ? (void*)glfwGetWin32Window(window) : nullptr);
 
 #elif __APPLE__
-      auto ctx = vulkan::HWDevice::createContext(cfg, (void*)glfwGetCocoaWindow(window_));
+      auto ctx = vulkan::HWDevice::createContext(
+          cfg, window ? (void*)glfwGetCocoaWindow(window) : nuullptr);
 
 #elif defined(__linux__)
       auto ctx = vulkan::HWDevice::createContext(
-          cfg, (void*)glfwGetX11Window(window_), 0, nullptr, (void*)glfwGetX11Display());
+          cfg, window ? (void*)glfwGetX11Window(window) : nullptr, (void*)glfwGetX11Display());
 
 #else
 #error Unsupported OS
@@ -1006,164 +998,8 @@ void initIGL() {
       IGL_DEBUG_ASSERT(device_);
     }
   }
-// @fb-only
-  // @fb-only
-      // @fb-only
-// @fb-only
 
-  {
-    const TextureDesc desc = TextureDesc::new2D(igl::TextureFormat::RGBA_UNorm8,
-                                                1,
-                                                1,
-                                                TextureDesc::TextureUsageBits::Sampled,
-                                                "dummy 1x1 (white)");
-    textureDummyWhite_ = device_->createTexture(desc, nullptr);
-    const uint32_t pixel = 0xFFFFFFFF;
-    textureDummyWhite_->upload(TextureRangeDesc::new2D(0, 0, 1, 1), &pixel);
-  }
-
-#if USE_OPENGL_BACKEND
-  {
-    const TextureDesc desc = TextureDesc::new2D(igl::TextureFormat::RGBA_UNorm8,
-                                                1,
-                                                1,
-                                                TextureDesc::TextureUsageBits::Sampled,
-                                                "dummy 1x1 (black)");
-    textureDummyBlack_ = device_->createTexture(desc, nullptr);
-    const uint32_t pixel = 0xFF000000;
-    textureDummyBlack_->upload(TextureRangeDesc::new2D(0, 0, 1, 1), &pixel);
-  }
-
-  const auto bufType = BufferDesc::BufferTypeBits::Uniform;
-  const auto hint = BufferDesc::BufferAPIHintBits::UniformBlock;
-#else
-  const auto bufType = BufferDesc::BufferTypeBits::Uniform;
-  const auto hint = 0;
-#endif
-  // create an Uniform buffers to store uniforms for 2 objects
-  for (uint32_t i = 0; i != kNumBufferedFrames; i++) {
-    ubPerFrame_.push_back(device_->createBuffer(BufferDesc(bufType,
-                                                           nullptr,
-                                                           sizeof(UniformsPerFrame),
-                                                           ResourceStorage::Shared,
-                                                           hint,
-                                                           "Buffer: uniforms (per frame)"),
-                                                nullptr));
-    ubPerFrameShadow_.push_back(
-        device_->createBuffer(BufferDesc(bufType,
-                                         nullptr,
-                                         sizeof(UniformsPerFrame),
-                                         ResourceStorage::Shared,
-                                         hint,
-                                         "Buffer: uniforms (per frame shadow)"),
-                              nullptr));
-    ubPerObject_.push_back(device_->createBuffer(BufferDesc(bufType,
-                                                            nullptr,
-                                                            sizeof(UniformsPerObject),
-                                                            ResourceStorage::Shared,
-                                                            hint,
-                                                            "Buffer: uniforms (per object)"),
-                                                 nullptr));
-  }
-
-  {
-    VertexInputStateDesc desc;
-    desc.numAttributes = 4;
-    desc.attributes[0].format = VertexAttributeFormat::Float3;
-    desc.attributes[0].offset = offsetof(VertexData, position);
-    desc.attributes[0].bufferIndex = 0;
-    desc.attributes[0].location = 0;
-    desc.attributes[0].name = "pos";
-    desc.attributes[1].format = VertexAttributeFormat::Int_2_10_10_10_REV;
-    desc.attributes[1].offset = offsetof(VertexData, normal);
-    desc.attributes[1].bufferIndex = 0;
-    desc.attributes[1].location = 1;
-    desc.attributes[1].name = "normal";
-    desc.attributes[2].format = VertexAttributeFormat::HalfFloat2;
-    desc.attributes[2].offset = offsetof(VertexData, uv);
-    desc.attributes[2].bufferIndex = 0;
-    desc.attributes[2].location = 2;
-    desc.attributes[2].name = "uv";
-    desc.attributes[3].format = VertexAttributeFormat::UInt1;
-    desc.attributes[3].offset = offsetof(VertexData, mtlIndex);
-    desc.attributes[3].bufferIndex = 0;
-    desc.attributes[3].location = 3;
-    desc.attributes[3].name = "mtlIndex";
-    desc.numInputBindings = 1;
-    desc.inputBindings[0].stride = sizeof(VertexData);
-    vertexInput0_ = device_->createVertexInputState(desc, nullptr);
-  }
-
-  {
-    VertexInputStateDesc desc;
-    desc.numAttributes = 1;
-    desc.attributes[0].format = VertexAttributeFormat::Float3;
-    desc.attributes[0].offset = offsetof(VertexData, position);
-    desc.attributes[0].bufferIndex = 0;
-    desc.attributes[0].location = 0;
-    desc.attributes[0].name = "pos";
-    desc.numInputBindings = 1;
-    desc.inputBindings[0].stride = sizeof(VertexData);
-    vertexInputShadows_ = device_->createVertexInputState(desc, nullptr);
-  }
-
-  {
-    DepthStencilStateDesc desc;
-    desc.isDepthWriteEnabled = true;
-    desc.compareFunction = igl::CompareFunction::Less;
-    depthStencilState_ = device_->createDepthStencilState(desc, nullptr);
-
-    desc.compareFunction = igl::CompareFunction::LessEqual;
-    depthStencilStateLEqual_ = device_->createDepthStencilState(desc, nullptr);
-  }
-
-  {
-    igl::SamplerStateDesc desc = igl::SamplerStateDesc::newLinear();
-    desc.addressModeU = igl::SamplerAddressMode::Repeat;
-    desc.addressModeV = igl::SamplerAddressMode::Repeat;
-    desc.mipFilter = igl::SamplerMipFilter::Linear;
-    desc.debugName = "Sampler: linear";
-    sampler_ = device_->createSamplerState(desc, nullptr);
-
-    desc.addressModeU = igl::SamplerAddressMode::Clamp;
-    desc.addressModeV = igl::SamplerAddressMode::Clamp;
-    desc.mipFilter = igl::SamplerMipFilter::Disabled;
-    desc.debugName = "Sampler: shadow";
-    desc.depthCompareEnabled = true;
-    desc.depthCompareFunction = igl::CompareFunction::LessEqual;
-    samplerShadow_ = device_->createSamplerState(desc, nullptr);
-  }
-
-  // Command queue: backed by different types of GPU HW queues
-  const CommandQueueDesc desc{};
-  commandQueue_ = device_->createCommandQueue(desc, nullptr);
-
-  renderPassOffscreen_.colorAttachments.emplace_back();
-  renderPassOffscreen_.colorAttachments.back().loadAction = LoadAction::Clear;
-  renderPassOffscreen_.colorAttachments.back().storeAction =
-      kNumSamplesMSAA > 1 ? StoreAction::MsaaResolve : StoreAction::Store;
-  renderPassOffscreen_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-  renderPassOffscreen_.depthAttachment.loadAction = LoadAction::Clear;
-  renderPassOffscreen_.depthAttachment.storeAction = StoreAction::DontCare;
-  renderPassOffscreen_.depthAttachment.clearDepth = 1.0f;
-
-  renderPassMain_.colorAttachments.emplace_back();
-  renderPassMain_.colorAttachments.back().loadAction = LoadAction::Clear;
-  renderPassMain_.colorAttachments.back().storeAction = StoreAction::Store;
-  renderPassMain_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-  renderPassMain_.depthAttachment.loadAction = LoadAction::Clear;
-  renderPassMain_.depthAttachment.storeAction = StoreAction::DontCare;
-  renderPassMain_.depthAttachment.clearDepth = 1.0f;
-
-#if USE_OPENGL_BACKEND
-  renderPassShadow_.colorAttachments.push_back(igl::RenderPassDesc::ColorAttachmentDesc{});
-  renderPassShadow_.colorAttachments.back().loadAction = LoadAction::Clear;
-  renderPassShadow_.colorAttachments.back().storeAction = StoreAction::Store;
-  renderPassShadow_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
-#endif
-  renderPassShadow_.depthAttachment.loadAction = LoadAction::Clear;
-  renderPassShadow_.depthAttachment.storeAction = StoreAction::Store;
-  renderPassShadow_.depthAttachment.clearDepth = 1.0f;
+  return window;
 }
 
 namespace {
@@ -1388,7 +1224,174 @@ bool loadFromCache(const char* cacheFileName) {
   return true;
 }
 
-void initModel() {
+void initModel(int numSamplesMSAA) {
+// @fb-only
+  // @fb-only
+      // @fb-only
+// @fb-only
+
+  {
+    const TextureDesc desc = TextureDesc::new2D(igl::TextureFormat::RGBA_UNorm8,
+                                                1,
+                                                1,
+                                                TextureDesc::TextureUsageBits::Sampled,
+                                                "dummy 1x1 (white)");
+    textureDummyWhite_ = device_->createTexture(desc, nullptr);
+    const uint32_t pixel = 0xFFFFFFFF;
+    textureDummyWhite_->upload(TextureRangeDesc::new2D(0, 0, 1, 1), &pixel);
+  }
+
+  {
+#if USE_OPENGL_BACKEND
+    {
+      const TextureDesc desc = TextureDesc::new2D(igl::TextureFormat::RGBA_UNorm8,
+                                                  1,
+                                                  1,
+                                                  TextureDesc::TextureUsageBits::Sampled,
+                                                  "dummy 1x1 (black)");
+      textureDummyBlack_ = device_->createTexture(desc, nullptr);
+      const uint32_t pixel = 0xFF000000;
+      textureDummyBlack_->upload(TextureRangeDesc::new2D(0, 0, 1, 1), &pixel);
+    }
+
+    const auto bufType = BufferDesc::BufferTypeBits::Uniform;
+    const auto hint = BufferDesc::BufferAPIHintBits::UniformBlock;
+#else
+    const auto bufType = BufferDesc::BufferTypeBits::Uniform;
+    const auto hint = 0;
+#endif
+    // create an Uniform buffers to store uniforms for 2 objects
+    for (uint32_t i = 0; i != kNumBufferedFrames; i++) {
+      ubPerFrame_.push_back(
+          device_->createBuffer(BufferDesc(bufType,
+                                           nullptr,
+                                           sizeof(UniformsPerFrame),
+                                           ResourceStorage::Shared,
+                                           hint,
+                                           "Buffer: uniforms (per frame) " + std::to_string(i)),
+                                nullptr));
+      ubPerFrameShadow_.push_back(device_->createBuffer(
+          BufferDesc(bufType,
+                     nullptr,
+                     sizeof(UniformsPerFrame),
+                     ResourceStorage::Shared,
+                     hint,
+                     "Buffer: uniforms (per frame shadow) " + std::to_string(i)),
+          nullptr));
+      ubPerObject_.push_back(
+          device_->createBuffer(BufferDesc(bufType,
+                                           nullptr,
+                                           sizeof(UniformsPerObject),
+                                           ResourceStorage::Shared,
+                                           hint,
+                                           "Buffer: uniforms (per object)" + std::to_string(i)),
+                                nullptr));
+    }
+  }
+
+  {
+    const VertexInputStateDesc desc = {
+        .numAttributes = 4,
+        .attributes =
+            {
+                {
+                    .format = VertexAttributeFormat::Float3,
+                    .offset = offsetof(VertexData, position),
+                    .name = "pos",
+                    .location = 0,
+                },
+                {
+                    .format = VertexAttributeFormat::Int_2_10_10_10_REV,
+                    .offset = offsetof(VertexData, normal),
+                    .name = "normal",
+                    .location = 1,
+                },
+                {
+                    .format = VertexAttributeFormat::HalfFloat2,
+                    .offset = offsetof(VertexData, uv),
+                    .name = "uv",
+                    .location = 2,
+                },
+                {
+                    .format = VertexAttributeFormat::UInt1,
+                    .offset = offsetof(VertexData, mtlIndex),
+                    .name = "mtlIndex",
+                    .location = 3,
+                },
+            },
+        .numInputBindings = 1,
+        .inputBindings = {{.stride = sizeof(VertexData)}},
+    };
+    vertexInput0_ = device_->createVertexInputState(desc, nullptr);
+  }
+
+  {
+    const VertexInputStateDesc desc = {
+        .numAttributes = 1,
+        .attributes = {{
+            .format = VertexAttributeFormat::Float3,
+            .offset = offsetof(VertexData, position),
+            .name = "pos",
+            .location = 0,
+        }},
+        .numInputBindings = 1,
+        .inputBindings = {{.stride = sizeof(VertexData)}},
+    };
+    vertexInputShadows_ = device_->createVertexInputState(desc, nullptr);
+  }
+
+  depthStencilState_ = device_->createDepthStencilState(
+      {.compareFunction = igl::CompareFunction::Less, .isDepthWriteEnabled = true}, nullptr);
+
+  depthStencilStateLEqual_ = device_->createDepthStencilState(
+      {.compareFunction = igl::CompareFunction::LessEqual, .isDepthWriteEnabled = true}, nullptr);
+
+  {
+    igl::SamplerStateDesc desc = igl::SamplerStateDesc::newLinear();
+    desc.addressModeU = igl::SamplerAddressMode::Repeat;
+    desc.addressModeV = igl::SamplerAddressMode::Repeat;
+    desc.mipFilter = igl::SamplerMipFilter::Linear;
+    desc.debugName = "Sampler: linear";
+    sampler_ = device_->createSamplerState(desc, nullptr);
+
+    desc.addressModeU = igl::SamplerAddressMode::Clamp;
+    desc.addressModeV = igl::SamplerAddressMode::Clamp;
+    desc.mipFilter = igl::SamplerMipFilter::Disabled;
+    desc.debugName = "Sampler: shadow";
+    desc.depthCompareEnabled = true;
+    desc.depthCompareFunction = igl::CompareFunction::LessEqual;
+    samplerShadow_ = device_->createSamplerState(desc, nullptr);
+  }
+
+  commandQueue_ = device_->createCommandQueue({}, nullptr);
+
+  renderPassOffscreen_.colorAttachments.emplace_back();
+  renderPassOffscreen_.colorAttachments.back().loadAction = LoadAction::Clear;
+  renderPassOffscreen_.colorAttachments.back().storeAction =
+      numSamplesMSAA > 1 ? StoreAction::MsaaResolve : StoreAction::Store;
+  renderPassOffscreen_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  renderPassOffscreen_.depthAttachment.loadAction = LoadAction::Clear;
+  renderPassOffscreen_.depthAttachment.storeAction = StoreAction::DontCare;
+  renderPassOffscreen_.depthAttachment.clearDepth = 1.0f;
+
+  renderPassMain_.colorAttachments.emplace_back();
+  renderPassMain_.colorAttachments.back().loadAction = LoadAction::Clear;
+  renderPassMain_.colorAttachments.back().storeAction = StoreAction::Store;
+  renderPassMain_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+  renderPassMain_.depthAttachment.loadAction = LoadAction::Clear;
+  renderPassMain_.depthAttachment.storeAction = StoreAction::DontCare;
+  renderPassMain_.depthAttachment.clearDepth = 1.0f;
+
+#if USE_OPENGL_BACKEND
+  renderPassShadow_.colorAttachments.push_back(igl::RenderPassDesc::ColorAttachmentDesc{});
+  renderPassShadow_.colorAttachments.back().loadAction = LoadAction::Clear;
+  renderPassShadow_.colorAttachments.back().storeAction = StoreAction::Store;
+  renderPassShadow_.colorAttachments.back().clearColor = {0.0f, 0.0f, 0.0f, 1.0f};
+#endif
+  renderPassShadow_.depthAttachment.loadAction = LoadAction::Clear;
+  renderPassShadow_.depthAttachment.storeAction = StoreAction::Store;
+  renderPassShadow_.depthAttachment.clearDepth = 1.0f;
+
   const std::string cacheFileName = contentRootFolder + "cache.data";
 
   if (!loadFromCache(cacheFileName.c_str())) {
@@ -1406,35 +1409,38 @@ void initModel() {
   for (const auto& mtl : cachedMaterials_) {
     materials_.push_back(GPUMaterial{vec4(mtl.ambient, 1.0f), vec4(mtl.diffuse, 1.0f), id, id});
   }
-#if USE_OPENGL_BACKEND
-  const auto bufType = BufferDesc::BufferTypeBits::Uniform;
-  const auto hint = BufferDesc::BufferAPIHintBits::UniformBlock;
-#else
-  const auto bufType = BufferDesc::BufferTypeBits::Storage;
-  const auto hint = 0;
-#endif
-  sbMaterials_ = device_->createBuffer(BufferDesc(bufType,
-                                                  materials_.data(),
-                                                  sizeof(GPUMaterial) * materials_.size(),
-                                                  ResourceStorage::Private,
-                                                  hint,
-                                                  "Buffer: materials"),
-                                       nullptr);
 
-  vb0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Vertex,
-                                          vertexData_.data(),
-                                          sizeof(VertexData) * vertexData_.size(),
-                                          ResourceStorage::Private,
-                                          hint,
-                                          "Buffer: vertex"),
-                               nullptr);
-  ib0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Index,
-                                          indexData_.data(),
-                                          sizeof(uint32_t) * indexData_.size(),
-                                          ResourceStorage::Private,
-                                          hint,
-                                          "Buffer: index"),
-                               nullptr);
+  {
+#if USE_OPENGL_BACKEND
+    const auto bufType = BufferDesc::BufferTypeBits::Uniform;
+    const auto hint = BufferDesc::BufferAPIHintBits::UniformBlock;
+#else
+    const auto bufType = BufferDesc::BufferTypeBits::Storage;
+    const auto hint = 0;
+#endif
+    sbMaterials_ = device_->createBuffer(BufferDesc(bufType,
+                                                    materials_.data(),
+                                                    sizeof(GPUMaterial) * materials_.size(),
+                                                    ResourceStorage::Private,
+                                                    hint,
+                                                    "Buffer: materials"),
+                                         nullptr);
+
+    vb0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Vertex,
+                                            vertexData_.data(),
+                                            sizeof(VertexData) * vertexData_.size(),
+                                            ResourceStorage::Private,
+                                            hint,
+                                            "Buffer: vertex"),
+                                 nullptr);
+    ib0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Index,
+                                            indexData_.data(),
+                                            sizeof(uint32_t) * indexData_.size(),
+                                            ResourceStorage::Private,
+                                            hint,
+                                            "Buffer: index"),
+                                 nullptr);
+  }
 }
 
 void createComputePipeline() {
@@ -1453,7 +1459,7 @@ void createComputePipeline() {
   computePipelineState_Grayscale_ = device_->createComputePipeline(desc, nullptr);
 }
 
-void createRenderPipelines() {
+void createRenderPipelines(int numSamplesMSAA) {
   if (renderPipelineState_Mesh_) {
     return;
   }
@@ -1546,7 +1552,7 @@ void createRenderPipelines() {
 #endif
     desc.cullMode = igl::CullMode::Back;
     desc.frontFaceWinding = igl::WindingMode::CounterClockwise;
-    desc.sampleCount = kNumSamplesMSAA;
+    desc.sampleCount = numSamplesMSAA;
     desc.debugName = IGL_NAMEHANDLE("Pipeline: mesh");
 #if USE_OPENGL_BACKEND
     desc.fragmentUnitSamplerMap[0] = IGL_NAMEHANDLE("texShadow");
@@ -1649,7 +1655,7 @@ void createRenderPipelines() {
   }
 }
 
-void createRenderPipelineSkybox() {
+void createRenderPipelineSkybox(int numSamplesMSAA) {
   if (renderPipelineState_Skybox_) {
     return;
   }
@@ -1728,7 +1734,7 @@ void createRenderPipelineSkybox() {
 #endif
   desc.cullMode = igl::CullMode::Front;
   desc.frontFaceWinding = igl::WindingMode::CounterClockwise;
-  desc.sampleCount = kNumSamplesMSAA;
+  desc.sampleCount = numSamplesMSAA;
   desc.debugName = IGL_NAMEHANDLE("Pipeline: skybox");
 #if USE_OPENGL_BACKEND
   desc.fragmentUnitSamplerMap[1] = IGL_NAMEHANDLE("texSkybox");
@@ -1812,7 +1818,7 @@ void createShadowMap() {
   IGL_DEBUG_ASSERT(fbShadowMap_);
 }
 
-void createOffscreenFramebuffer() {
+void createOffscreenFramebuffer(int numSamplesMSAA) {
   const uint32_t w = width_;
   const uint32_t h = height_;
   Result ret;
@@ -1823,9 +1829,9 @@ void createOffscreenFramebuffer() {
                                           TextureDesc::TextureUsageBits::Sampled,
                                       "Offscreen framebuffer (d)");
   descDepth.numMipLevels = TextureDesc::calcNumMipLevels(w, h);
-  if (kNumSamplesMSAA > 1) {
+  if (numSamplesMSAA > 1) {
     descDepth.usage = TextureDesc::TextureUsageBits::Attachment;
-    descDepth.numSamples = kNumSamplesMSAA;
+    descDepth.numSamples = numSamplesMSAA;
     descDepth.numMipLevels = 1;
     descDepth.storage = ResourceStorage::Memoryless;
   }
@@ -1841,9 +1847,9 @@ void createOffscreenFramebuffer() {
 
   auto descColor = TextureDesc::new2D(format, w, h, usage, "Offscreen framebuffer (c)");
   descColor.numMipLevels = TextureDesc::calcNumMipLevels(w, h);
-  if (kNumSamplesMSAA > 1) {
+  if (numSamplesMSAA > 1) {
     descColor.usage = TextureDesc::TextureUsageBits::Attachment;
-    descColor.numSamples = kNumSamplesMSAA;
+    descColor.numSamples = numSamplesMSAA;
     descColor.numMipLevels = 1;
     descColor.storage = ResourceStorage::Memoryless;
   }
@@ -1853,7 +1859,7 @@ void createOffscreenFramebuffer() {
   FramebufferDesc framebufferDesc;
   framebufferDesc.colorAttachments[0].texture = texColor;
   framebufferDesc.depthAttachment.texture = texDepth;
-  if (kNumSamplesMSAA > 1) {
+  if (numSamplesMSAA > 1) {
     auto descColorResolve =
         TextureDesc::new2D(format, w, h, usage, "Offscreen framebuffer (c - resolve)");
     descColorResolve.usage = usage;
@@ -1866,7 +1872,9 @@ void createOffscreenFramebuffer() {
   IGL_DEBUG_ASSERT(fbOffscreen_);
 }
 
-void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex) {
+void render(const std::shared_ptr<ITexture>& nativeDrawable,
+            uint32_t frameIndex,
+            int numSamplesMSAA) {
   IGL_PROFILER_FUNCTION();
 
   fbMain_->updateDrawable(nativeDrawable);
@@ -2074,8 +2082,8 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
 
     auto commands = buffer->createComputeCommandEncoder();
     commands->bindComputePipelineState(computePipelineState_Grayscale_);
-    ITexture* tex = kNumSamplesMSAA > 1 ? fbOffscreen_->getResolveColorAttachment(0).get()
-                                        : fbOffscreen_->getColorAttachment(0).get();
+    ITexture* tex = numSamplesMSAA > 1 ? fbOffscreen_->getResolveColorAttachment(0).get()
+                                       : fbOffscreen_->getColorAttachment(0).get();
 #if !USE_OPENGL_BACKEND
     const uint32_t textureId = tex->getTextureId();
     commands->bindPushConstants(&textureId, sizeof(textureId));
@@ -2098,8 +2106,8 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable, uint32_t frameIndex
     commands->pushDebugGroupLabel("Swapchain Output", igl::Color(1, 0, 0));
     commands->bindTexture(0,
                           igl::BindTarget::kFragment,
-                          kNumSamplesMSAA > 1 ? fbOffscreen_->getResolveColorAttachment(0).get()
-                                              : fbOffscreen_->getColorAttachment(0).get());
+                          numSamplesMSAA > 1 ? fbOffscreen_->getResolveColorAttachment(0).get()
+                                             : fbOffscreen_->getColorAttachment(0).get());
     commands->bindSamplerState(0, igl::BindTarget::kFragment, sampler_.get());
     commands->draw(3);
     commands->popDebugGroupLabel();
@@ -2258,12 +2266,18 @@ void loadMaterial(size_t i) {
   }
 }
 
-void loadMaterials() {
+void loadMaterials(bool isHeadless) {
   stbi_set_flip_vertically_on_load(1);
+
+  textures_.resize(cachedMaterials_.size());
+
+  if (isHeadless) {
+    loaderPool_ = nullptr;
+    return;
+  }
 
   remainingMaterialsToLoad_ = (uint32_t)cachedMaterials_.size();
 
-  textures_.resize(cachedMaterials_.size());
   for (size_t i = 0; i != cachedMaterials_.size(); i++) {
     loaderPool_->silent_async([i]() { loadMaterial(i); });
   }
@@ -2583,7 +2597,11 @@ void processLoadedMaterials() {
 
 } // namespace
 
-int main(int /*argc*/, char* /*argv*/[]) {
+int main(int argc, char* argv[]) {
+  const bool isHeadless = argc > 1 && (strcmp(argv[1], "--headless") == 0);
+
+  const int kNumSamplesMSAA = isHeadless ? 1 : 8;
+
   // find the content folder
   {
     using namespace std::filesystem;
@@ -2602,9 +2620,8 @@ int main(int /*argc*/, char* /*argv*/[]) {
     contentRootFolder = (dir / subdir).string();
   }
 
-  initWindow(&window_);
-  initIGL();
-  initModel();
+  GLFWwindow* window = initIGL(isHeadless);
+  initModel(kNumSamplesMSAA);
 
   if (kEnableCompression) {
     printf(
@@ -2612,13 +2629,13 @@ int main(int /*argc*/, char* /*argv*/[]) {
   }
 
   loadSkyboxTexture();
-  loadMaterials();
+  loadMaterials(isHeadless);
 
   createFramebuffer(getNativeDrawable());
   createShadowMap();
-  createOffscreenFramebuffer();
-  createRenderPipelines();
-  createRenderPipelineSkybox();
+  createOffscreenFramebuffer(kNumSamplesMSAA);
+  createRenderPipelines(kNumSamplesMSAA);
+  createRenderPipelineSkybox(kNumSamplesMSAA);
   createComputePipeline();
 
 #if IGL_WITH_IGLU
@@ -2630,7 +2647,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
   uint32_t frameIndex = 0;
 
   // Main loop
-  while (!glfwWindowShouldClose(window_)) {
+  while (!window || !glfwWindowShouldClose(window)) {
     {
       FramebufferDesc framebufferDesc;
       framebufferDesc.colorAttachments[0].texture = getNativeDrawable();
@@ -2676,8 +2693,13 @@ int main(int /*argc*/, char* /*argv*/[]) {
 #if IGL_WITH_IGLU
     inputDispatcher_.processEvents();
 #endif // IGL_WITH_IGLU
-    render(getNativeDrawable(), frameIndex);
-    glfwPollEvents();
+    render(getNativeDrawable(), frameIndex, kNumSamplesMSAA);
+    if (window) {
+      glfwPollEvents();
+    } else {
+      printf("We are running headless - breaking after 1 frame\n");
+      break;
+    }
     frameIndex = (frameIndex + 1) % kNumBufferedFrames;
   }
 
@@ -2714,7 +2736,7 @@ int main(int /*argc*/, char* /*argv*/[]) {
   fbOffscreen_ = nullptr;
   device_.reset(nullptr);
 
-  glfwDestroyWindow(window_);
+  glfwDestroyWindow(window);
   glfwTerminate();
 
   printf("Waiting for the loader thread to exit...\n");
