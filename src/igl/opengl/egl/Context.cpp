@@ -224,7 +224,6 @@ Context::Context(size_t width, size_t height) :
           true,
           IGL_EGL_NULL_WINDOW,
           {static_cast<EGLint>(width), static_cast<EGLint>(height)}) {}
-#endif
 
 Context::Context(const Context& sharedContext) :
   Context(sharedContext.backendVersion_,

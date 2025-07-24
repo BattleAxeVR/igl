@@ -1203,6 +1203,7 @@ bool XrApp::passthroughSupported() const noexcept { // NOLINT(bugprone-exception
 }
 
 bool XrApp::passthroughEnabled() const noexcept { // NOLINT(bugprone-exception-escape)
+#if ENABLE_PASSTHROUGH
   if (!renderSession_ || !passthrough_) {
     return false;
   }
