@@ -537,27 +537,6 @@ VkAttachmentReference2 ivkGetAttachmentReferenceColor(uint32_t idx) {
   return ref;
 }
 
-VkResult ivkCreateRenderPass(const struct VulkanFunctionTable* vt,
-                             VkDevice device,
-                             uint32_t numAttachments,
-                             const VkAttachmentDescription* attachments,
-                             const VkSubpassDescription* subpass,
-                             const VkSubpassDependency* dependency,
-                             const VkRenderPassMultiviewCreateInfo* renderPassMultiview,
-                             VkRenderPass* outRenderPass) {
-  const VkRenderPassCreateInfo ci = {
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .pNext = renderPassMultiview,
-      .attachmentCount = numAttachments,
-      .pAttachments = attachments,
-      .subpassCount = 1,
-      .pSubpasses = subpass,
-      .dependencyCount = 1,
-      .pDependencies = dependency,
-  };
-  return vt->vkCreateRenderPass(device, &ci, NULL, outRenderPass);
-}
-
 VkDescriptorSetLayoutBinding ivkGetDescriptorSetLayoutBinding(uint32_t binding,
                                                               VkDescriptorType descriptorType,
                                                               uint32_t descriptorCount,
@@ -570,75 +549,6 @@ VkDescriptorSetLayoutBinding ivkGetDescriptorSetLayoutBinding(uint32_t binding,
       .pImmutableSamplers = NULL,
   };
   return bind;
-}
-
-VkAttachmentDescription ivkGetAttachmentDescription(VkFormat format,
-                                                    VkAttachmentLoadOp loadOp,
-                                                    VkAttachmentStoreOp storeOp,
-                                                    VkImageLayout initialLayout,
-                                                    VkImageLayout finalLayout,
-                                                    VkSampleCountFlagBits samples) {
-  const VkAttachmentDescription desc = {
-      .flags = 0,
-      .format = format,
-      .samples = samples,
-      .loadOp = loadOp,
-      .storeOp = storeOp,
-      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      .initialLayout = initialLayout,
-      .finalLayout = finalLayout,
-  };
-  return desc;
-}
-
-VkAttachmentReference ivkGetAttachmentReference(uint32_t attachment, VkImageLayout layout) {
-  const VkAttachmentReference ref = {
-      .attachment = attachment,
-      .layout = layout,
-  };
-  return ref;
-}
-
-VkSubpassDescription ivkGetSubpassDescription(uint32_t numColorAttachments,
-                                              const VkAttachmentReference* refsColor,
-                                              const VkAttachmentReference* refsColorResolve,
-                                              const VkAttachmentReference* refDepth) {
-  const VkSubpassDescription desc = {
-      .flags = 0,
-      .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount = numColorAttachments,
-      .pColorAttachments = refsColor,
-      .pResolveAttachments = refsColorResolve,
-      .pDepthStencilAttachment = refDepth,
-  };
-  return desc;
-}
-
-VkSubpassDependency ivkGetSubpassDependency(void) {
-  const VkSubpassDependency dep = {
-      .srcSubpass = 0,
-      .dstSubpass = VK_SUBPASS_EXTERNAL,
-      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      .dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-      .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-      .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-  };
-  return dep;
-}
-
-VkRenderPassMultiviewCreateInfo ivkGetRenderPassMultiviewCreateInfo(
-    const uint32_t* viewMask,
-    const uint32_t* correlationMask) {
-  const VkRenderPassMultiviewCreateInfo ci = {
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
-      .subpassCount = 1,
-      .pViewMasks = viewMask,
-      .correlationMaskCount = 1,
-      .pCorrelationMasks = correlationMask,
-  };
-
-  return ci;
 }
 
 VkResult ivkCreateDescriptorSetLayout(const struct VulkanFunctionTable* vt,

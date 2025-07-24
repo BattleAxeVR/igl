@@ -177,15 +177,6 @@ uint32_t ivkFindMemoryType(const struct VulkanFunctionTable* vt,
                            uint32_t memoryTypeBits,
                            VkMemoryPropertyFlags flags);
 
-VkResult ivkCreateRenderPass(const struct VulkanFunctionTable* vt,
-                             VkDevice device,
-                             uint32_t numAttachments,
-                             const VkAttachmentDescription* attachments,
-                             const VkSubpassDescription* subpass,
-                             const VkSubpassDependency* dependency,
-                             const VkRenderPassMultiviewCreateInfo* renderPassMultiview,
-                             VkRenderPass* outRenderPass);
-
 VkResult ivkCreateGraphicsPipeline(const struct VulkanFunctionTable* vt,
                                    VkDevice device,
                                    VkPipelineCache pipelineCache,
@@ -224,31 +215,6 @@ VkDescriptorSetLayoutBinding ivkGetDescriptorSetLayoutBinding(uint32_t binding,
                                                               VkDescriptorType descriptorType,
                                                               uint32_t descriptorCount,
                                                               VkShaderStageFlags stageFlags);
-
-/// @brief Creates a VkAttachmentDescription structure with load and store operations for the
-/// stencil attachment as "Don't Care"
-VkAttachmentDescription ivkGetAttachmentDescription(VkFormat format,
-                                                    VkAttachmentLoadOp loadOp,
-                                                    VkAttachmentStoreOp storeOp,
-                                                    VkImageLayout initialLayout,
-                                                    VkImageLayout finalLayout,
-                                                    VkSampleCountFlagBits samples);
-
-VkAttachmentReference ivkGetAttachmentReference(uint32_t attachment, VkImageLayout layout);
-
-/// @brief Creates s VkSubpassDescription structure with its pipeline bind point equal to
-/// `VK_PIPELINE_BIND_POINT_GRAPHICS`
-VkSubpassDescription ivkGetSubpassDescription(uint32_t numColorAttachments,
-                                              const VkAttachmentReference* refsColor,
-                                              const VkAttachmentReference* refsColorResolve,
-                                              const VkAttachmentReference* refDepth);
-
-/// @brief Creates a VkSubpassDependency structure with no dependencies between subpasses
-VkSubpassDependency ivkGetSubpassDependency(void);
-
-VkRenderPassMultiviewCreateInfo ivkGetRenderPassMultiviewCreateInfo(
-    const uint32_t* viewMask,
-    const uint32_t* correlationMask);
 
 VkResult ivkAllocateDescriptorSet(const struct VulkanFunctionTable* vt,
                                   VkDevice device,

@@ -129,6 +129,55 @@ std::string getMetalShaderSource() {
     )";
 }
 
+std::string getMetalShaderSourceGradient() {
+  return R"(
+              using namespace metal;
+
+              typedef struct {
+                 float3 color;
+                 float4x4 mvp;
+               } UniformBlock;
+
+              typedef struct {
+                float3 position [[attribute(0)]];
+                float2 uv [[attribute(1)]];
+              } VertexIn;
+
+              typedef struct {
+                float4 position [[position]];
+                float2 uv;
+              } VertexOut;
+
+              vertex VertexOut vertexShader(
+                  uint vid [[vertex_id]], constant VertexIn * vertices [[buffer(1)]]) {
+                VertexOut out;
+                out.position = float4(vertices[vid].position, 1.0);
+                out.uv = vertices[vid].uv;
+                return out;
+              }
+
+              fragment float4 fragmentShader(
+                  VertexOut IN [[stage_in]],
+                  texture2d<float> diffuseTex [[texture(0)]],
+                  sampler linearSampler [[sampler(0)]],
+                  constant UniformBlock * color [[buffer(0)]]) {
+
+                  float numSteps = 20.0;
+                  float uvX;
+                  if (IN.uv.y<0.25) {
+                   uvX = IN.uv.x;
+                  } else if (IN.uv.y<0.5) {
+                    uvX = floor(IN.uv.x*numSteps+0.5)/numSteps;
+                  } else if (IN.uv.y<0.75) {
+                    uvX = 1.0-IN.uv.x;
+                  } else {
+                    uvX = floor((1.0-IN.uv.x)*numSteps+0.5)/numSteps;
+                  }
+                  return float4(uvX, uvX, uvX, 1.0); 
+              }
+    )";
+}
+
 std::string getOpenGLVertexShaderSource() {
   return getVersion() + R"(
                 precision highp float;
@@ -162,6 +211,32 @@ std::string getOpenGLFragmentShaderSource() {
                   gl_FragColor =
                       vec4(vColor, 1.0) * texture2D(inputImage, uv);
                 })");
+}
+
+std::string getOpenGLFragmentShaderSourceGradient() {
+  return getVersion() + R"(    
+                precision highp float;
+                uniform vec3 color;
+                uniform mat4 mvp;
+                uniform sampler2D inputImage;
+                varying vec3 vColor;
+                varying vec2 uv;
+                
+                void main() {
+                  float numSteps = 20.0;
+                  float uvX;
+                  if (uv.y<0.25) {
+                    uvX = uv.x;
+                  } else if (uv.y<0.5) {
+                   uvX = floor(uv.x*numSteps+0.5)/numSteps;
+                  } else if (uv.y<0.75) {
+                   uvX = 1.0-uv.x;
+                  } else {
+                   uvX = floor((1.0-uv.x)*numSteps+0.5)/numSteps;
+                  } 
+                  gl_FragColor = vec4(vec3(uvX), 1.0);
+                }
+                )";
 }
 
 std::string getVulkanVertexShaderSource() {
@@ -198,6 +273,29 @@ std::string getVulkanFragmentShaderSource() {
                 )";
 }
 
+std::string getVulkanFragmentShaderSourceGradient() {
+  return R"(
+                layout(location = 0) in vec2 uv;
+                layout(location = 1) in vec3 color;
+                layout(location = 0) out vec4 out_FragColor;
+
+                void main() {
+                  float numSteps = 20.0;
+                  float uvX;
+                  if (uv.y<0.25) {
+                    uvX = uv.x;
+                  } else if (uv.y<0.5) {
+                   uvX = floor(uv.x*numSteps+0.5)/numSteps;
+                  } else if (uv.y<0.75) {
+                   uvX = 1.0-uv.x;
+                  } else {
+                   uvX = floor((1.0-uv.x)*numSteps+0.5)/numSteps;
+                  } 
+                  out_FragColor = vec4(vec3(uvX), 1.0);
+                }
+                )";
+}
+
 // @fb-only
 
 } // namespace
@@ -216,14 +314,17 @@ std::unique_ptr<IShaderStages> ColorSession::getShaderStagesForBackend(IDevice& 
                         layout(num_views = 2) in;)" +
                      vertexSource;
     }
-    return igl::ShaderStagesCreator::fromModuleStringInput(device,
-                                                           vertexSource.c_str(),
-                                                           "main",
-                                                           "",
-                                                           getVulkanFragmentShaderSource().c_str(),
-                                                           "main",
-                                                           "",
-                                                           nullptr);
+    return igl::ShaderStagesCreator::fromModuleStringInput(
+        device,
+        vertexSource.c_str(),
+        "main",
+        "",
+        colorTestModes_ == ColorTestModes::Gradient
+            ? getVulkanFragmentShaderSourceGradient().c_str()
+            : getVulkanFragmentShaderSource().c_str(),
+        "main",
+        "",
+        nullptr);
   }
   // @fb-only
     // @fb-only
@@ -232,21 +333,32 @@ std::unique_ptr<IShaderStages> ColorSession::getShaderStagesForBackend(IDevice& 
         // @fb-only
         // @fb-only
         // @fb-only
+            // @fb-only
+            // @fb-only
         // @fb-only
         // @fb-only
         // @fb-only
   case igl::BackendType::Metal:
     return igl::ShaderStagesCreator::fromLibraryStringInput(
-        device, getMetalShaderSource().c_str(), "vertexShader", "fragmentShader", "", nullptr);
+        device,
+        colorTestModes_ == ColorTestModes::Gradient ? getMetalShaderSourceGradient().c_str()
+                                                    : getMetalShaderSource().c_str(),
+        "vertexShader",
+        "fragmentShader",
+        "",
+        nullptr);
   case igl::BackendType::OpenGL:
-    return igl::ShaderStagesCreator::fromModuleStringInput(device,
-                                                           getOpenGLVertexShaderSource().c_str(),
-                                                           "main",
-                                                           "",
-                                                           getOpenGLFragmentShaderSource().c_str(),
-                                                           "main",
-                                                           "",
-                                                           nullptr);
+    return igl::ShaderStagesCreator::fromModuleStringInput(
+        device,
+        getOpenGLVertexShaderSource().c_str(),
+        "main",
+        "",
+        colorTestModes_ == ColorTestModes::Gradient
+            ? getOpenGLFragmentShaderSourceGradient().c_str()
+            : getOpenGLFragmentShaderSource().c_str(),
+        "main",
+        "",
+        nullptr);
   }
   IGL_UNREACHABLE_RETURN(nullptr)
 }
@@ -300,8 +412,9 @@ void ColorSession::initialize() noexcept {
     tex0_ = getPlatform().loadTexture(igl::shell::ImageLoader::white());
     setPreferredClearColor(
         Color{fLinearOrangeColor.x, fLinearOrangeColor.y, fLinearOrangeColor.z, 1.0f});
+  } else if (colorTestModes_ == ColorTestModes::Gradient) {
+    tex0_ = getPlatform().loadTexture(igl::shell::ImageLoader::white());
   }
-
   shaderStages_ = getShaderStagesForBackend(device);
   IGL_DEBUG_ASSERT(shaderStages_ != nullptr);
 
@@ -441,9 +554,10 @@ void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
     } else {
       IGL_DEBUG_ASSERT_NOT_REACHED();
     }
+    // if (colorTestModes_ != ColorTestModes::eGradient) {
     commands->bindTexture(textureUnit, BindTarget::kFragment, tex0_.get());
     commands->bindSamplerState(textureUnit, BindTarget::kFragment, samp0_.get());
-
+    //}
     commands->bindIndexBuffer(*ib0_, IndexFormat::UInt16);
     commands->drawIndexed(6);
 
@@ -456,7 +570,7 @@ void ColorSession::update(SurfaceTextures surfaceTextures) noexcept {
   }
 
   IGL_DEBUG_ASSERT(commandQueue_ != nullptr);
-  commandQueue_->submit(*buffer);
+  commandQueue_->submit(*buffer, true);
   RenderSession::update(surfaceTextures);
 }
 
