@@ -111,12 +111,12 @@ XrSession XrApp::session() const {
 }
 
 bool XrApp::checkExtensions() {
-  XrResult result;
   PFN_xrEnumerateInstanceExtensionProperties xrEnumerateInstanceExtensionProperties = nullptr;
-  XR_CHECK(result =
-               xrGetInstanceProcAddr(XR_NULL_HANDLE,
-                                     "xrEnumerateInstanceExtensionProperties",
-                                     (PFN_xrVoidFunction*)&xrEnumerateInstanceExtensionProperties));
+  const XrResult result =
+      xrGetInstanceProcAddr(XR_NULL_HANDLE,
+                            "xrEnumerateInstanceExtensionProperties",
+                            (PFN_xrVoidFunction*)&xrEnumerateInstanceExtensionProperties);
+  XR_CHECK(result);
   if (result != XR_SUCCESS) {
     IGL_LOG_ERROR("Failed to get xrEnumerateInstanceExtensionProperties function pointer.\n");
     return false;
@@ -252,8 +252,8 @@ bool XrApp::createInstance() {
       .enabledExtensionNames = enabledExtensions_.data(),
   };
 
-  XrResult initResult;
-  XR_CHECK(initResult = xrCreateInstance(&instanceCreateInfo, &instance_));
+  const XrResult initResult = xrCreateInstance(&instanceCreateInfo, &instance_);
+  XR_CHECK(initResult);
   if (initResult != XR_SUCCESS) {
     IGL_LOG_ERROR("Failed to create XR instance: %d.\n", initResult);
     return false;
@@ -288,8 +288,8 @@ bool XrApp::createSystem() {
       .formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY,
   };
 
-  XrResult result;
-  XR_CHECK(result = xrGetSystem(instance_, &systemGetInfo, &systemId_));
+  const XrResult result = xrGetSystem(instance_, &systemGetInfo, &systemId_);
+  XR_CHECK(result);
   if (result != XR_SUCCESS) {
     IGL_LOG_ERROR("Failed to get system.\n");
     return false;
@@ -853,8 +853,8 @@ void XrApp::handleSessionStateChanges(XrSessionState state) {
         viewConfigProps_.viewConfigurationType,
     };
 
-    XrResult result;
-    XR_CHECK(result = xrBeginSession(session_, &sessionBeginInfo));
+    const XrResult result = xrBeginSession(session_, &sessionBeginInfo);
+    XR_CHECK(result);
 
     sessionActive_ = (result == XR_SUCCESS);
     IGL_LOG_INFO("XR session active\n");
