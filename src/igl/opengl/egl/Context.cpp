@@ -13,10 +13,9 @@
 #include <igl/opengl/HWDevice.h>
 
 #include <array>
-#include <cassert>
 #include <tuple>
 #include <igl/Macros.h>
-#include <igl/opengl/Texture.h>
+#include <igl/Texture.h>
 
 #define CREATE_GL_ES_WINDOW 0
 
