@@ -113,7 +113,12 @@ bool GlfwShell::createWindow() noexcept {
   willCreateWindow();
 
   GLFWwindow* windowHandle =
-      glfwCreateWindow(width, height, sessionConfig_.displayName.c_str(), monitor, nullptr);
+      glfwCreateWindow(width,
+                       height,
+                       sessionConfig_.displayName.c_str(),
+                       // @fb-only
+                       monitor,
+                       nullptr);
   if (!windowHandle) {
     return false;
   }
@@ -197,6 +202,8 @@ bool GlfwShell::initialize(int argc,
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--headless")) {
       shellParams_.isHeadless = true;
+    } else if (!strcmp(argv[i], "--disable-vulkan-validation-layers")) {
+      shellParams_.enableVulkanValidationLayers = false;
     } else if (!strcmp(argv[i], "--screenshot-file")) {
       if (i + 1 < argc) {
         shellParams_.screenshotFileName = argv[++i];

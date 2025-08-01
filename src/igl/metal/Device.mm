@@ -38,9 +38,9 @@ Device::Device(id<MTLDevice> device) :
 
 Device::~Device() = default;
 
-std::shared_ptr<ICommandQueue> Device::createCommandQueue(
+std::shared_ptr<ICommandQueue> Device::createCommandQueue( // NOLINT(bugprone-exception-escape)
     const CommandQueueDesc& /*desc*/,
-    Result* outResult) noexcept { // NOLINT(bugprone-exception-escape)
+    Result* outResult) noexcept {
   id<MTLCommandQueue> metalObject = [device_ newCommandQueue];
   auto resource =
       std::make_shared<CommandQueue>(*this, metalObject, bufferSyncManager_, deviceStatistics_);
@@ -63,17 +63,17 @@ id<MTLBuffer> createMetalBuffer(id<MTLDevice> device,
 }
 } // namespace
 
-std::unique_ptr<IBuffer> Device::createBuffer(
+std::unique_ptr<IBuffer> Device::createBuffer( // NOLINT(bugprone-exception-escape)
     const BufferDesc& desc,
-    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
+    Result* outResult) const noexcept {
   if (desc.hint & BufferDesc::BufferAPIHintBits::Ring) {
     return createRingBuffer(desc, outResult);
   }
   if (desc.hint & BufferDesc::BufferAPIHintBits::NoCopy) {
     return createBufferNoCopy(desc, outResult);
   }
-  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
-  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+  const MTLResourceOptions storage = toMTLResourceStorageMode(desc.storage);
+  const MTLResourceOptions options = MTLResourceCPUCacheModeDefaultCache | storage;
 
   id<MTLBuffer> metalObject = createMetalBuffer(device_, desc, options);
   std::unique_ptr<IBuffer> resource = std::make_unique<Buffer>(
@@ -85,11 +85,11 @@ std::unique_ptr<IBuffer> Device::createBuffer(
   return resource;
 }
 
-std::unique_ptr<IBuffer> Device::createRingBuffer(
+std::unique_ptr<IBuffer> Device::createRingBuffer( // NOLINT(bugprone-exception-escape)
     const BufferDesc& desc,
-    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
-  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
-  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+    Result* outResult) const noexcept {
+  const MTLResourceOptions storage = toMTLResourceStorageMode(desc.storage);
+  const MTLResourceOptions options = MTLResourceCPUCacheModeDefaultCache | storage;
 
   // Create a ring of buffers
   std::vector<id<MTLBuffer>> bufferRing;
@@ -109,11 +109,11 @@ std::unique_ptr<IBuffer> Device::createRingBuffer(
 
 std::unique_ptr<IBuffer> Device::createBufferNoCopy(const BufferDesc& desc,
                                                     Result* outResult) const {
-  const MTLStorageMode storage = toMTLStorageMode(desc.storage);
+  const MTLResourceOptions storage = toMTLResourceStorageMode(desc.storage);
 
   using Deallocator = void (^)(void*, NSUInteger);
   const Deallocator deallocator = nil;
-  const MTLResourceOptions options = MTLResourceOptionCPUCacheModeDefault | storage;
+  const MTLResourceOptions options = MTLResourceCPUCacheModeDefaultCache | storage;
   id<MTLBuffer> metalObject = [device_ newBufferWithBytesNoCopy:const_cast<void*>(desc.data)
                                                          length:desc.length
                                                         options:options
@@ -133,9 +133,9 @@ std::shared_ptr<ISamplerState> Device::createSamplerState(const SamplerStateDesc
   return platformDevice_.createSamplerState(desc, outResult);
 }
 
-std::shared_ptr<ITexture> Device::createTexture(
+std::shared_ptr<ITexture> Device::createTexture( // NOLINT(bugprone-exception-escape)
     const TextureDesc& desc,
-    Result* outResult) const noexcept { // NOLINT(bugprone-exception-escape)
+    Result* outResult) const noexcept {
   const auto sanitized = sanitize(desc);
   if (desc.numLayers > 1 && desc.type != TextureType::TwoDArray) {
     Result::setResult(outResult,
@@ -215,10 +215,10 @@ std::shared_ptr<ITexture> Device::createTexture(
   return iglObject;
 }
 
-std::shared_ptr<ITexture> Device::createTextureView(
+std::shared_ptr<ITexture> Device::createTextureView( // NOLINT(bugprone-exception-escape)
     std::shared_ptr<ITexture> texture,
     const TextureViewDesc& desc,
-    Result* IGL_NULLABLE outResult) const noexcept { // NOLINT(bugprone-exception-escape)
+    Result* IGL_NULLABLE outResult) const noexcept {
   IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
 
   Result::setResult(
