@@ -14,8 +14,8 @@
 #import <FBServerSnapshotTestCase/FBServerSnapshotTestData.h>
 #import <FBServerSnapshotTestCase/FBServerSnapshotTestRecorder.h>
 #import <iglu/kit/Renderable.hpp>
-#import <igl/DebugMacros.h>
-#import <igl/IGL.h>
+#import <igl/DebugMacros.h> // IWYU pragma: keep
+#import <igl/IGL.h> // IWYU pragma: keep
 #include <igl/metal/HWDevice.h>
 #include <igl/opengl/ios/HWDevice.h>
 

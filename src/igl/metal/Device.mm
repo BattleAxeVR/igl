@@ -22,6 +22,7 @@
 #include <igl/metal/SamplerState.h>
 #include <igl/metal/Shader.h>
 #include <igl/metal/Texture.h>
+#include <igl/metal/Timer.h>
 #include <igl/metal/VertexInputState.h>
 
 namespace igl::metal {
@@ -225,6 +226,13 @@ std::shared_ptr<ITexture> Device::createTextureView( // NOLINT(bugprone-exceptio
       outResult, Result::Code::Unimplemented, "Texture views are not (yet) implemented");
 
   return nullptr;
+}
+
+std::shared_ptr<ITimer> Device::createTimer(Result* IGL_NULLABLE outResult) const noexcept {
+  if (outResult) {
+    Result::setOk(outResult);
+  }
+  return std::make_shared<Timer>();
 }
 
 std::shared_ptr<IVertexInputState> Device::createVertexInputState(const VertexInputStateDesc& desc,

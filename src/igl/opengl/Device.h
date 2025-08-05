@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <cstdio>
-#include <cstring>
 #include <igl/Device.h>
 #include <igl/opengl/DeviceFeatureSet.h>
 #include <igl/opengl/GLIncludes.h>
@@ -88,6 +86,9 @@ class Device : public IDevice {
 
   std::shared_ptr<IFramebuffer> createFramebuffer(const FramebufferDesc& desc,
                                                   Result* IGL_NULLABLE outResult) noexcept override;
+
+  // Timers
+  std::shared_ptr<ITimer> createTimer(Result* IGL_NULLABLE outResult) const noexcept override;
 
   // debug markers useful in GPU captures
   void pushMarker(int len, const char* IGL_NULLABLE name);

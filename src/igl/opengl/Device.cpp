@@ -20,6 +20,7 @@
 #include <igl/opengl/SamplerState.h>
 #include <igl/opengl/TextureBuffer.h>
 #include <igl/opengl/TextureTarget.h>
+#include <igl/opengl/Timer.h>
 #include <igl/opengl/UniformBuffer.h>
 #include <igl/opengl/VertexInputState.h>
 
@@ -381,6 +382,16 @@ Holder<BindGroupBufferHandle> Device::createBindGroup(const BindGroupBufferDesc&
                                    : Result());
 
   return {this, handle};
+}
+
+std::shared_ptr<ITimer> Device::createTimer(Result* IGL_NULLABLE outResult) const noexcept {
+  if (deviceFeatureSet_.hasFeature(DeviceFeatures::Timers)) {
+    Result::setOk(outResult);
+    return std::make_shared<Timer>(*context_);
+  }
+  Result::setResult(
+      outResult, Result::Code::Unsupported, "Timers are not supported on this device");
+  return nullptr;
 }
 
 void Device::destroy(BindGroupTextureHandle handle) {
