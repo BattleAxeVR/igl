@@ -17,6 +17,7 @@
 #include <igl/DeviceFeatures.h>
 #include <igl/PlatformDevice.h>
 #include <igl/opengl/ComputeCommandAdapter.h>
+#include <igl/opengl/Config.h>
 #include <igl/opengl/DeviceFeatureSet.h>
 #include <igl/opengl/GLFunc.h>
 #include <igl/opengl/GLIncludes.h>
@@ -166,7 +167,7 @@ class IContext {
   void deleteProgram(GLuint program);
   void deleteShader(GLuint shaderId);
   void deleteSync(GLsync sync);
-  void deleteTextures(const std::vector<GLuint>& textures);
+  void deleteTextures(GLsizei n, const GLuint* textures);
   void depthFunc(GLenum func);
   void depthMask(GLboolean flag);
   void depthRangef(GLfloat n, GLfloat f);
@@ -539,7 +540,7 @@ class IContext {
 
   // API Logging
   unsigned int apiLogDrawsLeft_ = 0;
-  bool apiLogEnabled_ = false;
+  bool apiLogEnabled_ = IGL_API_LOG != 0;
 
   PFNIGLBINDIMAGETEXTUREPROC bindImageTexturerProc_ = nullptr;
   PFNIGLBINDVERTEXARRAYPROC bindVertexArrayProc_ = nullptr;
@@ -589,7 +590,7 @@ class IContext {
     void queueDeleteVertexArrays(GLsizei n, const GLuint* vertexArrays);
     void queueDeleteProgram(GLuint program);
     void queueDeleteShader(GLuint shaderId);
-    void queueDeleteTextures(const std::vector<GLuint>& textures);
+    void queueDeleteTextures(GLsizei n, const GLuint* textures);
 
    private:
     /// This is called by flushDeletionQueue to swap fooQueue w/ scratchFooQueue

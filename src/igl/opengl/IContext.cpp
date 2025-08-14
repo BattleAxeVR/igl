@@ -10,7 +10,6 @@
 
 #include <cstring>
 #include <string>
-#include <igl/opengl/Config.h>
 #include <igl/opengl/GLFunc.h>
 #include <igl/opengl/GLIncludes.h>
 
@@ -463,6 +462,7 @@ std::string GLenumToString(GLenum code) {
     RESULT_CASE(GL_SHADER_SOURCE_LENGTH)
     RESULT_CASE(GL_SHADER_STORAGE_BLOCK)
     RESULT_CASE(GL_SHADER_STORAGE_BUFFER)
+    RESULT_CASE(GL_SHADER_STORAGE_BUFFER_OFFSET_ALIGNMENT)
     RESULT_CASE(GL_SHADER_TYPE)
     RESULT_CASE(GL_SHADING_LANGUAGE_VERSION)
     RESULT_CASE(GL_SHORT)
@@ -542,6 +542,8 @@ std::string GLenumToString(GLenum code) {
     RESULT_CASE(GL_UNIFORM_BLOCK_BINDING)
     RESULT_CASE(GL_UNIFORM_BLOCK_DATA_SIZE)
     RESULT_CASE(GL_UNIFORM_BUFFER)
+    RESULT_CASE(GL_UNIFORM_BUFFER_OFFSET_ALIGNMENT)
+    RESULT_CASE(GL_UNIFORM_NAME_LENGTH)
     RESULT_CASE(GL_UNIFORM_OFFSET)
     RESULT_CASE(GL_UNPACK_ALIGNMENT)
     RESULT_CASE(GL_UNPACK_ROW_LENGTH)
@@ -1288,7 +1290,7 @@ void IContext::deleteBuffers(GLsizei n, const GLuint* buffers) {
       deletionQueues_.queueDeleteBuffers(n, buffers);
     } else {
       GLCALL(DeleteBuffers)(n, buffers);
-      APILOG("glDeleteBuffers(%u, %p)\n", n, buffers);
+      APILOG("glDeleteBuffers(%u, %p) = %u\n", n, buffers, buffers == nullptr ? 0 : *buffers);
       GLCHECK_ERRORS();
     }
   }
@@ -1296,7 +1298,7 @@ void IContext::deleteBuffers(GLsizei n, const GLuint* buffers) {
 
 void IContext::deleteMemoryObjects(GLsizei n, const GLuint* objects) {
   IGLCALL(DeleteMemoryObjectsEXT)(n, objects);
-  APILOG("glDeleteMemoryObjectsEXT(%u, %p)\n", n, objects);
+  APILOG("glDeleteMemoryObjectsEXT(%u, %p) = %u\n", n, objects, objects == nullptr ? 0 : *objects);
   GLCHECK_ERRORS();
 }
 
@@ -1314,7 +1316,10 @@ void IContext::deleteFramebuffers(GLsizei n, const GLuint* framebuffers) {
       deletionQueues_.queueDeleteFramebuffers(n, framebuffers);
     } else {
       IGLCALL(DeleteFramebuffers)(n, framebuffers);
-      APILOG("glDeleteFramebuffers(%u, %p)\n", n, framebuffers);
+      APILOG("glDeleteFramebuffers(%u, %p) = %u\n",
+             n,
+             framebuffers,
+             framebuffers == nullptr ? 0 : *framebuffers);
       GLCHECK_ERRORS();
     }
   }
@@ -1338,7 +1343,10 @@ void IContext::deleteRenderbuffers(GLsizei n, const GLuint* renderbuffers) {
       deletionQueues_.queueDeleteRenderbuffers(n, renderbuffers);
     } else {
       IGLCALL(DeleteRenderbuffers)(n, renderbuffers);
-      APILOG("glDeleteRenderbuffers(%u, %p)\n", n, renderbuffers);
+      APILOG("glDeleteRenderbuffers(%u, %p) = u\n",
+             n,
+             renderbuffers,
+             renderbuffers == nullptr ? 0 : *renderbuffers);
       GLCHECK_ERRORS();
     }
   }
@@ -1360,7 +1368,10 @@ void IContext::deleteVertexArrays(GLsizei n, const GLuint* vertexArrays) {
       deletionQueues_.queueDeleteVertexArrays(n, vertexArrays);
     } else {
       GLCALL_PROC(deleteVertexArraysProc_, n, vertexArrays);
-      APILOG("glDeleteVertexArrays(%u, %p)\n", n, vertexArrays);
+      APILOG("glDeleteVertexArrays(%u, %p) = %u\n",
+             n,
+             vertexArrays,
+             vertexArrays == nullptr ? 0 : *vertexArrays);
       GLCHECK_ERRORS();
     }
   }
@@ -1395,13 +1406,13 @@ void IContext::deleteSync(GLsync sync) {
   GLCHECK_ERRORS();
 }
 
-void IContext::deleteTextures(const std::vector<GLuint>& textures) {
-  if (isDestructionAllowed() && !textures.empty()) {
+void IContext::deleteTextures(GLsizei n, const GLuint* textures) {
+  if (isDestructionAllowed() && IGL_DEBUG_VERIFY(textures != nullptr)) {
     if (shouldQueueAPI()) {
-      deletionQueues_.queueDeleteTextures(textures);
+      deletionQueues_.queueDeleteTextures(n, textures);
     } else {
-      GLCALL(DeleteTextures)(static_cast<GLsizei>(textures.size()), textures.data());
-      APILOG("glDeleteTextures(%u, %p)\n", textures.size(), textures.data());
+      GLCALL(DeleteTextures)(n, textures);
+      APILOG("glDeleteTextures(%u, %p) = %u\n", n, p, textures == nullptr ? 0 : *textures);
       GLCHECK_ERRORS();
     }
   }
@@ -3344,7 +3355,8 @@ void IContext::SynchronizedDeletionQueues::flushDeletionQueue(IContext& context)
     scratchShaderQueue_.clear();
 
     if (!scratchTexturesQueue_.empty()) {
-      context.deleteTextures(scratchTexturesQueue_);
+      context.deleteTextures(static_cast<GLsizei>(scratchTexturesQueue_.size()),
+                             scratchTexturesQueue_.data());
       scratchTexturesQueue_.clear();
     }
   }
@@ -3409,9 +3421,10 @@ void IContext::SynchronizedDeletionQueues::queueDeleteShader(GLuint shaderId) {
   shaderQueue_.push_back(shaderId);
 }
 
-void IContext::SynchronizedDeletionQueues::queueDeleteTextures(
-    const std::vector<GLuint>& textures) {
+void IContext::SynchronizedDeletionQueues::queueDeleteTextures(GLsizei n, const GLuint* textures) {
   const std::lock_guard<std::mutex> guard(deletionQueueMutex_);
-  texturesQueue_.insert(std::end(texturesQueue_), std::begin(textures), std::end(textures));
+  for (GLsizei i = 0; i < n; ++i) {
+    texturesQueue_.push_back(textures[i]);
+  }
 }
 } // namespace igl::opengl
