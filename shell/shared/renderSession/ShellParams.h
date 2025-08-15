@@ -9,6 +9,7 @@
 
 #include <array>
 #include <optional>
+#include <string>
 #include <vector>
 
 #include <shell/shared/renderSession/Hands.h>
@@ -23,6 +24,13 @@ namespace igl::shell {
 namespace openxr {
     class XrApp;
 }
+
+struct BenchmarkRenderSessionParams {
+  size_t renderSessionTimeoutMs = 2000;
+  size_t numSessionsToRun = 10;
+  bool logReporter = false;
+  bool offscreenRenderingOnly = false;
+};
 
 struct ShellParams {
   std::vector<ViewParams> viewParams;
@@ -39,10 +47,16 @@ struct ShellParams {
 
   openxr::XrApp* xr_app_ptr_ = nullptr;
 
-  const char* screenshotFileName = "screenshot.png";
-  uint32_t screenshotNumber = 0; // frame number to save as a screenshot in headless more
+  std::string screenshotFileName = "screenshot.png";
+  uint32_t screenshotNumber = ~0; // frame number to save as a screenshot in headless more
+
   bool isHeadless = false;
 
   bool enableVulkanValidationLayers = true;
+  std::optional<BenchmarkRenderSessionParams> benchmarkParams = {};
 };
+
+std::vector<std::string> convertArgvToParams(int argc, char** argv);
+
+void parseShellParams(const std::vector<std::string>& args, ShellParams& shellParams);
 } // namespace igl::shell

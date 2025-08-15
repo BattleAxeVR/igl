@@ -262,6 +262,7 @@ bool TextureRangeDesc::operator!=(const TextureRangeDesc& rhs) const noexcept {
 
 TextureFormatProperties TextureFormatProperties::fromTextureFormat(TextureFormat format) {
   switch (format) {
+    // NOLINTBEGIN(readability-identifier-naming)
     INVALID(Invalid)
     COLOR(A_UNorm8, 1, 1, 0)
     COLOR(L_UNorm8, 1, 1, 0)
@@ -342,6 +343,29 @@ TextureFormatProperties TextureFormatProperties::fromTextureFormat(TextureFormat
     COMPRESSED(R_EAC_SNorm, 1, 8, 4, 4, 1, 1, 1, 1, 0)
     COMPRESSED(RGBA_BC7_UNORM_4x4, 4, 16, 4, 4, 1, 1, 1, 1, 0)
     COMPRESSED(RGBA_BC7_SRGB_4x4, 4, 16, 4, 4, 1, 1, 1, 1, Flags::sRGB)
+    // @fb-only
+    // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+    // @fb-only
+    // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+               // @fb-only
+    // @fb-only
     DEPTH(Z_UNorm16, 1, 2)
     DEPTH(Z_UNorm24, 1, 3)
     DEPTH(Z_UNorm32, 1, 4)
@@ -354,6 +378,7 @@ TextureFormatProperties TextureFormatProperties::fromTextureFormat(TextureFormat
     STENCIL(S_UInt8, 1, 1)
     MULTIPLANAR(YUV_NV12, 3, 16, 2)
     MULTIPLANAR(YUV_420p, 3, 16, 3)
+    // NOLINTEND(readability-identifier-naming)
   }
   IGL_UNREACHABLE_RETURN(TextureFormatProperties{})
 }
@@ -362,7 +387,7 @@ uint32_t TextureFormatProperties::getRows(TextureRangeDesc range) const noexcept
   if (range.numMipLevels == 1) {
     const uint32_t texHeight = std::max(range.height, 1u);
     uint32_t rows = texHeight;
-    if (isCompressed()) {
+    if (isCompressed() && !isVariableLength()) {
       rows =
           std::max((texHeight + blockHeight - 1) / blockHeight, static_cast<uint32_t>(minBlocksY));
     }
@@ -383,6 +408,10 @@ uint32_t TextureFormatProperties::getBytesPerRow(uint32_t texWidth) const noexce
 
 uint32_t TextureFormatProperties::getBytesPerRow(TextureRangeDesc range) const noexcept {
   const uint32_t texWidth = std::max(range.width, 1u);
+  // For variable length formats, bytesPerRow is always 0 and the caller will handle it as needed.
+  if (isVariableLength()) {
+    return 0;
+  }
   if (isCompressed()) {
     const uint32_t widthInBlocks =
         std::max((texWidth + blockWidth - 1) / blockWidth, static_cast<uint32_t>(minBlocksX));
@@ -406,6 +435,10 @@ size_t TextureFormatProperties::getBytesPerLayer(TextureRangeDesc range,
   const uint32_t texHeight = std::max(range.height, 1u);
   const uint32_t texDepth = std::max(range.depth, 1u);
   const size_t texFaces = std::max(range.numFaces, 1u);
+  // For variable length formats, bytesPerRow is always 0 and the caller will handle it as needed.
+  if (isVariableLength()) {
+    return 0;
+  }
   if (isCompressed()) {
     const uint32_t widthInBlocks =
         std::max((texWidth + blockWidth - 1) / blockWidth, static_cast<uint32_t>(minBlocksX));

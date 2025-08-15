@@ -179,6 +179,7 @@ std::string GLenumToString(GLenum code) {
     RESULT_CASE(GL_BUFFER_USAGE)
     RESULT_CASE(GL_BYTE)
     RESULT_CASE(GL_CLAMP_TO_EDGE)
+    RESULT_CASE(GL_COLOR)
     RESULT_CASE(GL_COLOR_ATTACHMENT0)
     RESULT_CASE(GL_COLOR_ATTACHMENT1)
     RESULT_CASE(GL_COMPARE_REF_TO_TEXTURE)
@@ -974,6 +975,17 @@ void IContext::clear(GLbitfield mask) {
   GLCHECK_ERRORS();
 }
 
+void IContext::clearBufferfv(GLenum buffer, GLint drawBuffer, const GLfloat* value) {
+  if (!deviceFeatureSet_.hasInternalFeature(InternalFeatures::ClearBufferfv)) {
+    IGL_DEBUG_ASSERT(0, "No supported function for glClearBufferfv\n");
+    return;
+  }
+
+  iglClearBufferfv(buffer, drawBuffer, value);
+  APILOG("glClearBufferfv(%s, %d, %f)\n", GL_ENUM_TO_STRING(buffer), drawBuffer, *value);
+  GLCHECK_ERRORS();
+}
+
 void IContext::clearColor(GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha) {
   GLCALL(ClearColor)(red, green, blue, alpha);
   APILOG("glClearColor(%f, %f, %f, %f)\n", red, green, blue, alpha);
@@ -1412,7 +1424,7 @@ void IContext::deleteTextures(GLsizei n, const GLuint* textures) {
       deletionQueues_.queueDeleteTextures(n, textures);
     } else {
       GLCALL(DeleteTextures)(n, textures);
-      APILOG("glDeleteTextures(%u, %p) = %u\n", n, p, textures == nullptr ? 0 : *textures);
+      APILOG("glDeleteTextures(%u, %p) = %u\n", n, textures, textures == nullptr ? 0 : *textures);
       GLCHECK_ERRORS();
     }
   }
