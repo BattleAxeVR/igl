@@ -75,8 +75,6 @@ struct DeviceQueues {
 
   VkQueue IGL_NULLABLE graphicsQueue = VK_NULL_HANDLE;
   VkQueue IGL_NULLABLE computeQueue = VK_NULL_HANDLE;
-
-  DeviceQueues() = default;
 };
 
 class VulkanContext final {
@@ -85,6 +83,10 @@ class VulkanContext final {
                 void* IGL_NULLABLE window,
                 void* IGL_NULLABLE display = nullptr);
   ~VulkanContext();
+  VulkanContext(const VulkanContext&) = delete;
+  VulkanContext(VulkanContext&&) = delete;
+  VulkanContext& operator=(const VulkanContext&) = delete;
+  VulkanContext& operator=(VulkanContext&&) = delete;
 
   Result queryDevices(const HWDeviceQueryDesc& desc, std::vector<HWDeviceDesc>& outDevices);
   Result initContext(const HWDeviceDesc& desc,
