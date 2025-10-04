@@ -7,7 +7,10 @@
 
 #pragma once
 
-#include <igl/Assert.h>
+#include <shell/shared/platform/Platform.h>
 
-#define IGLU_SENTINEL_ASSERT_IF_NOT(shouldAssert) \
-  IGL_DEBUG_ASSERT(!(shouldAssert), "Sentinel implementation should NOT be reached")
+namespace igl::shell {
+
+std::shared_ptr<Platform> createPlatform(std::shared_ptr<IDevice> device);
+
+} // namespace igl::shell

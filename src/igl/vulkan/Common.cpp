@@ -7,6 +7,7 @@
 
 #include "Common.h"
 
+#include <array>
 #include <cstdlib>
 
 // clang-format off
@@ -686,28 +687,62 @@ PFN_vkGetInstanceProcAddr getVkGetInstanceProcAddr() {
 #if defined(_WIN32)
   HMODULE lib = LoadLibraryA("vulkan-1.dll");
   if (!lib) {
+    DWORD dw = GetLastError();
+    LPVOID lpMsgBuf = nullptr;
+
+    if (FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                          FORMAT_MESSAGE_IGNORE_INSERTS,
+                      NULL,
+                      dw,
+                      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                      (LPTSTR)&lpMsgBuf,
+                      0,
+                      NULL) != 0) {
+      IGL_LOG_ERROR("Failed to open vulkan-1.dll: %s\n", (LPCTSTR)lpMsgBuf);
+      LocalFree(lpMsgBuf);
+    } else {
+      IGL_LOG_ERROR("Failed to open vulkan-1.dll");
+    }
+
     return nullptr;
   }
   return (PFN_vkGetInstanceProcAddr)GetProcAddress(lib, "vkGetInstanceProcAddr");
 #elif defined(__APPLE__)
   void* lib = dlopen("libvulkan.dylib", RTLD_NOW | RTLD_LOCAL);
+  IGL_LOG_INFO("Loading libvulkan.dylib\n");
   if (!lib) {
+    IGL_LOG_INFO("Opening libvulkan.dylib failed: %s. Loading libvulkan.1.dylib instead\n",
+                 dlerror());
     lib = dlopen("libvulkan.1.dylib", RTLD_NOW | RTLD_LOCAL);
   }
   if (!lib) {
+    IGL_LOG_INFO("Opening libvulkan.1.dylib failed: %s. Loading libMoltenVK.dylib instead\n",
+                 dlerror());
     lib = dlopen("libMoltenVK.dylib", RTLD_NOW | RTLD_LOCAL);
   }
   if (!lib) {
+    IGL_LOG_ERROR("Failed to open libMoltenVK.dylib: %s\n", dlerror());
     return nullptr;
   }
   return (PFN_vkGetInstanceProcAddr)dlsym(lib, "vkGetInstanceProcAddr");
 #else
-  void* lib = dlopen("libvulkan.so.1", RTLD_NOW | RTLD_LOCAL);
-  if (!lib) {
-    IGL_LOG_DEBUG("dlopen failed: %s\n", dlerror());
-    lib = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
+  const std::array<const char*, 4> libs = {
+      "libvulkan.so.1",
+      "libvulkan.so",
+      "/lib64/libvulkan.so.1",
+      "/lib64/libvulkan.so",
+  };
+  void* lib = nullptr;
+  for (const char* name : libs) {
+    lib = dlopen(name, RTLD_NOW | RTLD_LOCAL);
+    if (lib) {
+      break;
+    }
+    IGL_LOG_INFO("IGL/Vulkan: opening `%s` failed: %s.\n", name, dlerror());
   }
+
   if (!lib) {
+    IGL_LOG_ERROR("IGL/Vulkan: no Vulkan library was found.\n");
     return nullptr;
   }
   return (PFN_vkGetInstanceProcAddr)dlsym(lib, "vkGetInstanceProcAddr");
