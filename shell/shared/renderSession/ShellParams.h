@@ -48,8 +48,7 @@ struct ShellParams {
   openxr::XrApp* xr_app_ptr_ = nullptr;
 
   std::string screenshotFileName = "screenshot.png";
-  uint32_t screenshotNumber = ~0; // frame number to save as a screenshot in headless more
-
+  uint32_t screenshotNumber = ~0u; // frame number to save as a screenshot in headless more
   bool isHeadless = false;
 
   bool enableVulkanValidationLayers = true;
