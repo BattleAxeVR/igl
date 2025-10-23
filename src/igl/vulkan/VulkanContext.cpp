@@ -225,6 +225,10 @@ class DescriptorPoolsArena final {
     IGL_DEBUG_ASSERT(debugName);
     dpDebugName_ = IGL_FORMAT("Descriptor Pool: {}", debugName ? debugName : "");
   }
+  DescriptorPoolsArena(const DescriptorPoolsArena&) = delete;
+  DescriptorPoolsArena& operator=(const DescriptorPoolsArena&) = delete;
+  DescriptorPoolsArena(DescriptorPoolsArena&&) = delete;
+  DescriptorPoolsArena& operator=(DescriptorPoolsArena&&) = delete;
   ~DescriptorPoolsArena() {
     extinct_.push_back({pool_, {}});
     ctx_.deferredTask(std::packaged_task<void()>(
@@ -1350,7 +1354,6 @@ VulkanImage VulkanContext::createImage(VkImageType imageType,
   }
 
   return {*this,
-          vkDevice_,
           extent,
           imageType,
           format,
@@ -1605,7 +1608,7 @@ std::shared_ptr<VulkanTexture> VulkanContext::createTextureFromVkImage(
     VulkanImageCreateInfo imageCreateInfo,
     VulkanImageViewCreateInfo imageViewCreateInfo,
     const char* IGL_NULLABLE debugName) const {
-  auto iglImage = VulkanImage(*this, vkDevice_, vkImage, imageCreateInfo, debugName);
+  auto iglImage = VulkanImage(*this, vkImage, imageCreateInfo, debugName);
   auto imageView = iglImage.createImageView(imageViewCreateInfo, debugName);
   return createTexture(std::move(iglImage), std::move(imageView), debugName);
 }
