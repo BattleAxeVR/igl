@@ -347,7 +347,7 @@ struct VulkanContextImpl final {
       arenaBuffers;
   std::unordered_map<VkDescriptorSetLayout, std::unique_ptr<igl::vulkan::DescriptorPoolsArena>>
       arenaStorageImages;
-  std::unique_ptr<igl::vulkan::VulkanDescriptorSetLayout> dslBindless; // everything
+  std::unique_ptr<VulkanDescriptorSetLayout> dslBindless; // everything
   VkDescriptorPool dpBindless = VK_NULL_HANDLE;
   VkDescriptorSet dsBindless = VK_NULL_HANDLE;
   uint32_t currentMaxBindlessTextures = 8;
@@ -1403,7 +1403,6 @@ VulkanImage VulkanContext::createImage(VkImageType imageType,
                                        // @fb-only
                                        // @fb-only
                                        // @fb-only
-                                       // @fb-only
 // @fb-only
 // @fb-only
 
@@ -1429,7 +1428,6 @@ std::unique_ptr<VulkanImage> VulkanContext::createImageFromFileDescriptor(
   return std::make_unique<VulkanImage>(*this,
                                        fileDescriptor,
                                        memoryAllocationSize,
-                                       vkDevice_,
                                        extent,
                                        imageType,
                                        format,
