@@ -11,7 +11,6 @@
 #include <future>
 #include <memory>
 #include <unordered_map>
-
 #include <igl/CommandEncoder.h>
 #include <igl/HWDevice.h>
 #include <igl/vulkan/Common.h>
@@ -382,6 +381,8 @@ class VulkanContext final {
   // sync resources
   uint32_t syncCurrentIndex_ = 0u;
   std::vector<SubmitHandle> syncSubmitHandles_;
+
+  VkPhysicalDeviceMemoryProperties memoryProperties{};
 
 #if IGL_VULKAN_VALIDATION_LAYER_ERROR_SUMMARY
   std::unordered_map<std::string, uint32_t> validationErrorsSummary_;

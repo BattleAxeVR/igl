@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <igl/DeviceFeatures.h>
 #include <igl/opengl/IContext.h>
 
 #include <cstring>
 #include <string>
+#include <igl/DeviceFeatures.h>
 #include <igl/opengl/GLFunc.h>
 #include <igl/opengl/GLIncludes.h>
 
@@ -1477,8 +1477,8 @@ std::string IContext::boundBuffersByIndex(bool ssbos, bool ubos) const {
 #endif // IGL_API_LOG
 
 // Creates a global map to ensure multiple IContexts are not created for a single glContext
-std::unordered_map<void * IGL_NULLABLE, IContext*>& IContext::getExistingContexts() {
-  static auto& map = *(new std::unordered_map<void * IGL_NULLABLE, IContext*>());
+std::unordered_map<void* IGL_NULLABLE, IContext*>& IContext::getExistingContexts() {
+  static auto& map = *(new std::unordered_map<void* IGL_NULLABLE, IContext*>());
   return map;
 }
 
@@ -2761,7 +2761,7 @@ void IContext::polygonFillMode(IGL_MAYBE_UNUSED GLenum mode) {
 }
 
 void IContext::generateMipmap(GLenum target) {
-  APILOG("glGenerateMipmap(%s) (texture: %u)\n", GL_ENUM_TO_STRING(target), boundTexture(target));
+  APILOG("glGenerateMipmap(%s)\n", GL_ENUM_TO_STRING(target));
   IGLCALL(GenerateMipmap)(target);
   GLCHECK_ERRORS();
 }

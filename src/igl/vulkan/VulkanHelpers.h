@@ -10,7 +10,6 @@
 #pragma once
 
 #include <glslang/Include/glslang_c_interface.h>
-
 #include <igl/Macros.h>
 #include <igl/vulkan/VulkanFunctionTable.h>
 #include <igl/vulkan/VulkanVma.h>
@@ -158,11 +157,9 @@ VkBindImageMemoryInfo ivkGetBindImageMemoryInfo(const VkBindImagePlaneMemoryInfo
                                                 VkImage image,
                                                 VkDeviceMemory memory);
 
-bool ivkIsHostVisibleSingleHeapMemory(const struct VulkanFunctionTable* vt,
-                                      VkPhysicalDevice physDev);
+bool ivkIsHostVisibleSingleHeapMemory(const VkPhysicalDeviceMemoryProperties* memProps);
 
-uint32_t ivkFindMemoryType(const struct VulkanFunctionTable* vt,
-                           VkPhysicalDevice physDev,
+uint32_t ivkFindMemoryType(const VkPhysicalDeviceMemoryProperties* memProps,
                            uint32_t memoryTypeBits,
                            VkMemoryPropertyFlags flags);
 
@@ -326,10 +323,6 @@ VkWriteDescriptorSet ivkGetWriteDescriptorSet_BufferInfo(VkDescriptorSet dstSet,
 VkPipelineLayoutCreateInfo ivkGetPipelineLayoutCreateInfo(uint32_t numLayouts,
                                                           const VkDescriptorSetLayout* layouts,
                                                           const VkPushConstantRange* range);
-
-VkPushConstantRange ivkGetPushConstantRange(VkShaderStageFlags stageFlags,
-                                            size_t offset,
-                                            size_t size);
 
 VkRect2D ivkGetRect2D(int32_t x, int32_t y, uint32_t width, uint32_t height);
 

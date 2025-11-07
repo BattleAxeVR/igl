@@ -7,16 +7,19 @@
 
 // @fb-only
 
+#include <shell/renderSessions/BindGroupSession.h>
+
 #include <IGLU/managedUniformBuffer/ManagedUniformBuffer.h>
 #include <cstddef>
-#include <shell/renderSessions/BindGroupSession.h>
 #include <shell/shared/imageLoader/ImageLoader.h>
 #include <shell/shared/platform/DisplayContext.h>
 #include <shell/shared/renderSession/ShellParams.h>
 #include <igl/NameHandle.h>
 #include <igl/RenderCommandEncoder.h>
 #include <igl/ShaderCreator.h>
+#if IGL_BACKEND_OPENGL
 #include <igl/opengl/Version.h>
+#endif
 
 namespace {
 struct VertexPosUvw {
@@ -73,6 +76,8 @@ std::string getProlog(igl::IDevice& device) {
     prependVersionString += "\nprecision highp float;\n";
     return prependVersionString;
   }
+#else
+  (void)device; // Suppress unused parameter warning
 #endif // IGL_BACKEND_OPENGL
   return "";
 }

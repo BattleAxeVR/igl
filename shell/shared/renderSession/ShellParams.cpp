@@ -5,9 +5,10 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <shell/shared/renderSession/ShellParams.h>
+
 #include <cstdio>
 #include <cstring>
-#include <shell/shared/renderSession/ShellParams.h>
 #include <string>
 #include <vector>
 
@@ -52,6 +53,16 @@ std::optional<BenchmarkRenderSessionParams> parseBenchmarkRenderSessionParams(
     // Check for benchmark mode flag (enables benchmark mode without specific params)
     else if (arg == "--benchmark" || arg == "-b") {
       benchmarkParamsFound = true;
+    }
+    // Check for custom parameters in the form --key value
+    else if (arg.rfind("--", 0) == 0) {
+      std::string key = arg.substr(2); // Remove "--" prefix
+      std::string value;
+      if (i + 1 < args.size() && args[i + 1].rfind("--", 0) != 0) {
+        // Next argument is the value (not another flag)
+        value = args[++i];
+      }
+      benchmarkParams.customParams.emplace_back(key, value);
     }
   }
 

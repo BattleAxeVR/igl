@@ -6,8 +6,10 @@
  */
 
 #include <gtest/gtest.h>
-#include <igl/opengl/Config.h>
+
 #include <igl/opengl/Version.h>
+
+#include <igl/opengl/Config.h>
 
 namespace igl::tests {
 

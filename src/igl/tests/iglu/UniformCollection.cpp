@@ -5,13 +5,14 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <gtest/gtest.h>
+
 #include "UniformTests.h"
-#include <igl/NameHandle.h>
 
 #include <IGLU/uniform/Collection.h>
 #include <IGLU/uniform/Descriptor.h>
-#include <gtest/gtest.h>
 #include <string>
+#include <igl/NameHandle.h>
 
 namespace iglu::tests {
 

@@ -5,22 +5,23 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <cstddef>
-#include <functional>
 #include <gtest/gtest.h>
-#include <memory>
-#include <utility>
-#include <vector>
+
+#include <igl/RenderCommandEncoder.h>
 
 #include "data/ShaderData.h"
 #include "data/TextureData.h"
 #include "util/Common.h"
 
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <utility>
+#include <vector>
 #include <igl/Buffer.h>
 #include <igl/CommandBuffer.h>
 #include <igl/DepthStencilState.h>
 #include <igl/NameHandle.h>
-#include <igl/RenderCommandEncoder.h>
 #include <igl/RenderPass.h>
 #include <igl/RenderPipelineState.h>
 #include <igl/SamplerState.h>

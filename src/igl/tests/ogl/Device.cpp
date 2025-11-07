@@ -7,18 +7,19 @@
 
 #include <gtest/gtest.h>
 
-#include <igl/CommandBuffer.h>
-#include <igl/RenderCommandEncoder.h>
-#include <igl/RenderPass.h>
-#include <igl/RenderPipelineState.h>
-#include <igl/ShaderCreator.h>
-#include <igl/VertexInputState.h>
 #include <igl/opengl/Device.h>
 
 #include "../data/ShaderData.h"
 #include "../util/Common.h"
 #include "../util/TestDevice.h"
 #include "../util/TestErrorGuard.h"
+
+#include <igl/CommandBuffer.h>
+#include <igl/RenderCommandEncoder.h>
+#include <igl/RenderPass.h>
+#include <igl/RenderPipelineState.h>
+#include <igl/ShaderCreator.h>
+#include <igl/VertexInputState.h>
 
 namespace igl::tests {
 
@@ -282,7 +283,9 @@ TEST_F(DeviceOGLTest, DeletionTest) {
   shaderModule = nullptr;
 
   // Entering main scope again to flush deletion queue
-  { const DeviceScope scope3(*iglDev_); }
+  {
+    const DeviceScope scope3(*iglDev_);
+  }
 }
 
 std::shared_ptr<IRenderPipelineState> createRenderPipeline(const std::shared_ptr<IDevice>& device,

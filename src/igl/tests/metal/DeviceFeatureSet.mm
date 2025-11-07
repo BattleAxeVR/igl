@@ -5,11 +5,11 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <gtest/gtest.h>
+
 #include <igl/metal/DeviceFeatureSet.h>
 
 #include <igl/Assert.h>
-
-#include <gtest/gtest.h>
 #include <igl/DeviceFeatures.h>
 
 namespace igl::tests {

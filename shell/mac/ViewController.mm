@@ -9,21 +9,18 @@
 
 #import "ViewController.h"
 
+#import "GLView.h"
+#import "HeadlessView.h"
+#import "MetalView.h"
+// @fb-only
+
 #import <AppKit/NSApplication.h>
 #import <AppKit/NSEvent.h>
 #import <AppKit/NSOpenGL.h>
 #import <AppKit/NSOpenGLView.h>
 #import <AppKit/NSView.h>
-
-#include <shell/shared/platform/Platform.h>
-
-#import "GLView.h"
-#import "HeadlessView.h"
-#import "MetalView.h"
-#import "VulkanView.h"
-// @fb-only
-
 #import <shell/shared/input/InputDispatcher.h>
+#include <shell/shared/platform/Platform.h>
 #import <igl/Common.h>
 #import <igl/IGL.h>
 #if IGL_BACKEND_METAL
@@ -47,6 +44,7 @@
 // @fb-only
 // @fb-only
 #if IGL_BACKEND_VULKAN
+#import "VulkanView.h"
 #include <igl/vulkan/Device.h>
 #include <igl/vulkan/HWDevice.h>
 #include <igl/vulkan/VulkanContext.h>

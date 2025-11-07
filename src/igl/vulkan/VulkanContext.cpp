@@ -24,9 +24,8 @@
 #define VOLK_IMPLEMENTATION
 #endif // IGL_CMAKE_BUILD
 
-#include <igl/glslang/GlslCompiler.h>
-
 #include <igl/SamplerState.h>
+#include <igl/glslang/GlslCompiler.h>
 #include <igl/vulkan/Buffer.h>
 #include <igl/vulkan/EnhancedShaderDebuggingStore.h>
 #include <igl/vulkan/RenderPipelineState.h>
@@ -795,7 +794,10 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
 
   vkPhysicalDevice_ = (VkPhysicalDevice)desc.guid; // NOLINT(performance-no-int-to-ptr)
 
-  useStagingForBuffers_ = !ivkIsHostVisibleSingleHeapMemory(&vf_, vkPhysicalDevice_);
+  // Caches the memory types
+  vf_.vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice_, &memoryProperties);
+
+  useStagingForBuffers_ = !ivkIsHostVisibleSingleHeapMemory(&memoryProperties);
 
   // Get the available physical device features
   VulkanFeatures availableFeatures(config_);
@@ -981,6 +983,9 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
                               (VkDeviceSize)config_.vmaPreferredLargeHeapBlockSize,
                               &pimpl_->vma));
   }
+
+  // Caches the memory types
+  vf_.vkGetPhysicalDeviceMemoryProperties(vkPhysicalDevice_, &memoryProperties);
 
   // The staging device will use VMA to allocate a buffer, so this needs
   // to happen after VMA has been initialized.

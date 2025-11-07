@@ -5,10 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <gtest/gtest.h>
+
 #include "../../util/TextureFormatTestBase.h"
+
 #include <CoreVideo/CVPixelBuffer.h>
 #include <CoreVideo/CVPixelFormatDescription.h>
-#include <gtest/gtest.h>
 #include <igl/Device.h>
 #include <igl/opengl/ios/Context.h>
 #include <igl/opengl/ios/PlatformDevice.h>
@@ -71,8 +73,7 @@ std::shared_ptr<ITexture> TextureBufferIosTest::createCVPixelBufferTextureWithSi
   return texture;
 }
 
-#define PIXEL_FORMAT(pf) \
-  { pf, #pf }
+#define PIXEL_FORMAT(pf) {pf, #pf}
 
 TEST_F(TextureBufferIosTest, createTextureFromNativePixelBuffer) {
   const std::vector<std::pair<OSType, const char*>> pixelFormats = {

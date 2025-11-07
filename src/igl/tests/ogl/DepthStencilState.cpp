@@ -5,17 +5,19 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <gtest/gtest.h>
+
+#include <igl/opengl/DepthStencilState.h>
+
 #include "../data/ShaderData.h"
 #include "../data/VertexIndexData.h"
 #include "../util/Common.h"
 
-#include <gtest/gtest.h>
 #include <string>
 #include <igl/CommandBuffer.h>
 #include <igl/RenderPass.h>
 #include <igl/RenderPipelineState.h>
 #include <igl/VertexInputState.h>
-#include <igl/opengl/DepthStencilState.h>
 
 namespace igl::tests {
 

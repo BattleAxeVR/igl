@@ -9,12 +9,11 @@
 
 #pragma once
 
-#include <shell/shared/renderSession/RenderSession.h>
-
 #include <IGLU/imgui/Session.h>
 #include <atomic>
 #include <glm/glm.hpp>
 #include <shell/shared/platform/Platform.h>
+#include <shell/shared/renderSession/RenderSession.h>
 #include <igl/FPSCounter.h>
 #include <igl/IGL.h>
 
@@ -79,6 +78,7 @@ class GPUStressSession : public RenderSession {
   [[nodiscard]] std::string getVulkanFragmentShaderSource() const;
   std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) const noexcept;
   void addNormalsToCube();
+  void processCustomParameter(const std::string& key, const std::string& value);
 
   RenderPassDesc renderPass_;
   std::shared_ptr<IRenderPipelineState> pipelineState_;

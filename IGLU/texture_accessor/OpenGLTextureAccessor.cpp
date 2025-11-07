@@ -6,6 +6,7 @@
  */
 
 #include "OpenGLTextureAccessor.h"
+
 #include "ITextureAccessor.h"
 
 #if IGL_BACKEND_OPENGL
@@ -77,12 +78,13 @@ void OpenGLTextureAccessor::requestBytes(igl::ICommandQueue& commandQueue,
 
     oglFrameBuffer->bindBufferForRead();
     if (!textureAttached_) {
-      igl::opengl::Texture::AttachmentParams params{};
-      params.read = true;
-      params.face = 0;
-      params.layer = 0;
-      params.mipLevel = 0;
-      params.stereo = false;
+      igl::opengl::Texture::AttachmentParams params{
+          .face = 0,
+          .mipLevel = 0,
+          .layer = 0,
+          .read = true,
+          .stereo = false,
+      };
       glTexture.attachAsColor(0u, params);
       textureAttached_ = true;
     }

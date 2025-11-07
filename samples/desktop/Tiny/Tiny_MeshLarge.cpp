@@ -19,32 +19,28 @@
 #if !defined(_USE_MATH_DEFINES)
 #define _USE_MATH_DEFINES
 #endif // _USE_MATH_DEFINES
+#include <Compress.h>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
-#include <mutex>
-#include <thread>
-
-#include <igl/FPSCounter.h>
-#include <igl/IGL.h>
-#include <igl/vulkan/util/TextureFormat.h>
-
 #include <glm/ext.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
-
 #include <ktx.h>
-
-#include <Compress.h>
 #include <meshoptimizer.h>
+#include <mutex>
 #include <shared/Camera.h>
 #include <shared/UtilsCubemap.h>
 #include <stb/stb_image.h>
 #include <stb/stb_image_resize.h>
 #include <taskflow/taskflow.hpp>
+#include <thread>
 #include <tiny_obj_loader.h>
+#include <igl/FPSCounter.h>
+#include <igl/IGL.h>
+#include <igl/vulkan/util/TextureFormat.h>
 
 #define USE_TEXTURE_LOADER 0
 #define USE_OPENGL_BACKEND 0
@@ -967,7 +963,7 @@ static GLFWwindow* initIGL(bool isHeadless) {
 
 #elif __APPLE__
       auto ctx = vulkan::HWDevice::createContext(
-          cfg, window ? (void*)glfwGetCocoaWindow(window) : nuullptr);
+          cfg, window ? (void*)glfwGetCocoaWindow(window) : nullptr);
 
 #elif defined(__linux__)
       auto ctx = vulkan::HWDevice::createContext(
@@ -1268,23 +1264,23 @@ void initModel(int numSamplesMSAA) {
                                            sizeof(UniformsPerFrame),
                                            ResourceStorage::Shared,
                                            hint,
-                                           "Buffer: uniforms (per frame) " + std::to_string(i)),
+                                           "uniforms (per frame) " + std::to_string(i)),
                                 nullptr));
-      ubPerFrameShadow_.push_back(device_->createBuffer(
-          BufferDesc(bufType,
-                     nullptr,
-                     sizeof(UniformsPerFrame),
-                     ResourceStorage::Shared,
-                     hint,
-                     "Buffer: uniforms (per frame shadow) " + std::to_string(i)),
-          nullptr));
+      ubPerFrameShadow_.push_back(
+          device_->createBuffer(BufferDesc(bufType,
+                                           nullptr,
+                                           sizeof(UniformsPerFrame),
+                                           ResourceStorage::Shared,
+                                           hint,
+                                           "uniforms (per frame shadow) " + std::to_string(i)),
+                                nullptr));
       ubPerObject_.push_back(
           device_->createBuffer(BufferDesc(bufType,
                                            nullptr,
                                            sizeof(UniformsPerObject),
                                            ResourceStorage::Shared,
                                            hint,
-                                           "Buffer: uniforms (per object) " + std::to_string(i)),
+                                           "uniforms (per object) " + std::to_string(i)),
                                 nullptr));
     }
   }
@@ -1423,7 +1419,7 @@ void initModel(int numSamplesMSAA) {
                                                     sizeof(GPUMaterial) * materials_.size(),
                                                     ResourceStorage::Private,
                                                     hint,
-                                                    "Buffer: materials"),
+                                                    "materials"),
                                          nullptr);
 
     vb0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Vertex,
@@ -1431,14 +1427,14 @@ void initModel(int numSamplesMSAA) {
                                             sizeof(VertexData) * vertexData_.size(),
                                             ResourceStorage::Private,
                                             hint,
-                                            "Buffer: vertex"),
+                                            "vertex"),
                                  nullptr);
     ib0_ = device_->createBuffer(BufferDesc(BufferDesc::BufferTypeBits::Index,
                                             indexData_.data(),
                                             sizeof(uint32_t) * indexData_.size(),
                                             ResourceStorage::Private,
                                             hint,
-                                            "Buffer: index"),
+                                            "index"),
                                  nullptr);
   }
 }

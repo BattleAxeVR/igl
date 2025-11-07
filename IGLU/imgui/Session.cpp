@@ -185,11 +185,15 @@ struct DrawableData {
     const igl::BufferDesc vbDesc(igl::BufferDesc::BufferTypeBits::Vertex,
                                  nullptr,
                                  kMaxVertexBufferSize,
-                                 igl::ResourceStorage::Shared);
+                                 igl::ResourceStorage::Shared,
+                                 0,
+                                 "vertex (" + material->name + ")");
     const igl::BufferDesc ibDesc(igl::BufferDesc::BufferTypeBits::Index,
                                  nullptr,
                                  kMaxIndexBufferSize,
-                                 igl::ResourceStorage::Shared);
+                                 igl::ResourceStorage::Shared,
+                                 0,
+                                 "index (" + material->name + ")");
 
     iglu::vertexdata::PrimitiveDesc primitiveDesc;
     primitiveDesc.numEntries = 0;
@@ -210,6 +214,10 @@ class Session::Renderer {
  public:
   explicit Renderer(igl::IDevice& device);
   ~Renderer();
+  Renderer(const Renderer&) = delete;
+  Renderer& operator=(const Renderer&) = delete;
+  Renderer(Renderer&&) = delete;
+  Renderer& operator=(Renderer&&) = delete;
 
   void newFrame(const igl::FramebufferDesc& desc);
   void renderDrawData(igl::IDevice& device,

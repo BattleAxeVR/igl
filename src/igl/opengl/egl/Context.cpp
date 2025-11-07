@@ -10,12 +10,11 @@
 #include <igl/opengl/egl/Context.h>
 
 #include <EGL/egl.h>
-#include <igl/opengl/HWDevice.h>
-
 #include <array>
 #include <tuple>
 #include <igl/Macros.h>
 #include <igl/Texture.h>
+#include <igl/opengl/HWDevice.h>
 
 #define CREATE_GL_ES_WINDOW 0
 

@@ -18,11 +18,10 @@
 #include <igl/opengl/egl/Device.h>
 #include <igl/opengl/egl/PlatformDevice.h>
 #endif // IGL_ANGLE
+#include <GLFW/glfw3.h>
 #include <memory>
 #include <shell/shared/platform/Platform.h>
 #include <shell/windows/common/GlfwShell.h>
-
-#include <GLFW/glfw3.h>
 
 using namespace igl;
 namespace igl::shell {
@@ -42,7 +41,8 @@ class EGLDevice final : public ::igl::opengl::Device {
   // NOLINTNEXTLINE(clang-diagnostic-unused-member-function)
   explicit EGLDevice(std::unique_ptr<::igl::opengl::IContext> context) :
     Device(std::move(context)), platformDevice(*this) {
-    {}
+    {
+    }
   }
 
   [[nodiscard]] const igl::opengl::PlatformDevice& getPlatformDevice() const noexcept override {

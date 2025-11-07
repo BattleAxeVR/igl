@@ -5,11 +5,12 @@
  * LICENSE file in the root directory of this source tree.
  */
 
+#include <igl/vulkan/Texture.h>
+
 #include <igl/IGLSafeC.h>
 #include <igl/vulkan/CommandBuffer.h>
 #include <igl/vulkan/Common.h>
 #include <igl/vulkan/Device.h>
-#include <igl/vulkan/Texture.h>
 #include <igl/vulkan/VulkanContext.h>
 #include <igl/vulkan/VulkanImage.h>
 #include <igl/vulkan/VulkanImageView.h>
@@ -111,7 +112,8 @@ Result Texture::create(const TextureDesc& desc) {
 
   IGL_DEBUG_ASSERT(usageFlags != 0, "Invalid usage flags");
 
-  const VkMemoryPropertyFlags memFlags = resourceStorageToVkMemoryPropertyFlags(desc_.storage);
+  const VkMemoryPropertyFlags memFlags =
+      resourceStorageToVkMemoryPropertyFlags(desc_.storage, &ctx.memoryProperties);
 
   const std::string debugNameImage =
       !desc_.debugName.empty() ? IGL_FORMAT("Image: {}", desc_.debugName.c_str()) : "";

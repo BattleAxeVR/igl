@@ -6,6 +6,7 @@
  */
 
 #include <gtest/gtest.h>
+
 #include <igl/metal/ColorSpace.h>
 
 namespace igl::metal::tests {

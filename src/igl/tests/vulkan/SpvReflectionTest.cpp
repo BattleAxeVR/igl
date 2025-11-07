@@ -5,9 +5,9 @@
  * LICENSE file in the root directory of this source tree.
  */
 
-#include <igl/vulkan/util/SpvReflection.h>
-
 #include <gtest/gtest.h>
+
+#include <igl/vulkan/util/SpvReflection.h>
 
 #include "../util/SpvModules.h"
 

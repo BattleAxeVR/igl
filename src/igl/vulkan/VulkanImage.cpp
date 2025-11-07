@@ -230,6 +230,12 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
                                      memFlags,
                                      false,
                                      &vkMemory_[p]));
+
+        VK_ASSERT(ivkSetDebugObjectName(&ctx_->vf_,
+                                        device_,
+                                        VK_OBJECT_TYPE_DEVICE_MEMORY,
+                                        (uint64_t)vkMemory_[p],
+                                        IGL_FORMAT("Memory [{}]: {}", p, debugName).c_str()));
       }
       // @fb-only
       const VkBindImagePlaneMemoryInfo bindImagePlaneMemoryInfo[kMaxImagePlanes] = {
@@ -349,14 +355,11 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
   VK_ASSERT(ctx_->vf_.vkGetAndroidHardwareBufferPropertiesANDROID(
       device_, hwBuffer, &hwBufferProperties));
 
-  VkPhysicalDeviceMemoryProperties vulkanMemoryProperties;
-  ctx_->vf_.vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &vulkanMemoryProperties);
-
   const VkMemoryAllocateInfo memoryAllocateInfo = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &dedicatedAllocateInfo,
       .allocationSize = hwBufferProperties.allocationSize,
-      .memoryTypeIndex = ivkGetMemoryTypeIndex(vulkanMemoryProperties,
+      .memoryTypeIndex = ivkGetMemoryTypeIndex(ctx_->memoryProperties,
                                                hwBufferProperties.memoryTypeBits,
                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
 
@@ -429,9 +432,6 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 
   ci.pNext = &extImgMem;
 
-  VkPhysicalDeviceMemoryProperties vulkanMemoryProperties;
-  ctx_->vf_.vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &vulkanMemoryProperties);
-
   // create image.. importing external memory cannot use VMA
   VK_ASSERT(ctx_->vf_.vkCreateImage(device_, &ci, nullptr, &vkImage_));
   VK_ASSERT(ivkSetDebugObjectName(
@@ -476,7 +476,7 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &fdInfo,
       .allocationSize = memoryAllocationSize,
-      .memoryTypeIndex = ivkGetMemoryTypeIndex(vulkanMemoryProperties,
+      .memoryTypeIndex = ivkGetMemoryTypeIndex(ctx_->memoryProperties,
                                                memoryRequirements.memoryRequirements.memoryTypeBits,
                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
   };
@@ -499,6 +499,12 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
   VK_ASSERT(ctx_->vf_.vkAllocateMemory(device_, &memoryAllocateInfo, nullptr, &vkMemory_[0]));
   VK_ASSERT(ctx_->vf_.vkBindImageMemory(device_, vkImage_, vkMemory_[0], 0));
 // @fb-only
+
+  VK_ASSERT(ivkSetDebugObjectName(&ctx_->vf_,
+                                  device_,
+                                  VK_OBJECT_TYPE_DEVICE_MEMORY,
+                                  (uint64_t)vkMemory_[0],
+                                  IGL_FORMAT("Memory: {}", debugName).c_str()));
 
   ctx_->vf_.vkGetPhysicalDeviceFormatProperties(physicalDevice_, imageFormat_, &formatProperties_);
 }
@@ -555,9 +561,6 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 
   ci.pNext = &extImgMem;
 
-  VkPhysicalDeviceMemoryProperties vulkanMemoryProperties;
-  ctx_->vf_.vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &vulkanMemoryProperties);
-
   // create image. importing external memory cannot use VMA
   VK_ASSERT(ctx_->vf_.vkCreateImage(device_, &ci, nullptr, &vkImage_));
   VK_ASSERT(ivkSetDebugObjectName(
@@ -579,7 +582,7 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
       .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
       .pNext = &handleInfo,
       .allocationSize = memoryRequirements.memoryRequirements.size,
-      .memoryTypeIndex = ivkGetMemoryTypeIndex(vulkanMemoryProperties,
+      .memoryTypeIndex = ivkGetMemoryTypeIndex(ctx_->memoryProperties,
                                                memoryRequirements.memoryRequirements.memoryTypeBits,
                                                VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
   };
@@ -592,6 +595,12 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 
   VK_ASSERT(ctx_->vf_.vkAllocateMemory(device_, &memoryAllocateInfo, nullptr, &vkMemory_[0]));
   VK_ASSERT(ctx_->vf_.vkBindImageMemory(device_, vkImage_, vkMemory_[0], 0));
+
+  VK_ASSERT(ivkSetDebugObjectName(&ctx_->vf_,
+                                  device_,
+                                  VK_OBJECT_TYPE_DEVICE_MEMORY,
+                                  (uint64_t)vkMemory_[0],
+                                  IGL_FORMAT("Memory: {}", debugName).c_str()));
 
   ctx_->vf_.vkGetPhysicalDeviceFormatProperties(physicalDevice_, imageFormat_, &formatProperties_);
 }
@@ -726,9 +735,6 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
 
   ci.pNext = &externalImageCreateInfo;
 
-  VkPhysicalDeviceMemoryProperties vulkanMemoryProperties;
-  ctx_->vf_.vkGetPhysicalDeviceMemoryProperties(physicalDevice_, &vulkanMemoryProperties);
-
   // create VkImage importing external memory cannot use VMA
   VK_ASSERT(ctx_->vf_.vkCreateImage(device_, &ci, nullptr, &vkImage_));
   VK_ASSERT(ivkSetDebugObjectName(
@@ -776,7 +782,7 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
         .pNext = &externalMemoryAllocateInfo,
         .allocationSize = memoryRequirements.memoryRequirements.size,
         .memoryTypeIndex = ivkGetMemoryTypeIndex(
-            vulkanMemoryProperties, memoryRequirements.memoryRequirements.memoryTypeBits, memFlags),
+            ctx_->memoryProperties, memoryRequirements.memoryRequirements.memoryTypeBits, memFlags),
     };
 
     IGL_LOG_INFO("Creating image to be exported with memoryAllocationSize %" PRIu64
@@ -786,6 +792,12 @@ VulkanImage::VulkanImage(const VulkanContext& ctx,
                  memoryAllocateInfo.memoryTypeIndex);
 
     VK_ASSERT(ctx_->vf_.vkAllocateMemory(device_, &memoryAllocateInfo, nullptr, &vkMemory_[p]));
+
+    VK_ASSERT(ivkSetDebugObjectName(&ctx_->vf_,
+                                    device_,
+                                    VK_OBJECT_TYPE_DEVICE_MEMORY,
+                                    (uint64_t)vkMemory_[p],
+                                    IGL_FORMAT("Memory [{}]: {}", p, debugName).c_str()));
 
     bindImagePlaneMemoryInfo[p] = VkBindImagePlaneMemoryInfo{
         .sType = VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO,
@@ -895,10 +907,10 @@ VulkanImageView VulkanImage::createImageView(VkImageViewType type,
   return VulkanImageView{*ctx_, ci, debugName};
 }
 
-VulkanImageView VulkanImage::createImageView(VulkanImageViewCreateInfo ci,
+VulkanImageView VulkanImage::createImageView(VulkanImageViewCreateInfo createInfo,
                                              const char* debugName) const {
-  ci.image = vkImage_;
-  return VulkanImageView{*ctx_, ci, debugName};
+  createInfo.image = vkImage_;
+  return VulkanImageView{*ctx_, createInfo, debugName};
 }
 
 void VulkanImage::transitionLayout(VkCommandBuffer cmdBuf,

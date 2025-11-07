@@ -6,8 +6,10 @@
  */
 
 #include <gtest/gtest.h>
-#include <igl/CommandEncoder.h>
+
 #include <igl/Common.h>
+
+#include <igl/CommandEncoder.h>
 
 namespace igl::tests {
 
