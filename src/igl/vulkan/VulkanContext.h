@@ -61,17 +61,19 @@ struct VulkanImageViewCreateInfo;
  *  2 - storage images
  *  3 - bindless textures/samplers  <--  optional
  */
+// NOLINTBEGIN(readability-identifier-naming)
 enum {
   kBindPoint_CombinedImageSamplers = 0,
   kBindPoint_Buffers = 1,
   kBindPoint_StorageImages = 2,
   kBindPoint_Bindless = 3,
 };
+// NOLINTEND(readability-identifier-naming)
 
 struct DeviceQueues {
-  const static uint32_t INVALID = 0xFFFFFFFF;
-  uint32_t graphicsQueueFamilyIndex = INVALID;
-  uint32_t computeQueueFamilyIndex = INVALID;
+  const static uint32_t kInvalid = 0xFFFFFFFF;
+  uint32_t graphicsQueueFamilyIndex = kInvalid;
+  uint32_t computeQueueFamilyIndex = kInvalid;
 
   VkQueue IGL_NULLABLE graphicsQueue = VK_NULL_HANDLE;
   VkQueue IGL_NULLABLE computeQueue = VK_NULL_HANDLE;
@@ -111,22 +113,22 @@ class VulkanContext final {
                           Result* IGL_NULLABLE outResult,
                           const char* IGL_NULLABLE debugName = nullptr) const;
 
-// @fb-only
-  // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-// @fb-only
+#if defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
+  std::unique_ptr<VulkanImage> createImageFromAndroidHardwareBuffer(
+      AHardwareBuffer* androidHardwareBuffer,
+      uint64_t memoryAllocationSize,
+      VkImageType imageType,
+      VkExtent3D extent,
+      VkFormat format,
+      uint32_t mipLevels,
+      uint32_t arrayLayers,
+      VkImageTiling tiling,
+      VkImageUsageFlags usageFlags,
+      VkImageCreateFlags flags,
+      VkSampleCountFlagBits samples,
+      igl::Result* IGL_NULLABLE outResult,
+      const char* IGL_NULLABLE debugName = nullptr) const;
+#endif // defined(IGL_ANDROID_HWBUFFER_SUPPORTED)
 
   std::unique_ptr<VulkanImage> createImageFromFileDescriptor(
       int32_t fileDescriptor,
@@ -174,7 +176,7 @@ class VulkanContext final {
   /// @brief Returns the index of the current resource being used.
   ///        Its range is [0, config.maxResourceCount).
   [[nodiscard]] uint32_t currentSyncIndex() const noexcept {
-    return syncCurrentIndex_;
+    return syncCurrentIndex;
   }
   void syncAcquireNext() noexcept;
   void syncMarkSubmitted(VulkanImmediateCommands::SubmitHandle handle) noexcept;
@@ -370,17 +372,17 @@ class VulkanContext final {
 
   struct DeferredTask {
     DeferredTask(std::packaged_task<void()>&& task, SubmitHandle handle) :
-      task_(std::move(task)), handle_(handle) {}
-    std::packaged_task<void()> task_;
-    SubmitHandle handle_;
-    uint64_t frameId_ = 0;
+      task(std::move(task)), handle(handle) {}
+    std::packaged_task<void()> task;
+    SubmitHandle handle;
+    uint64_t frameId = 0;
   };
 
-  mutable std::deque<DeferredTask> deferredTasks_;
+  mutable std::deque<DeferredTask> deferredTasks;
 
   // sync resources
-  uint32_t syncCurrentIndex_ = 0u;
-  std::vector<SubmitHandle> syncSubmitHandles_;
+  uint32_t syncCurrentIndex = 0u;
+  std::vector<SubmitHandle> syncSubmitHandles;
 
   VkPhysicalDeviceMemoryProperties memoryProperties{};
 

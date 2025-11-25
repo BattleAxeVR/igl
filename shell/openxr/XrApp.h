@@ -15,15 +15,12 @@
 #include <shell/openxr/XrPlatform.h>
 #include <shell/openxr/XrRefreshRate.h>
 
-#include <glm/glm.hpp>
-#include <igl/IGL.h>
-
-#include <shell/shared/platform/Platform.h>
-#include <shell/shared/renderSession/RenderSession.h>
-#include <shell/shared/renderSession/RenderSessionConfig.h>
 #include <string>
 #include <unordered_set>
 #include <vector>
+#include <shell/shared/platform/Platform.h>
+#include <shell/shared/renderSession/RenderSession.h>
+#include <shell/shared/renderSession/RenderSessionConfig.h>
 #include <igl/IGL.h>
 #include <igl/Macros.h>
 

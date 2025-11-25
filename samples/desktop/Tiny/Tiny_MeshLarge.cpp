@@ -16,10 +16,13 @@
 
 // @fb-only
 
+#define GLFW_INCLUDE_NONE
+
 #if !defined(_USE_MATH_DEFINES)
 #define _USE_MATH_DEFINES
 #endif // _USE_MATH_DEFINES
 #include <Compress.h>
+#include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <cstddef>
@@ -29,12 +32,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
 #include <ktx.h>
+#include <math.h>
 #include <meshoptimizer.h>
 #include <mutex>
 #include <shared/Camera.h>
 #include <shared/UtilsCubemap.h>
 #include <stb/stb_image.h>
 #include <stb/stb_image_resize.h>
+#include <stb/stb_image_write.h>
 #include <taskflow/taskflow.hpp>
 #include <thread>
 #include <tiny_obj_loader.h>
@@ -94,10 +99,14 @@
 #endif
 // clang-format on
 
-#ifdef _WIN32
+#include <GLFW/glfw3.h>
+
+#if defined(_XLESS_GLFW_)
+// do nothing
+#elif defined(_WIN32)
 #define GLFW_EXPOSE_NATIVE_WIN32
 #define GLFW_EXPOSE_NATIVE_WGL
-#elif __APPLE__
+#elif defined(__APPLE__)
 #define GLFW_EXPOSE_NATIVE_COCOA
 #elif defined(__linux__)
 #define GLFW_EXPOSE_NATIVE_X11
@@ -105,7 +114,6 @@
 #else
 #error Unsupported OS
 #endif
-#include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
 // @fb-only
@@ -143,11 +151,6 @@ constexpr bool kEnableCompression = false;
 #else
 constexpr bool kEnableCompression = true;
 constexpr bool kPreferIntegratedGPU = false;
-#if defined(NDEBUG)
-constexpr bool kEnableValidationLayers = false;
-#else
-constexpr bool kEnableValidationLayers = true;
-#endif // NDEBUG
 #endif // USE_OPENGL_BACKEND
 
 std::string contentRootFolder;
@@ -646,8 +649,8 @@ using glm::vec2;
 using glm::vec3;
 using glm::vec4;
 
-int width_ = 1024;
-int height_ = 768;
+int width_ = 1920;
+int height_ = 1080;
 igl::FPSCounter fps_;
 
 constexpr uint32_t kNumBufferedFrames = 3;
@@ -804,7 +807,7 @@ std::string convertFileName(std::string fileName) {
   }
 }
 
-static GLFWwindow* initIGL(bool isHeadless) {
+static GLFWwindow* initIGL(bool isHeadless, bool enableVulkanValidationLayers) {
   if (!glfwInit()) {
     printf("glfwInit() failed");
     return nullptr;
@@ -825,21 +828,22 @@ static GLFWwindow* initIGL(bool isHeadless) {
 #endif
   glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-  // render full screen without overlapping taskbar
-  GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+  GLFWwindow* window = nullptr;
 
-  int posX = 0;
-  int posY = 0;
-  int width = mode->width;
-  int height = mode->height;
+  if (!isHeadless) {
+    // render full screen without overlapping taskbar
+    GLFWmonitor* monitor = glfwGetPrimaryMonitor();
+    const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
-  glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
+    int posX = 0;
+    int posY = 0;
+    int width = mode->width;
+    int height = mode->height;
 
-  GLFWwindow* window = isHeadless ? nullptr
-                                  : glfwCreateWindow(width, height, title, nullptr, nullptr);
+    glfwGetMonitorWorkarea(monitor, &posX, &posY, &width, &height);
 
-  if (window) {
+    window = glfwCreateWindow(width, height, title, nullptr, nullptr);
+
     glfwSetWindowPos(window, posX, posY);
 
     glfwSetErrorCallback([](int error, const char* description) {
@@ -847,9 +851,9 @@ static GLFWwindow* initIGL(bool isHeadless) {
     });
 
     glfwSetCursorPosCallback(window, [](auto* window, double x, double y) {
-      int width, height;
-      glfwGetFramebufferSize(window, &width, &height);
-      mousePos_ = vec2(x / width, 1.0f - y / height);
+      int fbWidth = 0, fbHeight = 0;
+      glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+      mousePos_ = vec2(x / fbWidth, 1.0f - y / fbHeight);
 #if IGL_WITH_IGLU
       inputDispatcher_.queueEvent(igl::shell::MouseMotionEvent(x, y, 0, 0));
 #endif // IGL_WITH_IGLU
@@ -867,7 +871,7 @@ static GLFWwindow* initIGL(bool isHeadless) {
         // release the mouse
         mousePressed_ = false;
       }
-      double xpos, ypos;
+      double xpos = NAN, ypos = NAN;
       glfwGetCursorPos(window, &xpos, &ypos);
       using igl::shell::MouseButton;
       const MouseButton iglButton =
@@ -953,15 +957,17 @@ static GLFWwindow* initIGL(bool isHeadless) {
       const igl::vulkan::VulkanContextConfig cfg = {
           .terminateOnValidationError = false,
           .enhancedShaderDebugging = false,
-          .enableValidation = kEnableValidationLayers,
+          .enableValidation = enableVulkanValidationLayers,
           .enableDescriptorIndexing = true,
           .headless = isHeadless,
       };
-#ifdef _WIN32
+#if defined(_XLESS_GLFW_)
+      auto ctx = vulkan::HWDevice::createContext(cfg, nullptr);
+#elif defined(_WIN32)
       auto ctx = vulkan::HWDevice::createContext(
           cfg, window ? (void*)glfwGetWin32Window(window) : nullptr);
 
-#elif __APPLE__
+#elif defined(__APPLE__)
       auto ctx = vulkan::HWDevice::createContext(
           cfg, window ? (void*)glfwGetCocoaWindow(window) : nullptr);
 
@@ -2235,13 +2241,14 @@ void loadMaterial(size_t i) {
     remainingMaterialsToLoad_.fetch_sub(1u, std::memory_order_release);
   };
 
-#define LOAD_TEX(result, tex, channels)                                          \
-  const LoadedImage result =                                                     \
-      std::string(cachedMaterials_[i].tex).empty()                               \
-          ? LoadedImage()                                                        \
-          : loadImage((pathPrefix + cachedMaterials_[i].tex).c_str(), channels); \
-  if (loaderShouldExit_.load(std::memory_order_acquire)) {                       \
-    return;                                                                      \
+#define LOAD_TEX(result, tex, channels)                                                     \
+  std::string tmp##result = cachedMaterials_[i].tex;                                        \
+  std::replace(tmp##result.begin(), tmp##result.end(), '\\', '/');                          \
+  const LoadedImage result = std::string(cachedMaterials_[i].tex).empty()                   \
+                                 ? LoadedImage()                                            \
+                                 : loadImage((pathPrefix + tmp##result).c_str(), channels); \
+  if (loaderShouldExit_.load(std::memory_order_acquire)) {                                  \
+    return;                                                                                 \
   }
 
   LOAD_TEX(ambient, ambient_texname, 4);
@@ -2267,11 +2274,6 @@ void loadMaterials(bool isHeadless) {
 
   textures_.resize(cachedMaterials_.size());
 
-  if (isHeadless) {
-    loaderPool_ = nullptr;
-    return;
-  }
-
   remainingMaterialsToLoad_ = (uint32_t)cachedMaterials_.size();
 
   for (size_t i = 0; i != cachedMaterials_.size(); i++) {
@@ -2287,7 +2289,7 @@ void loadCubemapTexture(const std::string& fileNameKTX, std::shared_ptr<ITexture
 #if USE_TEXTURE_LOADER
   loadKtxTexture(*device_, *commandQueue_, fileNameKTX, tex, !kEnableCompression);
 #else
-  ktxTexture2* texture;
+  ktxTexture2* texture = nullptr;
   auto error = ktxTexture2_CreateFromNamedFile(
       fileNameKTX.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
   IGL_DEBUG_ASSERT(error == KTX_SUCCESS);
@@ -2320,7 +2322,7 @@ void loadCubemapTexture(const std::string& fileNameKTX, std::shared_ptr<ITexture
   IGL_DEBUG_ASSERT(tex);
   for (uint8_t face = 0; face < 6; ++face) {
     for (size_t i = 0; i < desc.numMipLevels; ++i) {
-      size_t offset;
+      size_t offset = 0;
       error = ktxTexture_GetImageOffset(ktxTexture(texture), i, 0, face, &offset);
       IGL_DEBUG_ASSERT(error == KTX_SUCCESS);
 
@@ -2404,7 +2406,7 @@ void generateMipmaps(const std::string& outFilename, ktxTexture2* cubemap) {
       const auto width = prevWidth > 1 ? prevWidth >> 1 : 1;
       const auto height = prevHeight > 1 ? prevWidth >> 1 : 1;
 
-      size_t prevOffset;
+      size_t prevOffset = 0;
       auto error =
           ktxTexture_GetImageOffset(ktxTexture(cubemap), miplevel - 1, 0, face, &prevOffset);
       IGL_DEBUG_ASSERT(error == KTX_SUCCESS);
@@ -2440,7 +2442,7 @@ void generateMipmaps(const std::string& outFilename, ktxTexture2* cubemap) {
 void processCubemap(const std::string& inFilename,
                     const std::string& outFilenameEnv,
                     const std::string& outFilenameIrr) {
-  int sourceWidth, sourceHeight;
+  int sourceWidth = 0, sourceHeight = 0;
   float* pxs = stbi_loadf(inFilename.c_str(), &sourceWidth, &sourceHeight, nullptr, 3);
   IGL_SCOPE_EXIT {
     if (pxs) {
@@ -2532,7 +2534,7 @@ std::shared_ptr<ITexture> createTexture(const LoadedImage& img) {
 #else
     // Uploading the texture
     const auto rangeDesc = TextureRangeDesc::new2D(0, 0, img.w, img.h, 0, desc.numMipLevels);
-    ktxTexture* texture;
+    ktxTexture* texture = nullptr;
     auto error = ktxTexture_CreateFromNamedFile(
         img.compressedFileName.c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &texture);
     if (IGL_DEBUG_VERIFY_NOT(error != KTX_SUCCESS)) {
@@ -2543,7 +2545,7 @@ std::shared_ptr<ITexture> createTexture(const LoadedImage& img) {
     };
 
     for (size_t i = 0; i < desc.numMipLevels; ++i) {
-      size_t offset;
+      size_t offset = 0;
       error = ktxTexture_GetImageOffset(ktxTexture(texture), i, 0, 0, &offset);
       IGL_DEBUG_ASSERT(error == KTX_SUCCESS);
 
@@ -2559,45 +2561,65 @@ std::shared_ptr<ITexture> createTexture(const LoadedImage& img) {
 }
 
 void processLoadedMaterials() {
-  LoadedMaterial mtl;
+  int numLoaded = 0;
 
-  {
-    const std::lock_guard guard(loadedMaterialsMutex_);
-    if (loadedMaterials_.empty()) {
-      return;
-    } else {
-      mtl = loadedMaterials_.back();
-      loadedMaterials_.pop_back();
-      remainingMaterialsToLoad_.fetch_sub(1u, std::memory_order_release);
+  const int kMaxMaterialsPerFrame = 5;
+
+  for (; numLoaded < kMaxMaterialsPerFrame; numLoaded++) {
+    LoadedMaterial mtl;
+
+    {
+      const std::lock_guard guard(loadedMaterialsMutex_);
+      if (loadedMaterials_.empty()) {
+        break;
+      } else {
+        mtl = loadedMaterials_.back();
+        loadedMaterials_.pop_back();
+        remainingMaterialsToLoad_.fetch_sub(1u, std::memory_order_release);
+      }
     }
-  }
 
-  MaterialTextures tex;
+    MaterialTextures tex;
 
-  tex.ambient = createTexture(mtl.ambient);
-  tex.diffuse = createTexture(mtl.diffuse);
-  tex.alpha = createTexture(mtl.alpha);
+    tex.ambient = createTexture(mtl.ambient);
+    tex.diffuse = createTexture(mtl.diffuse);
+    tex.alpha = createTexture(mtl.alpha);
 
-  // update GPU materials
-  textures_[mtl.idx] = tex;
+    // update GPU materials
+    textures_[mtl.idx] = tex;
 #if !USE_OPENGL_BACKEND
-  materials_[mtl.idx].texAmbient = tex.ambient ? (uint32_t)tex.ambient->getTextureId() : 0;
-  materials_[mtl.idx].texDiffuse = tex.diffuse ? (uint32_t)tex.diffuse->getTextureId() : 0;
-  materials_[mtl.idx].texAlpha = tex.alpha ? (uint32_t)tex.alpha->getTextureId() : 0;
-  IGL_DEBUG_ASSERT(materials_[mtl.idx].texAmbient >= 0);
-  IGL_DEBUG_ASSERT(materials_[mtl.idx].texDiffuse >= 0);
-  IGL_DEBUG_ASSERT(materials_[mtl.idx].texAlpha >= 0);
+    materials_[mtl.idx].texAmbient = tex.ambient ? (uint32_t)tex.ambient->getTextureId() : 0;
+    materials_[mtl.idx].texDiffuse = tex.diffuse ? (uint32_t)tex.diffuse->getTextureId() : 0;
+    materials_[mtl.idx].texAlpha = tex.alpha ? (uint32_t)tex.alpha->getTextureId() : 0;
+    IGL_DEBUG_ASSERT(materials_[mtl.idx].texAmbient >= 0);
+    IGL_DEBUG_ASSERT(materials_[mtl.idx].texDiffuse >= 0);
+    IGL_DEBUG_ASSERT(materials_[mtl.idx].texAlpha >= 0);
 #endif
-  sbMaterials_->upload(materials_.data(), BufferRange(sizeof(GPUMaterial) * materials_.size()));
+  }
+  if (numLoaded) {
+    sbMaterials_->upload(materials_.data(), BufferRange(sizeof(GPUMaterial) * materials_.size()));
+  }
 }
 
 } // namespace
 
 int main(int argc, char* argv[]) {
-  const bool isHeadless = argc > 1 && (strcmp(argv[1], "--headless") == 0);
+  bool isHeadless = false;
+  bool enableVulkanValidationLayers = true;
 
+  for (int i = 1; i < argc; i++) {
+    if (!strcmp(argv[i], "--headless")) {
+      isHeadless = true;
+    } else if (!strcmp(argv[i], "--disable-vulkan-validation-layers")) {
+      enableVulkanValidationLayers = false;
+    }
+  }
+
+#if defined(IGL_USE_STATIC_LAVAPIPE)
+  const int kNumSamplesMSAA = 1;
+#else
   const int kNumSamplesMSAA = isHeadless ? 1 : 8;
-
+#endif
   // find the content folder
   {
     using namespace std::filesystem;
@@ -2616,7 +2638,7 @@ int main(int argc, char* argv[]) {
     contentRootFolder = (dir / subdir).string();
   }
 
-  GLFWwindow* window = initIGL(isHeadless);
+  GLFWwindow* window = initIGL(isHeadless, enableVulkanValidationLayers);
   initModel(kNumSamplesMSAA);
 
   if (kEnableCompression) {
@@ -2638,6 +2660,16 @@ int main(int argc, char* argv[]) {
   imguiSession_ = std::make_unique<iglu::imgui::Session>(*device_, inputDispatcher_);
 #endif // IGL_WITH_IGLU
 
+  // In headless mode, wait for all textures to be loaded before rendering
+  if (isHeadless) {
+    printf("Waiting for all textures to load...\n");
+    while (remainingMaterialsToLoad_.load(std::memory_order_acquire) > 0) {
+      processLoadedMaterials();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    printf("All textures loaded.\n");
+  }
+
   double prevTime = glfwGetTime();
 
   uint32_t frameIndex = 0;
@@ -2650,6 +2682,7 @@ int main(int argc, char* argv[]) {
       framebufferDesc.depthAttachment.texture = getNativeDepthDrawable();
 #if IGL_WITH_IGLU
       imguiSession_->beginFrame(framebufferDesc, 1.0f);
+      ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
       ImGui::ShowDemoWindow();
 
       ImGui::Begin("Keyboard hints:", nullptr, ImGuiWindowFlags_AlwaysAutoResize);
@@ -2690,13 +2723,38 @@ int main(int argc, char* argv[]) {
     inputDispatcher_.processEvents();
 #endif // IGL_WITH_IGLU
     render(getNativeDrawable(), frameIndex, kNumSamplesMSAA);
+    frameIndex = (frameIndex + 1) % kNumBufferedFrames;
     if (window) {
       glfwPollEvents();
     } else {
       printf("We are running headless - breaking after 1 frame\n");
+      std::shared_ptr<ITexture> texture = fbMain_->getColorAttachment(0);
+      const Dimensions dim = texture->getDimensions();
+      std::vector<uint8_t> pixelsRGBA(dim.width * dim.height * 4);
+      std::vector<uint8_t> pixelsRGB(dim.width * dim.height * 3);
+      fbMain_->copyBytesColorAttachment(*commandQueue_,
+                                        0,
+                                        pixelsRGBA.data(),
+                                        TextureRangeDesc::new2D(0, 0, dim.width, dim.height));
+      if (texture->getFormat() == igl::TextureFormat::BGRA_UNorm8 ||
+          texture->getFormat() == igl::TextureFormat::BGRA_SRGB) {
+        // swap R-B
+        for (uint32_t i = 0; i < pixelsRGBA.size(); i += 4) {
+          std::swap(pixelsRGBA[i + 0], pixelsRGBA[i + 2]);
+        }
+      }
+      // convert to RGB
+      for (uint32_t i = 0; i < pixelsRGB.size() / 3; i++) {
+        pixelsRGB[3 * i + 0] = pixelsRGBA[4 * i + 0];
+        pixelsRGB[3 * i + 1] = pixelsRGBA[4 * i + 1];
+        pixelsRGB[3 * i + 2] = pixelsRGBA[4 * i + 2];
+      }
+      const char* fileName = "TinyMeshLarge.png";
+      IGLLog(IGLLogInfo, "Writing screenshot to: '%s'\n", fileName);
+      stbi_flip_vertically_on_write(1);
+      stbi_write_png(fileName, (int)dim.width, (int)dim.height, 3, pixelsRGB.data(), 0);
       break;
     }
-    frameIndex = (frameIndex + 1) % kNumBufferedFrames;
   }
 
   loaderShouldExit_.store(true, std::memory_order_release);

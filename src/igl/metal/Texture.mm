@@ -25,17 +25,23 @@ void bgrToRgb(unsigned char* dstImg, size_t width, size_t height, size_t bytesPe
 
 namespace igl::metal {
 
-Texture::Texture(id<MTLTexture> texture, const ICapabilities& capabilities) :
+Texture::Texture(id<MTLTexture> texture,
+                 const ICapabilities& capabilities,
+                 TextureDesc::TextureMipmapGeneration mipmapGeneration) :
   ITexture(mtlPixelFormatToTextureFormat([texture pixelFormat])),
   value_(texture),
   drawable_(nullptr),
-  capabilities_(capabilities) {}
+  capabilities_(capabilities),
+  mipmapGeneration_(mipmapGeneration) {}
 
-Texture::Texture(id<CAMetalDrawable> drawable, const ICapabilities& capabilities) :
+Texture::Texture(id<CAMetalDrawable> drawable,
+                 const ICapabilities& capabilities,
+                 TextureDesc::TextureMipmapGeneration mipmapGeneration) :
   ITexture(mtlPixelFormatToTextureFormat([drawable.texture pixelFormat])),
   value_(nullptr),
   drawable_(drawable),
-  capabilities_(capabilities) {}
+  capabilities_(capabilities),
+  mipmapGeneration_(mipmapGeneration) {}
 
 Texture::~Texture() {
   value_ = nil;
@@ -113,6 +119,30 @@ Result Texture::uploadInternal(TextureType type,
       }
     }
   }
+
+  if (mipmapGeneration_ == TextureDesc::TextureMipmapGeneration::AutoGenerateOnUpload) {
+    if (range.mipLevel != 0) {
+      return Result{Result::Code::InvalidOperation,
+                    "AutoGenerateOnUpload requires mipLevel to be uploaded to be 0"};
+    }
+    const auto* device = static_cast<const igl::metal::Device*>(&capabilities_);
+    if (device) {
+      auto cmdQueue = const_cast<igl::metal::Device*>(device)->getMostRecentCommandQueue();
+      if (!cmdQueue) {
+        igl::Result result;
+        cmdQueue = const_cast<igl::metal::Device*>(device)->createCommandQueue({}, &result);
+        if (!result.isOk()) {
+          return result;
+        }
+      }
+      generateMipmap(*cmdQueue, nullptr);
+      mipmapsAreAvailableAndUploaded_ = true;
+    } else {
+      return igl::Result(igl::Result::Code::RuntimeError,
+                         "Device is not available; cannot generate mipmaps.");
+    }
+  }
+
   return Result{};
 }
 
@@ -244,6 +274,10 @@ void Texture::generateMipmap(id<MTLCommandBuffer> cmdBuffer) const {
 }
 
 bool Texture::isRequiredGenerateMipmap() const {
+  if (mipmapsAreAvailableAndUploaded_) {
+    return false;
+  }
+
   return value_.mipmapLevelCount > 1;
 }
 
@@ -251,6 +285,10 @@ uint64_t Texture::getTextureId() const {
   // TODO: implement via gpuResourceID
   IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
   return 0;
+}
+
+TextureDesc::TextureMipmapGeneration Texture::getMipmapGeneration() const {
+  return mipmapGeneration_;
 }
 
 TextureDesc::TextureUsage Texture::toTextureUsage(MTLTextureUsage usage) {

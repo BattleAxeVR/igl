@@ -200,22 +200,11 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
 
   auto renderPassHandle = ctx_.findRenderPass(builder);
 
-  dynamicState_.renderPassIndex_ = renderPassHandle.index;
-  dynamicState_.depthBiasEnable_ = false;
+  dynamicState_.renderPassIndex = renderPassHandle.index;
+  dynamicState_.depthBiasEnable = false;
 
-  VkRenderPassBeginInfo bi = fb.getRenderPassBeginInfo(
+  const VkRenderPassBeginInfo bi = fb.getRenderPassBeginInfo(
       renderPassHandle.pass, mipLevel, layer, (uint32_t)clearValues.size(), clearValues.data());
-
-  // clang-format off
-  // @fb-only
-      // @fb-only
-      // @fb-only
-      // @fb-only
-  // @fb-only
-  // clang-format on
-  // @fb-only
-    // @fb-only
-  // @fb-only
 
   const uint32_t width = std::max(fb.getWidth() >> mipLevel, 1u);
   const uint32_t height = std::max(fb.getHeight() >> mipLevel, 1u);
@@ -405,7 +394,7 @@ void RenderCommandEncoder::bindDepthStencilState(
 
   const igl::DepthStencilStateDesc& desc = state->desc_;
 
-  dynamicState_.depthWriteEnable_ = desc.isDepthWriteEnabled;
+  dynamicState_.depthWriteEnable = desc.isDepthWriteEnabled;
   dynamicState_.setDepthCompareOp(compareFunctionToVkCompareOp(desc.compareFunction));
 
   auto setStencilState = [this](VkStencilFaceFlagBits faceMask, const igl::StencilStateDesc& desc) {
@@ -518,13 +507,12 @@ void RenderCommandEncoder::bindPushConstants(const void* data, size_t length, si
                                      // of 4
 
   IGL_DEBUG_ASSERT(rps_, "Did you forget to call bindRenderPipelineState()?");
-  IGL_DEBUG_ASSERT(rps_->pushConstantRange_.size,
+  IGL_DEBUG_ASSERT(rps_->pushConstantRange.size,
                    "Currently bound render pipeline state has no push constants");
-  IGL_DEBUG_ASSERT(offset + length <=
-                       rps_->pushConstantRange_.offset + rps_->pushConstantRange_.size,
+  IGL_DEBUG_ASSERT(offset + length <= rps_->pushConstantRange.offset + rps_->pushConstantRange.size,
                    "Push constants size exceeded");
 
-  if (!rps_->pipelineLayout_) {
+  if (!rps_->pipelineLayout) {
     // bring a pipeline layout into existence - we don't really care about the dynamic state here
     (void)rps_->getVkPipeline(dynamicState_);
   }
@@ -534,7 +522,7 @@ void RenderCommandEncoder::bindPushConstants(const void* data, size_t length, si
 #endif // IGL_VULKAN_PRINT_COMMANDS
   ctx_.vf_.vkCmdPushConstants(cmdBuffer_,
                               rps_->getVkPipelineLayout(),
-                              rps_->pushConstantRange_.stageFlags,
+                              rps_->pushConstantRange.stageFlags,
                               (uint32_t)offset,
                               (uint32_t)length,
                               data);
@@ -725,7 +713,7 @@ void RenderCommandEncoder::setBlendColor(const Color& color) {
 void RenderCommandEncoder::setDepthBias(float depthBias, float slopeScale, float clamp) {
   IGL_PROFILER_FUNCTION();
 
-  dynamicState_.depthBiasEnable_ = true;
+  dynamicState_.depthBiasEnable = true;
   ctx_.vf_.vkCmdSetDepthBias(cmdBuffer_, depthBias, clamp, slopeScale);
 }
 

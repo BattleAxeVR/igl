@@ -51,6 +51,7 @@ class Texture : public ITexture {
   bool isRequiredGenerateMipmap() const override;
   uint64_t getTextureId() const override;
   bool isSwapchainTexture() const override;
+  TextureDesc::TextureMipmapGeneration getMipmapGeneration() const;
   VkFormat getVkFormat() const;
   uint32_t getVkExtendedFormat() const;
   VkImageUsageFlags getVkUsageFlags() const;
@@ -93,6 +94,10 @@ class Texture : public ITexture {
   /// only be called by the `Device` class, from its `vulkan::Device::createTexture()`
   virtual Result create(const TextureDesc& desc);
   virtual Result createView(const Texture& baseTexture, const TextureViewDesc& desc);
+
+  /// @brief To record whether mipmaps are available and uploaded to the GPU. This is used by the
+  /// `isRequiredGenerateMipmap()` function
+  mutable bool mipmapsAreAvailableAndUploaded_ = false;
 };
 
 } // namespace igl::vulkan

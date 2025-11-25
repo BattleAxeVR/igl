@@ -45,6 +45,9 @@ std::shared_ptr<ICommandQueue> Device::createCommandQueue( // NOLINT(bugprone-ex
   id<MTLCommandQueue> metalObject = [device_ newCommandQueue];
   auto resource =
       std::make_shared<CommandQueue>(*this, metalObject, bufferSyncManager_, deviceStatistics_);
+
+  mostRecentCommandQueue_ = resource;
+
   Result::setOk(outResult);
   return resource;
 }
@@ -203,7 +206,7 @@ std::shared_ptr<ITexture> Device::createTexture( // NOLINT(bugprone-exception-es
     return nullptr;
   }
   metalObject.label = [NSString stringWithUTF8String:desc.debugName.c_str()];
-  auto iglObject = std::make_shared<Texture>(metalObject, *this);
+  auto iglObject = std::make_shared<Texture>(metalObject, *this, desc.mipmapGeneration);
   if (hasResourceTracker()) {
     iglObject->initResourceTracker(getResourceTracker(), desc.debugName);
   }
@@ -750,6 +753,10 @@ MTLResourceOptions Device::toMTLResourceStorageMode(ResourceStorage storage) {
   }
 }
 
+std::shared_ptr<ICommandQueue> Device::getMostRecentCommandQueue() const noexcept {
+  return mostRecentCommandQueue_;
+}
+
 Holder<BindGroupTextureHandle> Device::createBindGroup(
     const BindGroupTextureDesc& desc,
     const IRenderPipelineState* IGL_NULLABLE /*compatiblePipeline*/,
@@ -758,7 +765,7 @@ Holder<BindGroupTextureHandle> Device::createBindGroup(
 
   BindGroupTextureDesc description(desc);
 
-  const auto handle = bindGroupTexturesPool_.create(std::move(description));
+  const auto handle = bindGroupTexturesPool.create(std::move(description));
 
   Result::setResult(outResult,
                     handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
@@ -773,7 +780,7 @@ Holder<BindGroupBufferHandle> Device::createBindGroup(const BindGroupBufferDesc&
 
   BindGroupBufferDesc description(desc);
 
-  const auto handle = bindGroupBuffersPool_.create(std::move(description));
+  const auto handle = bindGroupBuffersPool.create(std::move(description));
 
   Result::setResult(outResult,
                     handle.empty() ? Result(Result::Code::RuntimeError, "Cannot create bind group")
@@ -787,7 +794,7 @@ void Device::destroy(BindGroupTextureHandle handle) {
     return;
   }
 
-  bindGroupTexturesPool_.destroy(handle);
+  bindGroupTexturesPool.destroy(handle);
 }
 
 void Device::destroy(BindGroupBufferHandle handle) {
@@ -795,7 +802,7 @@ void Device::destroy(BindGroupBufferHandle handle) {
     return;
   }
 
-  bindGroupBuffersPool_.destroy(handle);
+  bindGroupBuffersPool.destroy(handle);
 }
 
 void Device::destroy(SamplerHandle handle) {

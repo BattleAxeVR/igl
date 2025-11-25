@@ -187,16 +187,16 @@ Result RenderPipelineState::create() {
       return Result{Result::Code::RuntimeError, "Too many samplers"};
     }
 
-    vertexTextureUnitRemap[textureUnit] = realTextureUnit;
+    vertexTextureUnitRemap_[textureUnit] = realTextureUnit;
     unitSamplerLocationMap_[realTextureUnit] = loc;
   }
 
   if (!mFramebufferDesc.colorAttachments.empty()) {
     const ColorWriteMask colorWriteMask = mFramebufferDesc.colorAttachments[0].colorWriteMask;
-    colorMask_[0] = static_cast<GLboolean>((colorWriteMask & ColorWriteBitsRed) != 0);
-    colorMask_[1] = static_cast<GLboolean>((colorWriteMask & ColorWriteBitsGreen) != 0);
-    colorMask_[2] = static_cast<GLboolean>((colorWriteMask & ColorWriteBitsBlue) != 0);
-    colorMask_[3] = static_cast<GLboolean>((colorWriteMask & ColorWriteBitsAlpha) != 0);
+    colorMask_[0] = static_cast<GLboolean>((colorWriteMask & kColorWriteBitsRed) != 0);
+    colorMask_[1] = static_cast<GLboolean>((colorWriteMask & kColorWriteBitsGreen) != 0);
+    colorMask_[2] = static_cast<GLboolean>((colorWriteMask & kColorWriteBitsBlue) != 0);
+    colorMask_[3] = static_cast<GLboolean>((colorWriteMask & kColorWriteBitsAlpha) != 0);
   }
 
   if (!mFramebufferDesc.colorAttachments.empty() &&
@@ -352,8 +352,8 @@ Result RenderPipelineState::bindTextureUnit(const size_t unit,
 
   GLint samplerLocation = -1;
   if (bindTarget == igl::BindTarget::kVertex) {
-    auto it = vertexTextureUnitRemap.find(unit);
-    if (it == vertexTextureUnitRemap.end()) {
+    auto it = vertexTextureUnitRemap_.find(unit);
+    if (it == vertexTextureUnitRemap_.end()) {
       return Result{Result::Code::RuntimeError, "Unable to find sampler location\n"};
     }
     auto realUnit = it->second;

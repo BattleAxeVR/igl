@@ -7,7 +7,8 @@
 
 #pragma once
 
-#include <igl/Common.h>
+#include <cstdint>
+#include <string>
 #include <igl/DepthStencilState.h>
 #include <igl/ITrackedResource.h>
 #include <igl/TextureFormat.h>
@@ -197,6 +198,12 @@ class ISamplerState : public ITrackedResource<ISamplerState> {
  public:
   ~ISamplerState() override = default;
 
+  /**
+   * @brief Returns whether this sampler state is configured for YUV color space conversion.
+   * Required for Vulkan to take proper care of immutable samplers
+   *
+   * @return true if the sampler is configured for YUV format, false otherwise.
+   */
   [[nodiscard]] virtual bool isYUV() const noexcept = 0;
 };
 

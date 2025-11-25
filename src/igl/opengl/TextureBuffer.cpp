@@ -498,6 +498,16 @@ Result TextureBuffer::uploadInternal(GLenum target,
       break;
     }
   }
+
+  if (mipmapGeneration_ == TextureDesc::TextureMipmapGeneration::AutoGenerateOnUpload) {
+    if (range.mipLevel != 0) {
+      return Result{Result::Code::InvalidOperation,
+                    "AutoGenerateOnUpload requires mipLevel to be uploaded to be 0"};
+    }
+    generateMipmap();
+    mipmapsAreAvailableAndUploaded_ = true;
+  }
+
   return result;
 }
 

@@ -385,6 +385,24 @@ Result Texture::uploadInternal(TextureType /*type*/,
   ctx.stagingDevice_->imageData(
       vulkanImage, desc_.type, range, getProperties(), bytesPerRow, imageAspectFlags, data);
 
+  // Generate mipmaps if requested by the user
+  if (desc_.mipmapGeneration == TextureDesc::TextureMipmapGeneration::AutoGenerateOnUpload) {
+    if (range.mipLevel != 0) {
+      return Result{Result::Code::InvalidOperation,
+                    "AutoGenerateOnUpload requires mipLevel to be uploaded to be 0"};
+    }
+
+    Result result;
+    const auto cq = device_.createCommandQueue({}, &result);
+    if (!result.isOk()) {
+      return result;
+    }
+
+    generateMipmap(*cq, nullptr);
+
+    mipmapsAreAvailableAndUploaded_ = true;
+  }
+
   return Result();
 }
 
@@ -434,7 +452,7 @@ void Texture::generateMipmap(ICommandQueue& /* unused */,
   if (texture_ && desc_.numMipLevels > 1) {
     const auto& ctx = device_.getVulkanContext();
     const auto& wrapper = ctx.immediate_->acquire();
-    texture_->image_.generateMipmap(wrapper.cmdBuf_, range ? *range : desc_.asRange());
+    texture_->image_.generateMipmap(wrapper.cmdBuf, range ? *range : desc_.asRange());
     ctx.immediate_->submit(wrapper);
   }
 }
@@ -448,6 +466,10 @@ void Texture::generateMipmap(ICommandBuffer& cmdBuffer, const TextureRangeDesc* 
 }
 
 bool Texture::isRequiredGenerateMipmap() const {
+  if (mipmapsAreAvailableAndUploaded_) {
+    return false;
+  }
+
   if (!texture_ || desc_.numMipLevels <= 1) {
     return false;
   }
@@ -514,6 +536,10 @@ bool Texture::isSwapchainTexture() const {
   return texture_ ? texture_->image_.isExternallyManaged_ : false;
 }
 
+TextureDesc::TextureMipmapGeneration Texture::getMipmapGeneration() const {
+  return desc_.mipmapGeneration;
+}
+
 uint32_t Texture::getNumVkLayers() const {
   return desc_.type == TextureType::Cube ? 6u : desc_.numLayers;
 }
@@ -526,13 +552,13 @@ void Texture::clearColorTexture(const igl::Color& rgba) {
   const igl::vulkan::VulkanImage& img = texture_->image_;
   IGL_DEBUG_ASSERT(img.valid());
 
-  const auto& wrapper = img.ctx_->stagingDevice_->immediate_->acquire();
+  const auto& wrapper = img.ctx_->stagingDevice_->immediate->acquire();
 
   // There is a memory barrier inserted in clearColorImage().
   // The memory barrier is necessary to ensure synchronized access.
-  img.clearColorImage(wrapper.cmdBuf_, rgba);
+  img.clearColorImage(wrapper.cmdBuf, rgba);
 
-  img.ctx_->stagingDevice_->immediate_->submit(wrapper);
+  img.ctx_->stagingDevice_->immediate->submit(wrapper);
 }
 
 } // namespace igl::vulkan

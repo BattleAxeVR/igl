@@ -7,7 +7,8 @@
 
 #pragma once
 
-#import <Metal/Metal.h>
+@protocol MTLDevice;
+#import <Metal/MTLTypes.h>
 #include <igl/CommandEncoder.h>
 #include <igl/Device.h>
 #include <igl/metal/DeviceFeatureSet.h>
@@ -116,9 +117,11 @@ class Device : public IDevice {
   static MTLStorageMode toMTLStorageMode(ResourceStorage storage);
   static MTLResourceOptions toMTLResourceStorageMode(ResourceStorage storage);
 
+  std::shared_ptr<ICommandQueue> getMostRecentCommandQueue() const noexcept;
+
  public:
-  Pool<BindGroupBufferTag, BindGroupBufferDesc> bindGroupBuffersPool_;
-  Pool<BindGroupTextureTag, BindGroupTextureDesc> bindGroupTexturesPool_;
+  Pool<BindGroupBufferTag, BindGroupBufferDesc> bindGroupBuffersPool;
+  Pool<BindGroupTextureTag, BindGroupTextureDesc> bindGroupTexturesPool;
 
  private:
   std::unique_ptr<IBuffer> createRingBuffer(const BufferDesc& desc,
@@ -133,6 +136,7 @@ class Device : public IDevice {
   DeviceFeatureSet deviceFeatureSet_;
   std::shared_ptr<BufferSynchronizationManager> bufferSyncManager_;
   mutable DeviceStatistics deviceStatistics_;
+  std::shared_ptr<ICommandQueue> mostRecentCommandQueue_;
 };
 
 } // namespace igl::metal

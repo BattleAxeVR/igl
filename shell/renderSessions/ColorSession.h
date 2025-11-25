@@ -29,6 +29,7 @@ class ColorSession : public RenderSession {
 
   enum class ColorTestModes {
     MacbethTexture,
+    MacbethTextureKtx,
     MacbethTextureKtx2,
     OrangeTexture,
     OrangeClear,

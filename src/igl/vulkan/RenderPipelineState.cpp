@@ -261,16 +261,16 @@ VkBlendFactor blendFactorToVkBlendFactor(igl::BlendFactor value) {
 
 VkColorComponentFlags colorWriteMaskToVkColorComponentFlags(igl::ColorWriteMask value) {
   VkColorComponentFlags result = 0;
-  if (value & igl::ColorWriteBitsRed) {
+  if (value & igl::kColorWriteBitsRed) {
     result |= VK_COLOR_COMPONENT_R_BIT;
   }
-  if (value & igl::ColorWriteBitsGreen) {
+  if (value & igl::kColorWriteBitsGreen) {
     result |= VK_COLOR_COMPONENT_G_BIT;
   }
-  if (value & igl::ColorWriteBitsBlue) {
+  if (value & igl::kColorWriteBitsBlue) {
     result |= VK_COLOR_COMPONENT_B_BIT;
   }
-  if (value & igl::ColorWriteBitsAlpha) {
+  if (value & igl::kColorWriteBitsAlpha) {
     result |= VK_COLOR_COMPONENT_A_BIT;
   }
   return result;
@@ -296,7 +296,7 @@ RenderPipelineState::RenderPipelineState(const igl::vulkan::Device& device,
   const igl::vulkan::VertexInputState* vstate =
       static_cast<VertexInputState*>(desc_.vertexInputState.get());
 
-  vertexInputStateCreateInfo_ = ivkGetPipelineVertexInputStateCreateInfo_Empty();
+  vertexInputStateCreateInfo_ = ivkGetPipelineVertexInputStateCreateInfoEmpty();
 
   if (vstate) {
     std::array<bool, IGL_BUFFER_BINDINGS_MAX> bufferAlreadyBound{};
@@ -345,9 +345,9 @@ RenderPipelineState::~RenderPipelineState() {
           }));
     }
   }
-  if (pipelineLayout_) {
+  if (pipelineLayout) {
     ctx.deferredTask(std::packaged_task<void()>(
-        [vf = &ctx.vf_, device = ctx.getVkDevice(), layout = pipelineLayout_]() {
+        [vf = &ctx.vf_, device = ctx.getVkDevice(), layout = pipelineLayout]() {
           vf->vkDestroyPipelineLayout(device, layout, nullptr);
         }));
   }
@@ -360,7 +360,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
   if (ctx.config_.enableDescriptorIndexing) {
     // the bindless descriptor set layout can be changed in VulkanContext when the number of
     // existing textures increases
-    if (lastBindlessVkDescriptorSetLayout_ != ctx.getBindlessVkDescriptorSetLayout()) {
+    if (lastBindlessVkDescriptorSetLayout != ctx.getBindlessVkDescriptorSetLayout()) {
       // there's a new descriptor set layout - drop the previous Vulkan pipeline
       VkDevice device = ctx.getVkDevice();
       for (const auto& p : pipelines_) {
@@ -371,15 +371,15 @@ VkPipeline RenderPipelineState::getVkPipeline(
               }));
         }
       }
-      if (pipelineLayout_) {
+      if (pipelineLayout) {
         ctx.deferredTask(std::packaged_task<void()>(
-            [vf = &ctx.vf_, device = ctx.getVkDevice(), layout = pipelineLayout_]() {
+            [vf = &ctx.vf_, device = ctx.getVkDevice(), layout = pipelineLayout]() {
               vf->vkDestroyPipelineLayout(device, layout, nullptr);
             }));
       }
       pipelines_.clear();
-      pipelineLayout_ = VK_NULL_HANDLE;
-      lastBindlessVkDescriptorSetLayout_ = ctx.getBindlessVkDescriptorSetLayout();
+      pipelineLayout = VK_NULL_HANDLE;
+      lastBindlessVkDescriptorSetLayout = ctx.getBindlessVkDescriptorSetLayout();
     }
   }
 
@@ -391,13 +391,13 @@ VkPipeline RenderPipelineState::getVkPipeline(
 
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
 
-  if (!pipelineLayout_) {
+  if (!pipelineLayout) {
     // NOLINTBEGIN(readability-identifier-naming)
-    // @fb-only
+    // NOLINTNEXTLINE(modernize-avoid-c-arrays)
     const VkDescriptorSetLayout DSLs[] = {
-        dslCombinedImageSamplers_->getVkDescriptorSetLayout(),
-        dslBuffers_->getVkDescriptorSetLayout(),
-        dslStorageImages_->getVkDescriptorSetLayout(),
+        dslCombinedImageSamplers->getVkDescriptorSetLayout(),
+        dslBuffers->getVkDescriptorSetLayout(),
+        dslStorageImages->getVkDescriptorSetLayout(),
         ctx.getBindlessVkDescriptorSetLayout(),
     };
     // NOLINTEND(readability-identifier-naming)
@@ -407,15 +407,15 @@ VkPipeline RenderPipelineState::getVkPipeline(
                                   ? IGL_ARRAY_NUM_ELEMENTS(DSLs)
                                   : IGL_ARRAY_NUM_ELEMENTS(DSLs) - 1u),
         DSLs,
-        info_.hasPushConstants ? &pushConstantRange_ : nullptr);
+        info.hasPushConstants ? &pushConstantRange : nullptr);
 
     VkDevice device = ctx.getVkDevice();
-    VK_ASSERT(ctx.vf_.vkCreatePipelineLayout(device, &ci, nullptr, &pipelineLayout_));
+    VK_ASSERT(ctx.vf_.vkCreatePipelineLayout(device, &ci, nullptr, &pipelineLayout));
     VK_ASSERT(
         ivkSetDebugObjectName(&ctx.vf_,
                               device,
                               VK_OBJECT_TYPE_PIPELINE_LAYOUT,
-                              (uint64_t)pipelineLayout_,
+                              (uint64_t)pipelineLayout,
                               IGL_FORMAT("Pipeline Layout: {}", desc_.debugName.c_str()).c_str()));
   }
 
@@ -424,7 +424,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
       deviceFeatures.vkPhysicalDeviceFeatures2.features.dualSrcBlend;
 
   // build a new Vulkan pipeline
-  VkRenderPass renderPass = ctx.getRenderPass(dynamicState.renderPassIndex_).pass;
+  VkRenderPass renderPass = ctx.getRenderPass(dynamicState.renderPassIndex).pass;
 
   VkPipeline pipeline = VK_NULL_HANDLE;
 
@@ -439,9 +439,9 @@ VkPipeline RenderPipelineState::getVkPipeline(
        dualSrcBlendSupported = dualSrcBlendSupported](auto attachment) mutable {
         if (attachment.textureFormat != TextureFormat::Invalid) {
           // In Vulkan color write bits are part of blending.
-          if (!attachment.blendEnabled && attachment.colorWriteMask == igl::ColorWriteBitsAll) {
+          if (!attachment.blendEnabled && attachment.colorWriteMask == igl::kColorWriteBitsAll) {
             colorBlendAttachmentStates.push_back(
-                ivkGetPipelineColorBlendAttachmentState_NoBlending());
+                ivkGetPipelineColorBlendAttachmentStateNoBlending());
           } else {
             checkDualSrcBlendFactor(attachment.srcRGBBlendFactor, dualSrcBlendSupported);
             checkDualSrcBlendFactor(attachment.dstRGBBlendFactor, dualSrcBlendSupported);
@@ -476,9 +476,9 @@ VkPipeline RenderPipelineState::getVkPipeline(
               VK_DYNAMIC_STATE_STENCIL_REFERENCE,
           })
           .primitiveTopology(primitiveTypeToVkPrimitiveTopology(desc_.topology))
-          .depthBiasEnable(dynamicState.depthBiasEnable_)
-          .depthCompareOp(dynamicState.getDepthCompareOp(), dynamicState.depthWriteEnable_)
-          .depthWriteEnable(dynamicState.depthWriteEnable_)
+          .depthBiasEnable(dynamicState.depthBiasEnable)
+          .depthCompareOp(dynamicState.getDepthCompareOp(), dynamicState.depthWriteEnable)
+          .depthWriteEnable(dynamicState.depthWriteEnable)
           .rasterizationSamples(getVulkanSampleCountFlags(desc_.sampleCount))
           .polygonMode(polygonFillModeToVkPolygonMode(desc_.polygonFillMode))
           .stencilStateOps(VK_STENCIL_FACE_FRONT_BIT,
@@ -508,7 +508,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
           .build(ctx.vf_,
                  ctx.getVkDevice(),
                  ctx.pipelineCache_,
-                 pipelineLayout_,
+                 pipelineLayout,
                  renderPass,
                  &pipeline,
                  desc_.debugName.c_str()));
