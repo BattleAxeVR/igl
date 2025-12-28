@@ -63,6 +63,10 @@ VkShaderStageFlagBits shaderStageToVkShaderStage(igl::ShaderStage stage) {
     return VK_SHADER_STAGE_FRAGMENT_BIT;
   case igl::ShaderStage::Compute:
     return VK_SHADER_STAGE_COMPUTE_BIT;
+  case igl::ShaderStage::Task:
+    return VK_SHADER_STAGE_TASK_BIT_EXT;
+  case igl::ShaderStage::Mesh:
+    return VK_SHADER_STAGE_MESH_BIT_EXT;
   };
   return VK_SHADER_STAGE_FLAG_BITS_MAX_ENUM;
 }
@@ -274,7 +278,8 @@ std::shared_ptr<IRenderPipelineState> Device::createRenderPipelineInternal(
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing shader stages");
     return nullptr;
   }
-  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Render)) {
+  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getType() == ShaderStagesType::Render ||
+                        desc.shaderStages->getType() == ShaderStagesType::RenderMeshShader)) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Shader stages not for render");
     return nullptr;
   }
@@ -287,8 +292,15 @@ std::shared_ptr<IRenderPipelineState> Device::createRenderPipelineInternal(
     return nullptr;
   }
 
-  if (!IGL_DEBUG_VERIFY(desc.shaderStages->getVertexModule())) {
+  if (desc.shaderStages->getType() == ShaderStagesType::Render &&
+      !IGL_DEBUG_VERIFY(desc.shaderStages->getVertexModule())) {
     Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing vertex shader");
+    return nullptr;
+  }
+
+  if (desc.shaderStages->getType() == ShaderStagesType::RenderMeshShader &&
+      !IGL_DEBUG_VERIFY(desc.shaderStages->getMeshModule())) {
+    Result::setResult(outResult, Result::Code::ArgumentInvalid, "Missing mesh shader");
     return nullptr;
   }
 
@@ -467,7 +479,9 @@ std::shared_ptr<VulkanShaderModule> Device::createShaderModule(ShaderStage stage
 
   glslang_resource_t glslangResource = {};
   glslangGetDefaultResource(&glslangResource);
-  ivkUpdateGlslangResource(&glslangResource, &ctx_->getVkPhysicalDeviceProperties());
+  ivkUpdateGlslangResource(&glslangResource,
+                           &ctx_->getVkPhysicalDeviceProperties(),
+                           &ctx_->getvkPhysicalDeviceMeshShaderPropertiesEXT());
 
   std::vector<uint32_t> spirv;
   const Result result = glslang::compileShader(stage, source, spirv, &glslangResource);
@@ -595,6 +609,8 @@ bool Device::hasFeatureInternal(DeviceFeatures feature) const {
     return deviceProperties.limits.maxSamplerAnisotropy > 1;
   case DeviceFeatures::MapBufferRange:
     return true;
+  case DeviceFeatures::MeshShaders:
+    return ctx_->features_.has_VK_EXT_mesh_shader;
   case DeviceFeatures::MultipleRenderTargets:
     return deviceProperties.limits.maxColorAttachments > 1;
   case DeviceFeatures::StandardDerivative:
@@ -774,6 +790,34 @@ bool Device::getFeatureLimitsInternal(DeviceFeatureLimits featureLimits, size_t&
   case DeviceFeatureLimits::MaxBindBytesBytes:
     result = 0;
     return true;
+  case DeviceFeatureLimits::MaxTextureDimension3D:
+    result = limits.maxImageDimension3D;
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeX:
+    result = limits.maxComputeWorkGroupSize[0];
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeY:
+    result = limits.maxComputeWorkGroupSize[1];
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeZ:
+    result = limits.maxComputeWorkGroupSize[2];
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupInvocations:
+    result = limits.maxComputeWorkGroupInvocations;
+    return true;
+  case DeviceFeatureLimits::MaxVertexInputAttributes:
+    result = limits.maxVertexInputAttributes;
+    return true;
+  case DeviceFeatureLimits::MaxColorAttachments:
+    result = limits.maxColorAttachments;
+    return true;
+  // D3D12-specific descriptor heap limits - not applicable to Vulkan
+  case DeviceFeatureLimits::MaxDescriptorHeapCbvSrvUav:
+  case DeviceFeatureLimits::MaxDescriptorHeapSamplers:
+  case DeviceFeatureLimits::MaxDescriptorHeapRtvs:
+  case DeviceFeatureLimits::MaxDescriptorHeapDsvs:
+    result = 0;
+    return false;
   }
 
   IGL_DEBUG_ABORT("DeviceFeatureLimits value not handled: %d", (int)featureLimits);

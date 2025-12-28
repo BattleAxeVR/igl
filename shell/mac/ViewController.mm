@@ -131,7 +131,6 @@ using namespace igl;
       // @fb-only
           // @fb-only
       // @fb-only
-      // @fb-only
     // @fb-only
 // @fb-only
 
@@ -152,8 +151,10 @@ using namespace igl;
     // @fb-only
 // @fb-only
   }
-  // draw
-  session->update(std::move(surfaceTextures));
+
+  // Use runUpdate() which automatically handles benchmark timing, reporting, and expiration
+  session->runUpdate(std::move(surfaceTextures));
+
   if (session->appParams().exitRequested) {
     [[NSApplication sharedApplication] terminate:nil];
   }
@@ -449,6 +450,9 @@ using namespace igl;
   // @fb-only
     // @fb-only
     // @fb-only
+    // @fb-only
+    // @fb-only
+        // @fb-only
     // @fb-only
     // @fb-only
     // @fb-only

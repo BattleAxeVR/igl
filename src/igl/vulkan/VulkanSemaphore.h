@@ -46,10 +46,12 @@ class VulkanSemaphore final {
   // FIXME_DEPRECATED_COVERAGE_EXCLUDE_END
 
  public:
+  // NOLINTBEGIN(readability-identifier-naming)
   const VulkanFunctionTable* vf_{};
   VkDevice device_ = VK_NULL_HANDLE;
   VkSemaphore vkSemaphore_ = VK_NULL_HANDLE;
   bool exportable_ = false;
+  // NOLINTEND(readability-identifier-naming)
 };
 
 } // namespace igl::vulkan

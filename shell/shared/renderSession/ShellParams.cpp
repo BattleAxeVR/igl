@@ -54,6 +54,34 @@ std::optional<BenchmarkRenderSessionParams> parseBenchmarkRenderSessionParams(
     else if (arg == "--benchmark" || arg == "-b") {
       benchmarkParamsFound = true;
     }
+    // Check for benchmark duration (time of run) parameter
+    else if (arg == "--benchmark-duration" || arg == "--run-time") {
+      if (i + 1 < args.size()) {
+        benchmarkParams.benchmarkDurationMs = std::stoul(args[++i]);
+        benchmarkParamsFound = true;
+      }
+    }
+    // Check for report interval parameter
+    else if (arg == "--report-interval") {
+      if (i + 1 < args.size()) {
+        benchmarkParams.reportIntervalMs = std::stoul(args[++i]);
+        benchmarkParamsFound = true;
+      }
+    }
+    // Check for hiccup multiplier parameter
+    else if (arg == "--hiccup-multiplier") {
+      if (i + 1 < args.size()) {
+        benchmarkParams.hiccupMultiplier = std::stod(args[++i]);
+        benchmarkParamsFound = true;
+      }
+    }
+    // Check for render time buffer size parameter
+    else if (arg == "--render-buffer-size") {
+      if (i + 1 < args.size()) {
+        benchmarkParams.renderTimeBufferSize = std::stoul(args[++i]);
+        benchmarkParamsFound = true;
+      }
+    }
     // Check for custom parameters in the form --key value
     else if (arg.rfind("--", 0) == 0) {
       std::string key = arg.substr(2); // Remove "--" prefix
@@ -83,7 +111,11 @@ std::vector<std::string> convertArgvToParams(int argc, char** argv) {
 
 void parseShellParams(const std::vector<std::string>& args, ShellParams& shellParams) {
   // Parse benchmark parameters using existing function
-  shellParams.benchmarkParams = parseBenchmarkRenderSessionParams(args);
+  // Only override benchmarkParams if command line args specify benchmark parameters
+  auto parsedBenchmarkParams = parseBenchmarkRenderSessionParams(args);
+  if (parsedBenchmarkParams.has_value()) {
+    shellParams.benchmarkParams = parsedBenchmarkParams;
+  }
 
   // Parse other shell parameters
   for (size_t i = 0; i < args.size(); i++) {
@@ -114,6 +146,12 @@ void parseShellParams(const std::vector<std::string>& args, ShellParams& shellPa
           }
         }
       }
+    } else if (arg == "--fps-throttle") {
+      if (i + 1 < args.size()) {
+        shellParams.fpsThrottleMs = static_cast<uint32_t>(std::stoi(args[++i]));
+      }
+    } else if (arg == "--fps-throttle-random") {
+      shellParams.fpsThrottleRandom = true;
     }
   }
 }

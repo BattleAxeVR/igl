@@ -127,10 +127,10 @@ Result Texture::uploadInternal(TextureType type,
     }
     const auto* device = static_cast<const igl::metal::Device*>(&capabilities_);
     if (device) {
-      auto cmdQueue = const_cast<igl::metal::Device*>(device)->getMostRecentCommandQueue();
+      auto cmdQueue = const_cast<Device*>(device)->getMostRecentCommandQueue();
       if (!cmdQueue) {
-        igl::Result result;
-        cmdQueue = const_cast<igl::metal::Device*>(device)->createCommandQueue({}, &result);
+        Result result;
+        cmdQueue = const_cast<Device*>(device)->createCommandQueue({}, &result);
         if (!result.isOk()) {
           return result;
         }
@@ -138,8 +138,8 @@ Result Texture::uploadInternal(TextureType type,
       generateMipmap(*cmdQueue, nullptr);
       mipmapsAreAvailableAndUploaded_ = true;
     } else {
-      return igl::Result(igl::Result::Code::RuntimeError,
-                         "Device is not available; cannot generate mipmaps.");
+      return Result(igl::Result::Code::RuntimeError,
+                    "Device is not available; cannot generate mipmaps.");
     }
   }
 
@@ -416,6 +416,8 @@ MTLPixelFormat Texture::textureFormatToMTLPixelFormat(TextureFormat value) {
     return MTLPixelFormatRG16Uint;
   case TextureFormat::RG_UNorm16:
     return MTLPixelFormatRG16Unorm;
+  case TextureFormat::RGBA_UNorm16:
+    return MTLPixelFormatRGBA16Unorm;
 
   case TextureFormat::RGB10_A2_UNorm_Rev:
     return MTLPixelFormatRGB10A2Unorm;
@@ -837,6 +839,8 @@ TextureFormat Texture::mtlPixelFormatToTextureFormat(MTLPixelFormat value) {
     return TextureFormat::RG_UInt16;
   case MTLPixelFormatRG16Unorm:
     return TextureFormat::RG_UNorm16;
+  case MTLPixelFormatRGBA16Unorm:
+    return TextureFormat::RGBA_UNorm16;
 
   case MTLPixelFormatR32Float:
     return TextureFormat::R_F32;

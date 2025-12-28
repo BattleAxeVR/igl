@@ -268,6 +268,14 @@ void RenderCommandEncoder::bindUniform(const UniformDesc& uniformDesc, const voi
 }
 
 void RenderCommandEncoder::bindBuffer(uint32_t index,
+                                      uint8_t bindTarget,
+                                      IBuffer* buffer,
+                                      size_t offset,
+                                      size_t bufferSize) {
+  bindBuffer(index, buffer, offset, bufferSize);
+}
+
+void RenderCommandEncoder::bindBuffer(uint32_t index,
                                       IBuffer* buffer,
                                       size_t offset,
                                       size_t bufferSize) {
@@ -401,6 +409,16 @@ void RenderCommandEncoder::drawIndexed(size_t indexCount,
   }
 }
 
+void RenderCommandEncoder::drawMeshTasks(const Dimensions& threadgroupsPerGrid,
+                                         const Dimensions& threadsPerTaskThreadgroup,
+                                         const Dimensions& threadsPerMeshThreadgroup) {
+  (void)threadgroupsPerGrid;
+  (void)threadsPerTaskThreadgroup;
+  (void)threadsPerMeshThreadgroup;
+
+  IGL_DEBUG_ASSERT_NOT_IMPLEMENTED();
+}
+
 // NOLINTBEGIN(bugprone-easily-swappable-parameters)
 void RenderCommandEncoder::multiDrawIndirect(IBuffer& indirectBuffer,
                                              size_t indirectBufferOffset,
@@ -465,7 +483,7 @@ void RenderCommandEncoder::bindBindGroup(BindGroupTextureHandle handle) {
     return;
   }
 
-  const BindGroupTextureDesc* desc = getContext().bindGroupTexturesPool_.get(handle);
+  const BindGroupTextureDesc* desc = getContext().bindGroupTexturesPool.get(handle);
 
   for (uint32_t i = 0; i != IGL_TEXTURE_SAMPLERS_MAX; i++) {
     if (desc->textures[i]) {
@@ -483,7 +501,7 @@ void RenderCommandEncoder::bindBindGroup(BindGroupBufferHandle handle,
     return;
   }
 
-  const BindGroupBufferDesc* desc = getContext().bindGroupBuffersPool_.get(handle);
+  const BindGroupBufferDesc* desc = getContext().bindGroupBuffersPool.get(handle);
 
   uint32_t dynamicOffset = 0;
 

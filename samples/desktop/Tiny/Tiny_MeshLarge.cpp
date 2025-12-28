@@ -32,7 +32,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/random.hpp>
 #include <ktx.h>
-#include <math.h>
 #include <meshoptimizer.h>
 #include <mutex>
 #include <shared/Camera.h>
@@ -807,7 +806,7 @@ std::string convertFileName(std::string fileName) {
   }
 }
 
-static GLFWwindow* initIGL(bool isHeadless, bool enableVulkanValidationLayers) {
+GLFWwindow* initIGL(bool isHeadless, bool enableVulkanValidationLayers) {
   if (!glfwInit()) {
     printf("glfwInit() failed");
     return nullptr;
@@ -1108,7 +1107,7 @@ bool loadAndCache(const char* cacheFileName) {
     std::vector<VertexData> remappedVertices;
     indexData_.resize(indexCount);
     remappedVertices.resize(vertexCount);
-    meshopt_remapIndexBuffer(indexData_.data(), nullptr, indexCount, &remap[0]);
+    meshopt_remapIndexBuffer(indexData_.data(), nullptr, indexCount, remap.data());
     meshopt_remapVertexBuffer(
         remappedVertices.data(), vertexData_.data(), indexCount, sizeof(VertexData), remap.data());
     vertexData_ = remappedVertices;

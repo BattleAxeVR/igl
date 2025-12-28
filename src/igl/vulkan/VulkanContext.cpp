@@ -415,6 +415,7 @@ VulkanContext::VulkanContext(VulkanContextConfig config,
                              void* IGL_NULLABLE window,
                              void* IGL_NULLABLE display) :
   tableImpl_(std::make_unique<VulkanFunctionTable>()),
+  // NOLINTBEGIN(clang-diagnostic-missing-designated-field-initializers)
   vkPhysicalDeviceDescriptorIndexingProperties_({
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT,
       .pNext = nullptr,
@@ -427,6 +428,11 @@ VulkanContext::VulkanContext(VulkanContextConfig config,
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
       .pNext = &vkPhysicalDeviceDriverProperties_,
   }),
+  vkPhysicalDeviceMeshShaderPropertiesEXT_({
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MESH_SHADER_PROPERTIES_EXT,
+      .pNext = nullptr,
+  }),
+  // NOLINTEND(clang-diagnostic-missing-designated-field-initializers)
   features_(config),
   vf_(*tableImpl_),
   config_(config) {
@@ -853,6 +859,12 @@ igl::Result VulkanContext::initContext(const HWDeviceDesc& desc,
   // Enable extra device extensions
   for (size_t i = 0; i < numExtraDeviceExtensions; i++) {
     features_.enable(extraDeviceExtensions[i], VulkanFeatures::ExtensionType::Device);
+  }
+
+  if (features_.available(VK_EXT_MESH_SHADER_EXTENSION_NAME,
+                          VulkanFeatures::ExtensionType::Device)) {
+    vkPhysicalDeviceDescriptorIndexingProperties_.pNext = &vkPhysicalDeviceMeshShaderPropertiesEXT_;
+    vf_.vkGetPhysicalDeviceProperties2(vkPhysicalDevice_, &vkPhysicalDeviceProperties2_);
   }
 
   VulkanQueuePool queuePool(vf_, vkPhysicalDevice_);
@@ -2059,17 +2071,21 @@ VkSamplerYcbcrConversionInfo VulkanContext::getOrCreateYcbcrConversionInfo(VkFor
 
   // check properties
   VkSamplerYcbcrConversionImageFormatProperties samplerYcbcrConversionImageFormatProps = {
-      VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES, nullptr, 0};
+      .sType = VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES,
+      .combinedImageSamplerDescriptorCount = 0,
+  };
   VkImageFormatProperties2 imageFormatProps = {
-      VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2, &samplerYcbcrConversionImageFormatProps, {}};
+      .sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2,
+      .pNext = &samplerYcbcrConversionImageFormatProps,
+      .imageFormatProperties = {},
+  };
   const VkPhysicalDeviceImageFormatInfo2 imageFormatInfo = {
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
-      nullptr,
-      format,
-      VK_IMAGE_TYPE_2D,
-      VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_SAMPLED_BIT,
-      VK_IMAGE_CREATE_DISJOINT_BIT,
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2,
+      .format = format,
+      .type = VK_IMAGE_TYPE_2D,
+      .tiling = VK_IMAGE_TILING_OPTIMAL,
+      .usage = VK_IMAGE_USAGE_SAMPLED_BIT,
+      .flags = VK_IMAGE_CREATE_DISJOINT_BIT,
   };
   vf_.vkGetPhysicalDeviceImageFormatProperties2(
       getVkPhysicalDevice(), &imageFormatInfo, &imageFormatProps);
@@ -2230,10 +2246,10 @@ igl::BindGroupBufferHandle VulkanContext::createBindGroup(const BindGroupBufferD
 
   // NOLINTNEXTLINE(modernize-avoid-c-arrays)
   VkDescriptorPoolSize poolSizes[] = {
-      VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 0},
-      VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0},
-      VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 0},
-      VkDescriptorPoolSize{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 0},
+      {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, .descriptorCount = 0},
+      {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 0},
+      {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, .descriptorCount = 0},
+      {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, .descriptorCount = 0},
   };
 
   const VkShaderStageFlags stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;

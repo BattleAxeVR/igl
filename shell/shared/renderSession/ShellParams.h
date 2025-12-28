@@ -30,6 +30,20 @@ struct BenchmarkRenderSessionParams {
   bool logReporter = false;
   bool offscreenRenderingOnly = false;
   std::vector<std::pair<std::string, std::string>> customParams;
+
+  /// @brief Duration for the benchmark run in milliseconds (default: 30 minutes)
+  /// When this time elapses, the benchmark will complete and generate a final report.
+  /// Set to 0 for no time limit.
+  size_t benchmarkDurationMs = 30 * 60 * 1000;
+
+  /// @brief Interval between periodic FPS reports in milliseconds (default: 1 minute)
+  size_t reportIntervalMs = 2 * 1000;
+
+  /// @brief Multiplier for hiccup detection: frame time > avgFrameTime * multiplier = hiccup
+  double hiccupMultiplier = 3.0;
+
+  /// @brief Size of the circular buffer for storing render times
+  size_t renderTimeBufferSize = 1000;
 };
 
 struct ShellParams {
@@ -53,6 +67,10 @@ struct ShellParams {
 
   bool enableVulkanValidationLayers = true;
   std::optional<BenchmarkRenderSessionParams> benchmarkParams = {};
+
+  // FPS throttling for testing race conditions
+  uint32_t fpsThrottleMs = 0; // 0 = disabled, >0 = delay in milliseconds per frame
+  bool fpsThrottleRandom = false; // if true, throttle is random in range [1, fpsThrottleMs]
 };
 
 std::vector<std::string> convertArgvToParams(int argc, char** argv);

@@ -209,21 +209,6 @@ VkSubmitInfo ivkGetSubmitInfo(const VkCommandBuffer* buffer,
                               const VkPipelineStageFlags* waitStageMasks,
                               const VkSemaphore* releaseSemaphore);
 
-/// @brief Creates a VkAttachmentDescription2 structure with load and store operations for the
-/// stencil attachment as "Don't Care"
-VkAttachmentDescription2 ivkGetAttachmentDescriptionColor(VkFormat format,
-                                                          VkAttachmentLoadOp loadOp,
-                                                          VkAttachmentStoreOp storeOp,
-                                                          VkImageLayout initialLayout,
-                                                          VkImageLayout finalLayout);
-
-/// @brief Creates a VkAttachmentReference2 structure with its layout set to
-/// `Vk_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL`
-VkAttachmentReference2 ivkGetAttachmentReferenceColor(uint32_t idx);
-
-VkClearValue ivkGetClearDepthStencilValue(float depth, uint32_t stencil);
-VkClearValue ivkGetClearColorValue(float r, float g, float b, float a);
-
 VkBufferCreateInfo ivkGetBufferCreateInfo(uint64_t size, VkBufferUsageFlags usage);
 
 /// @brief Creates a VkImageCreateInfo structure with its layout set to `VK_IMAGE_LAYOUT_UNDEFINED`
@@ -290,9 +275,6 @@ VkPipelineColorBlendStateCreateInfo ivkGetPipelineColorBlendStateCreateInfo(
 VkPipelineViewportStateCreateInfo ivkGetPipelineViewportStateCreateInfo(const VkViewport* viewport,
                                                                         const VkRect2D* scissor);
 
-/// @brief Creates a VkImageSubresourceRange structure for the first layer and mip level
-VkImageSubresourceRange ivkGetImageSubresourceRange(VkImageAspectFlags aspectMask);
-
 VkWriteDescriptorSet ivkGetWriteDescriptorSetImageInfo(VkDescriptorSet dstSet,
                                                        uint32_t dstBinding,
                                                        VkDescriptorType descriptorType,
@@ -309,8 +291,6 @@ VkPipelineLayoutCreateInfo ivkGetPipelineLayoutCreateInfo(uint32_t numLayouts,
                                                           const VkDescriptorSetLayout* layouts,
                                                           const VkPushConstantRange* range);
 
-VkRect2D ivkGetRect2D(int32_t x, int32_t y, uint32_t width, uint32_t height);
-
 VkPipelineShaderStageCreateInfo ivkGetPipelineShaderStageCreateInfo(VkShaderStageFlagBits stage,
                                                                     VkShaderModule shaderModule,
                                                                     const char* entryPoint);
@@ -318,11 +298,6 @@ VkPipelineShaderStageCreateInfo ivkGetPipelineShaderStageCreateInfo(VkShaderStag
 VkBufferImageCopy ivkGetBufferImageCopy2D(uint32_t bufferOffset,
                                           uint32_t bufferRowLength,
                                           VkRect2D imageRegion,
-                                          VkImageSubresourceLayers imageSubresource);
-VkBufferImageCopy ivkGetBufferImageCopy3D(uint32_t bufferOffset,
-                                          uint32_t bufferRowLength,
-                                          VkOffset3D offset,
-                                          VkExtent3D extent,
                                           VkImageSubresourceLayers imageSubresource);
 
 void ivkImageMemoryBarrier(const struct VulkanFunctionTable* vt,
@@ -408,7 +383,9 @@ VkResult ivkVmaCreateAllocator(const struct VulkanFunctionTable* vt,
                                VkDeviceSize preferredLargeHeapBlockSize,
                                VmaAllocator* outVma);
 
-void ivkUpdateGlslangResource(glslang_resource_t* res, const VkPhysicalDeviceProperties* props);
+void ivkUpdateGlslangResource(glslang_resource_t* res,
+                              const VkPhysicalDeviceProperties* props,
+                              const VkPhysicalDeviceMeshShaderPropertiesEXT* meshShaderProps);
 
 #ifdef __cplusplus
 }

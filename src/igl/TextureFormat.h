@@ -140,6 +140,7 @@ enum class TextureFormat : uint8_t {
   RGB_F16,
 
   // 64 bpp
+  RGBA_UNorm16,
   RGBA_F16,
   RG_F32,
 
@@ -219,21 +220,41 @@ enum class TextureFormat : uint8_t {
   // @fb-only
 };
 
-inline TextureFormat sRGBToUNorm(TextureFormat format) {
-  if (format == TextureFormat::RGBA_SRGB) {
+inline TextureFormat sRGBToLinear(TextureFormat format) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wswitch-enum")
+  switch (format) {
+  case TextureFormat::RGBA_SRGB:
     return TextureFormat::RGBA_UNorm8;
-  } else if (format == TextureFormat::BGRA_SRGB) {
+  case TextureFormat::BGRA_SRGB:
     return TextureFormat::BGRA_UNorm8;
+  // @fb-only
+    // @fb-only
+  // @fb-only
+    // @fb-only
+  default:
+    break;
   }
+  FOLLY_POP_WARNING
   IGL_UNREACHABLE_RETURN(TextureFormat::RGBA_UNorm8)
 }
 
-inline TextureFormat UNormTosRGB(TextureFormat format) {
-  if (format == TextureFormat::RGBA_UNorm8) {
+inline TextureFormat linearTosRGB(TextureFormat format) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wswitch-enum")
+  switch (format) {
+  case TextureFormat::RGBA_UNorm8:
     return TextureFormat::RGBA_SRGB;
-  } else if (format == TextureFormat::BGRA_UNorm8) {
+  case TextureFormat::BGRA_UNorm8:
     return TextureFormat::BGRA_SRGB;
+  // @fb-only
+    // @fb-only
+  // @fb-only
+    // @fb-only
+  default:
+    break;
   }
+  FOLLY_POP_WARNING
   IGL_UNREACHABLE_RETURN(TextureFormat::RGBA_SRGB)
 }
 

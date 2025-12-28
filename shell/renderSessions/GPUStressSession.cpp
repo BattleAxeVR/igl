@@ -57,28 +57,28 @@ GPUStressSession::GPUStressSession(std::shared_ptr<Platform> platform) :
   vertexData0_{
       VertexPosUvw{.position = {-kHalf, kHalf, -kHalf},
                    .uvw = {0.0, 1.0, 0.0, 1.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {kHalf, kHalf, -kHalf},
                    .uvw = {1.0, 1.0, 1.0, 1.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {-kHalf, -kHalf, -kHalf},
                    .uvw = {0.0, 0.0, 0.0, 0.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {kHalf, -kHalf, -kHalf},
                    .uvw = {1.0, 0.0, 1.0, 0.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {kHalf, kHalf, kHalf},
                    .uvw = {1.0, 1.0, 1.0, 1.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {-kHalf, kHalf, kHalf},
                    .uvw = {0.0, 1.0, 0.0, 1.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {kHalf, -kHalf, kHalf},
                    .uvw = {1.0, 0.0, 1.0, 0.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
       VertexPosUvw{.position = {-kHalf, -kHalf, kHalf},
                    .uvw = {0.0, 0.0, 0.0, 0.0},
-                   .base_color = {1.0, 1.0, 1.0, 1.0}},
+                   .baseColor = {1.0, 1.0, 1.0, 1.0}},
   },
   indexData0_{0, 1, 2, 1, 3, 2, 1, 4, 3, 4, 6, 3, 4, 5, 6, 5, 7, 6,
               5, 0, 7, 0, 2, 7, 5, 4, 0, 4, 1, 0, 2, 3, 7, 3, 6, 7},
@@ -248,12 +248,12 @@ void GPUStressSession::addNormalsToCube() {
       if (indexremap.at(oldIndex) != -1) {
         indexData_.at(i) = indexremap[oldIndex];
       } else if (!normalSet[oldIndex]) {
-        vertexData_.at(oldIndex).base_color = glm::vec4(normal, 1.0);
+        vertexData_.at(oldIndex).baseColor = glm::vec4(normal, 1.0);
         normalSet[oldIndex] = true;
         indexremap.at(oldIndex) = oldIndex;
       } else {
         auto vertex = vertexData0_.at(oldIndex);
-        vertex.base_color = glm::vec4(normal, 1.0);
+        vertex.baseColor = glm::vec4(normal, 1.0);
         vertexData_.push_back(vertex);
         const size_t nextIndex = (vertexData_.size() - 1);
         indexData_.at(i) = nextIndex;
@@ -552,7 +552,7 @@ void GPUStressSession::createCubes() {
       newPoint.uvw *= glm::vec4(uvScale, uvScale, 1.f, 1.f);
       newPoint.uvw += glm::vec4(offset.x, offset.y, 0.f, 0.f);
       if (!lightCount_) {
-        newPoint.base_color = color;
+        newPoint.baseColor = color;
       }
       vertexData_.push_back(newPoint);
     }
@@ -585,26 +585,29 @@ void GPUStressSession::createCubes() {
       BufferDesc::BufferTypeBits::Index, indexData_.data(), sizeof(uint16_t) * indexData_.size());
   ib0_ = device.createBuffer(ibDesc, nullptr);
 
-  VertexInputStateDesc inputDesc;
-  inputDesc.numAttributes = 3;
-  inputDesc.attributes[0].format = VertexAttributeFormat::Float3;
-  inputDesc.attributes[0].offset = offsetof(VertexPosUvw, position);
-  inputDesc.attributes[0].bufferIndex = 0;
-  inputDesc.attributes[0].name = "position";
-  inputDesc.attributes[0].location = 0;
-  inputDesc.attributes[1].format = VertexAttributeFormat::Float4;
-  inputDesc.attributes[1].offset = offsetof(VertexPosUvw, uvw);
-  inputDesc.attributes[1].bufferIndex = 0;
-  inputDesc.attributes[1].name = "uvw_in";
-  inputDesc.attributes[1].location = 1;
-  inputDesc.numInputBindings = 1;
-  inputDesc.attributes[2].format = VertexAttributeFormat::Float4;
-  inputDesc.attributes[2].offset = offsetof(VertexPosUvw, base_color);
-  inputDesc.attributes[2].bufferIndex = 0;
-  inputDesc.attributes[2].name = "base_color";
-  inputDesc.attributes[2].location = 2;
-  inputDesc.numInputBindings = 1;
-  inputDesc.inputBindings[0].stride = sizeof(VertexPosUvw);
+  VertexInputStateDesc inputDesc = {
+      .numAttributes = 3,
+      .attributes =
+          {
+              {.bufferIndex = 0,
+               .format = VertexAttributeFormat::Float3,
+               .offset = offsetof(VertexPosUvw, position),
+               .name = "position",
+               .location = 0},
+              {.bufferIndex = 0,
+               .format = VertexAttributeFormat::Float4,
+               .offset = offsetof(VertexPosUvw, uvw),
+               .name = "uvw_in",
+               .location = 1},
+              {.bufferIndex = 0,
+               .format = VertexAttributeFormat::Float4,
+               .offset = offsetof(VertexPosUvw, baseColor),
+               .name = "base_color",
+               .location = 2},
+          },
+      .numInputBindings = 1,
+      .inputBindings = {{.stride = sizeof(VertexPosUvw)}},
+  };
   vertexInput0_ = device.createVertexInputState(inputDesc, nullptr);
 }
 
@@ -828,27 +831,28 @@ void GPUStressSession::initState(const igl::SurfaceTextures& surfaceTextures) {
 
   constexpr uint32_t textureUnit = 0;
   if (pipelineState_ == nullptr) {
-    // Graphics pipeline: state batch that fully configures GPU for rendering
-
-    RenderPipelineDesc graphicsDesc;
-    graphicsDesc.vertexInputState = vertexInput0_;
-    graphicsDesc.shaderStages = shaderStages_;
-    graphicsDesc.targetDesc.colorAttachments.resize(1);
-    graphicsDesc.targetDesc.colorAttachments[0].textureFormat =
-        framebuffer_->getColorAttachment(0)->getProperties().format;
+    RenderPipelineDesc graphicsDesc = {
+        .vertexInputState = vertexInput0_,
+        .shaderStages = shaderStages_,
+        .targetDesc =
+            {
+                .colorAttachments = {{
+                    .textureFormat = framebuffer_->getColorAttachment(0)->getProperties().format,
+                    .blendEnabled = enableBlending_,
+                    .rgbBlendOp = BlendOp::Add,
+                    .alphaBlendOp = BlendOp::Add,
+                    .srcRGBBlendFactor = BlendFactor::SrcAlpha,
+                    .srcAlphaBlendFactor = BlendFactor::SrcAlpha,
+                    .dstRGBBlendFactor = BlendFactor::OneMinusSrcAlpha,
+                    .dstAlphaBlendFactor = BlendFactor::OneMinusSrcAlpha,
+                }},
+                .depthAttachmentFormat = framebuffer_->getDepthAttachment()->getProperties().format,
+            },
+        .cullMode = igl::CullMode::Back,
+        .frontFaceWinding = igl::WindingMode::Clockwise,
+        .fragmentUnitSamplerMap = {{textureUnit, IGL_NAMEHANDLE("inputImage")}},
+    };
     graphicsDesc.sampleCount = useMSAA_ ? kMsaaSamples : 1;
-    graphicsDesc.targetDesc.depthAttachmentFormat =
-        framebuffer_->getDepthAttachment()->getProperties().format;
-    graphicsDesc.fragmentUnitSamplerMap[textureUnit] = IGL_NAMEHANDLE("inputImage");
-    graphicsDesc.cullMode = igl::CullMode::Back;
-    graphicsDesc.frontFaceWinding = igl::WindingMode::Clockwise;
-    graphicsDesc.targetDesc.colorAttachments[0].blendEnabled = enableBlending_;
-    graphicsDesc.targetDesc.colorAttachments[0].rgbBlendOp = BlendOp::Add;
-    graphicsDesc.targetDesc.colorAttachments[0].alphaBlendOp = BlendOp::Add;
-    graphicsDesc.targetDesc.colorAttachments[0].srcRGBBlendFactor = BlendFactor::SrcAlpha;
-    graphicsDesc.targetDesc.colorAttachments[0].srcAlphaBlendFactor = BlendFactor::SrcAlpha;
-    graphicsDesc.targetDesc.colorAttachments[0].dstRGBBlendFactor = BlendFactor::OneMinusSrcAlpha;
-    graphicsDesc.targetDesc.colorAttachments[0].dstAlphaBlendFactor = BlendFactor::OneMinusSrcAlpha;
 
     pipelineState_ = getPlatform().getDevice().createRenderPipeline(graphicsDesc, nullptr);
   }

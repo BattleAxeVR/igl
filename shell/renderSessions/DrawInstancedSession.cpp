@@ -137,7 +137,7 @@ std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
   case igl::BackendType::Metal:
     return igl::ShaderStagesCreator::fromLibraryStringInput(
         device, getMetalShaderSource(), "vertexShader", "fragmentShader", "", nullptr);
-  case igl::BackendType::OpenGL:
+  case igl::BackendType::OpenGL: {
 #if IGL_BACKEND_OPENGL
     auto glVersion =
         static_cast<igl::opengl::Device&>(device).getContext().deviceFeatures().getGLVersion();
@@ -166,6 +166,36 @@ std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
     return nullptr;
 #endif // IGL_BACKEND_OPENGL
   }
+  case igl::BackendType::D3D12: {
+    // D3D12 instanced drawing shader
+    // Note: D3D12 clip space Y is flipped vs Vulkan, so we negate Y to match Vulkan behavior
+    static const char* kVS = R"(
+      static const float2 pos[6] = {
+        float2(-0.05f,  0.05f), float2( 0.05f, -0.05f), float2(-0.05f, -0.05f),
+        float2(-0.05f,  0.05f), float2( 0.05f, -0.05f), float2( 0.05f,  0.05f)
+      };
+      static const float3 col[6] = {
+        float3(1.0, 0.0, 0.0), float3(0.0, 1.0, 0.0), float3(0.0, 0.0, 1.0),
+        float3(1.0, 0.0, 0.0), float3(0.0, 1.0, 0.0), float3(0.0, 0.0, 1.0)
+      };
+      struct VSIn { float2 offset : TEXCOORD0; };
+      struct VSOut { float4 position : SV_POSITION; float3 color : TEXCOORD0; };
+      VSOut main(VSIn v, uint vid : SV_VertexID) {
+        VSOut o;
+        float2 p = pos[vid] + v.offset;
+        o.position = float4(p.x, -p.y, 0.0, 1.0);  // Flip Y for D3D12 clip space
+        o.color = col[vid];
+        return o;
+      }
+    )";
+    static const char* kPS = R"(
+      struct PSIn { float4 position : SV_POSITION; float3 color : TEXCOORD0; };
+      float4 main(PSIn i) : SV_TARGET { return float4(i.color, 1.0); }
+    )";
+    return igl::ShaderStagesCreator::fromModuleStringInput(
+        device, kVS, "main", "", kPS, "main", "", nullptr);
+  }
+  }
   IGL_UNREACHABLE_RETURN(nullptr)
 }
 
@@ -184,49 +214,63 @@ void DrawInstancedSession::initialize() noexcept {
 
   // Create Index Buffer
   const int16_t indexes[6] = {0, 1, 2, 3, 4, 5};
-
-  BufferDesc bufferDesc;
-  bufferDesc.type = BufferDesc::BufferTypeBits::Index;
-  bufferDesc.length = sizeof(indexes);
-  bufferDesc.data = &indexes;
-  indexBuffer_ = getPlatform().getDevice().createBuffer(bufferDesc, nullptr);
+  indexBuffer_ = getPlatform().getDevice().createBuffer(
+      BufferDesc{BufferDesc::BufferTypeBits::Index, &indexes, sizeof(indexes)}, nullptr);
   IGL_DEBUG_ASSERT(indexBuffer_);
 }
 
 void DrawInstancedSession::update(SurfaceTextures surfaceTextures) noexcept {
-  FramebufferDesc framebufferDesc;
-  framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
-
   const auto dimensions = surfaceTextures.color->getDimensions();
-  framebuffer_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, nullptr);
+  framebuffer_ = getPlatform().getDevice().createFramebuffer(
+      FramebufferDesc{.colorAttachments = {{.texture = surfaceTextures.color}}}, nullptr);
   IGL_DEBUG_ASSERT(framebuffer_);
 
   if (!renderPipelineStateTriangle_) {
-    VertexInputStateDesc inputDesc;
-    inputDesc.numAttributes = 1;
-    inputDesc.attributes[0] = VertexAttribute{1, VertexAttributeFormat::Float2, 0, "offset", 0};
-    inputDesc.numInputBindings = 1;
-    inputDesc.inputBindings[1].stride = sizeof(float) * 2;
-    inputDesc.inputBindings[1].sampleFunction = igl::VertexSampleFunction::Instance;
+    const VertexInputStateDesc inputDesc = {
+        .numAttributes = 1,
+        .attributes =
+            {
+                {
+                    .bufferIndex = 1,
+                    .format = VertexAttributeFormat::Float2,
+                    .offset = 0,
+                    .name = "offset",
+                    .location = 0,
+                },
+            },
+        .numInputBindings = 1,
+        .inputBindings =
+            {
+                {},
+                {
+                    .stride = sizeof(float) * 2,
+                    .sampleFunction = igl::VertexSampleFunction::Instance,
+                },
+            },
+    };
     auto vertexInput0 = getPlatform().getDevice().createVertexInputState(inputDesc, nullptr);
     IGL_DEBUG_ASSERT(vertexInput0 != nullptr);
 
-    RenderPipelineDesc desc;
-    desc.vertexInputState = vertexInput0;
-
-    desc.targetDesc.colorAttachments.resize(1);
-
-    if (framebuffer_->getColorAttachment(0)) {
-      desc.targetDesc.colorAttachments[0].textureFormat =
-          framebuffer_->getColorAttachment(0)->getProperties().format;
-    }
-
-    if (framebuffer_->getDepthAttachment()) {
-      desc.targetDesc.depthAttachmentFormat =
-          framebuffer_->getDepthAttachment()->getProperties().format;
-    }
-
-    desc.shaderStages = getShaderStagesForBackend(getPlatform().getDevice());
+    const RenderPipelineDesc desc = {
+        .vertexInputState = vertexInput0,
+        .shaderStages = getShaderStagesForBackend(getPlatform().getDevice()),
+        .targetDesc =
+            {
+                .colorAttachments =
+                    {
+                        {
+                            .textureFormat =
+                                framebuffer_->getColorAttachment(0)
+                                    ? framebuffer_->getColorAttachment(0)->getProperties().format
+                                    : TextureFormat::Invalid,
+                        },
+                    },
+                .depthAttachmentFormat =
+                    framebuffer_->getDepthAttachment()
+                        ? framebuffer_->getDepthAttachment()->getProperties().format
+                        : TextureFormat::Invalid,
+            },
+    };
     renderPipelineStateTriangle_ = getPlatform().getDevice().createRenderPipeline(desc, nullptr);
     IGL_DEBUG_ASSERT(renderPipelineStateTriangle_);
   }
@@ -244,11 +288,9 @@ void DrawInstancedSession::update(SurfaceTextures surfaceTextures) noexcept {
       }
     }
 
-    BufferDesc desc;
-    desc.type = BufferDesc::BufferTypeBits::Vertex;
-    desc.length = sizeof(glm::vec2) * 100;
-    desc.data = translations;
-    vertexBuffer_ = getPlatform().getDevice().createBuffer(desc, nullptr);
+    vertexBuffer_ = getPlatform().getDevice().createBuffer(
+        BufferDesc{BufferDesc::BufferTypeBits::Vertex, translations, sizeof(glm::vec2) * 100},
+        nullptr);
     IGL_DEBUG_ASSERT(vertexBuffer_);
   }
 

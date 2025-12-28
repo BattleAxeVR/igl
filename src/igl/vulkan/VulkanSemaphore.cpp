@@ -27,7 +27,7 @@ VulkanSemaphore::VulkanSemaphore(const VulkanFunctionTable& vf,
       .pNext = exportable ? &exportInfo : nullptr,
       .flags = 0,
   };
-  VK_ASSERT(vf_->vkCreateSemaphore(device, &ci, nullptr, &vkSemaphore_));
+  VK_ASSERT(vf_->vkCreateSemaphore(device_, &ci, nullptr, &vkSemaphore_));
   VK_ASSERT(ivkSetDebugObjectName(
       vf_, device_, VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)vkSemaphore_, debugName));
 }
@@ -55,7 +55,7 @@ VulkanSemaphore::VulkanSemaphore(const VulkanFunctionTable& vf,
       .pNext = &semaphoreTypeCreateInfo,
       .flags = 0,
   };
-  VK_ASSERT(vf_->vkCreateSemaphore(device, &ci, nullptr, &vkSemaphore_));
+  VK_ASSERT(vf_->vkCreateSemaphore(device_, &ci, nullptr, &vkSemaphore_));
   VK_ASSERT(ivkSetDebugObjectName(
       vf_, device_, VK_OBJECT_TYPE_SEMAPHORE, (uint64_t)vkSemaphore_, debugName));
 }

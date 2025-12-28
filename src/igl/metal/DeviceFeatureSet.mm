@@ -142,6 +142,14 @@ bool DeviceFeatureSet::hasFeature(DeviceFeatures feature) const {
   case DeviceFeatures::DrawFirstIndexFirstVertex:
   case DeviceFeatures::DrawIndexedIndirect:
     return true;
+  case DeviceFeatures::MeshShaders:
+    if (@available(iOS 16, macOS 13, *)) {
+      // check if the device supports mesh shaders
+      // mesh shaders require Apple GPU Family 7 or higher (A14/M1 and later)
+      return gpuFamily_ >= 7;
+    } else {
+      return false;
+    }
   case DeviceFeatures::DrawInstanced:
     return gpuFamily_ >= 3;
   case DeviceFeatures::CopyBuffer:
@@ -278,6 +286,27 @@ bool DeviceFeatureSet::getFeatureLimits(DeviceFeatureLimits featureLimits, size_
   case DeviceFeatureLimits::MaxBindBytesBytes:
     result = 4096;
     return true;
+  case DeviceFeatureLimits::MaxTextureDimension3D:
+#if IGL_PLATFORM_IOS
+    result = (gpuFamily_ <= 2) ? 2048 : 2048;
+#else
+    result = 2048;
+#endif
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeX:
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeY:
+  case DeviceFeatureLimits::MaxComputeWorkGroupSizeZ:
+    result = 1024;
+    return true;
+  case DeviceFeatureLimits::MaxComputeWorkGroupInvocations:
+    result = 1024;
+    return true;
+  case DeviceFeatureLimits::MaxVertexInputAttributes:
+    result = 31;
+    return true;
+  case DeviceFeatureLimits::MaxColorAttachments:
+    result = 8;
+    return true;
   default:
     IGL_DEBUG_ABORT(
         "invalid feature limit query: feature limit query is not implemented or does not exist\n");
@@ -361,6 +390,8 @@ ICapabilities::TextureFormatCapabilities DeviceFeatureSet::getTextureFormatCapab
     return sampled | storage | attachment | sampledAttachment;
 
     // 64 bpp
+  case TextureFormat::RGBA_UNorm16:
+    return all;
   case TextureFormat::RGBA_F16:
     return all;
   case TextureFormat::RG_F32:

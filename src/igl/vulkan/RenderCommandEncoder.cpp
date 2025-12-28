@@ -130,10 +130,12 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
     }
 
     const auto& descColor = renderPass.colorAttachments[i];
-    clearValues.push_back(ivkGetClearColorValue(descColor.clearColor.r,
-                                                descColor.clearColor.g,
-                                                descColor.clearColor.b,
-                                                descColor.clearColor.a));
+    clearValues.push_back(VkClearValue{.color = {.float32 = {
+                                                     descColor.clearColor.r,
+                                                     descColor.clearColor.g,
+                                                     descColor.clearColor.b,
+                                                     descColor.clearColor.a,
+                                                 }}});
     const auto colorLayer = getVkLayer(colorTexture.getType(), descColor.face, descColor.layer);
     if (mipLevel) {
       IGL_DEBUG_ASSERT(descColor.mipLevel == mipLevel,
@@ -162,10 +164,12 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
       builder.addColorResolve(textureFormatToVkFormat(colorResolveTexture.getFormat()),
                               VK_ATTACHMENT_LOAD_OP_DONT_CARE,
                               VK_ATTACHMENT_STORE_OP_STORE);
-      clearValues.push_back(ivkGetClearColorValue(descColor.clearColor.r,
-                                                  descColor.clearColor.g,
-                                                  descColor.clearColor.b,
-                                                  descColor.clearColor.a));
+      clearValues.push_back(VkClearValue{.color = {.float32 = {
+                                                       descColor.clearColor.r,
+                                                       descColor.clearColor.g,
+                                                       descColor.clearColor.b,
+                                                       descColor.clearColor.a,
+                                                   }}});
     }
   }
 
@@ -181,8 +185,10 @@ void RenderCommandEncoder::initialize(const RenderPassDesc& renderPass,
                      "Depth attachment should have the same mip-level as color attachments");
     IGL_DEBUG_ASSERT(getVkLayer(depthTexture.getType(), descDepth.face, descDepth.layer) == layer,
                      "Depth attachment should have the same face or layer as color attachments");
-    clearValues.push_back(
-        ivkGetClearDepthStencilValue(descDepth.clearDepth, descStencil.clearStencil));
+    clearValues.push_back(VkClearValue{.depthStencil = {
+                                           .depth = descDepth.clearDepth,
+                                           .stencil = descStencil.clearStencil,
+                                       }});
     const auto initialLayout = descDepth.loadAction == igl::LoadAction::Load
                                    ? depthTexture.getVulkanTexture().image_.imageLayout_
                                    : VK_IMAGE_LAYOUT_UNDEFINED;
@@ -349,8 +355,8 @@ void RenderCommandEncoder::bindViewport(const Viewport& viewport) {
 
 void RenderCommandEncoder::bindScissorRect(const ScissorRect& rect) {
   const VkRect2D scissor = {
-      VkOffset2D{(int32_t)rect.x, (int32_t)rect.y},
-      VkExtent2D{rect.width, rect.height},
+      .offset = {.x = static_cast<int32_t>(rect.x), .y = static_cast<int32_t>(rect.y)},
+      .extent = {.width = rect.width, .height = rect.height},
   };
   ctx_.vf_.vkCmdSetScissor(cmdBuffer_, 0, 1, &scissor);
 }
@@ -369,7 +375,11 @@ void RenderCommandEncoder::bindRenderPipelineState(
 
   const RenderPipelineDesc& desc = rps_->getRenderPipelineDesc();
 
-  ensureShaderModule(desc.shaderStages->getVertexModule().get());
+  if (desc.shaderStages->getType() == igl::ShaderStagesType::Render) {
+    ensureShaderModule(desc.shaderStages->getVertexModule().get());
+  } else if (desc.shaderStages->getType() == igl::ShaderStagesType::RenderMeshShader) {
+    ensureShaderModule(desc.shaderStages->getMeshModule().get());
+  }
   ensureShaderModule(desc.shaderStages->getFragmentModule().get());
 
   const bool hasDepthAttachment = desc.targetDesc.depthAttachmentFormat != TextureFormat::Invalid;
@@ -392,7 +402,7 @@ void RenderCommandEncoder::bindDepthStencilState(
   const igl::vulkan::DepthStencilState* state =
       static_cast<DepthStencilState*>(depthStencilState.get());
 
-  const igl::DepthStencilStateDesc& desc = state->desc_;
+  const igl::DepthStencilStateDesc& desc = state->desc;
 
   dynamicState_.depthWriteEnable = desc.isDepthWriteEnabled;
   dynamicState_.setDepthCompareOp(compareFunctionToVkCompareOp(desc.compareFunction));
@@ -409,6 +419,15 @@ void RenderCommandEncoder::bindDepthStencilState(
 
   setStencilState(VK_STENCIL_FACE_FRONT_BIT, desc.frontFaceStencil);
   setStencilState(VK_STENCIL_FACE_BACK_BIT, desc.backFaceStencil);
+}
+
+void RenderCommandEncoder::bindBuffer(uint32_t index,
+                                      uint8_t target,
+                                      IBuffer* buffer,
+                                      size_t bufferOffset,
+                                      size_t bufferSize) {
+  (void)target;
+  bindBuffer(index, buffer, bufferOffset, bufferSize);
 }
 
 void RenderCommandEncoder::bindBuffer(uint32_t index,
@@ -647,6 +666,28 @@ void RenderCommandEncoder::drawIndexed(size_t indexCount,
       cmdBuffer_, (uint32_t)indexCount, instanceCount, firstIndex, vertexOffset, baseInstance);
 }
 
+void RenderCommandEncoder::drawMeshTasks(const Dimensions& threadgroupsPerGrid,
+                                         const Dimensions& /*threadsPerTaskThreadgroup*/,
+                                         const Dimensions& /*threadsPerMeshThreadgroup*/) {
+  IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_DRAW);
+  IGL_PROFILER_ZONE_GPU_COLOR_VK(
+      "drawMeshTasks()", ctx_.tracyCtx_, cmdBuffer_, IGL_PROFILER_COLOR_DRAW);
+
+  if (!ctx_.features().has_VK_EXT_mesh_shader) {
+    IGL_DEBUG_ASSERT(false, "Mesh shaders require VK_EXT_mesh_shader extension.");
+    return;
+  }
+
+  ctx_.drawCallCount_ += drawCallCountEnabled_;
+
+  IGL_DEBUG_ASSERT(rps_, "Did you forget to call bindRenderPipelineState()?");
+
+  flushDynamicState();
+
+  ctx_.vf_.vkCmdDrawMeshTasksEXT(
+      cmdBuffer_, threadgroupsPerGrid.width, threadgroupsPerGrid.height, threadgroupsPerGrid.depth);
+}
+
 void RenderCommandEncoder::multiDrawIndirect(IBuffer& indirectBuffer,
                                              size_t indirectBufferOffset,
                                              uint32_t drawCount,
@@ -826,7 +867,7 @@ void RenderCommandEncoder::ensureVertexBuffers() {
     return;
   }
 
-  const VertexInputStateDesc& desc = vi->desc_;
+  const VertexInputStateDesc& desc = vi->desc;
 
   IGL_DEBUG_ASSERT(desc.numInputBindings <= IGL_ARRAY_NUM_ELEMENTS(isVertexBufferBound_));
 
@@ -849,18 +890,18 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                                           const igl::TextureRangeDesc& srcRange,
                                           const igl::TextureRangeDesc& destRange) {
   const VkImageSubresourceRange srcResourceRange = {
-      srcImage.getImageAspectFlags(),
-      srcRange.mipLevel,
-      srcRange.numMipLevels,
-      srcRange.layer,
-      srcRange.numLayers,
+      .aspectMask = srcImage.getImageAspectFlags(),
+      .baseMipLevel = srcRange.mipLevel,
+      .levelCount = srcRange.numMipLevels,
+      .baseArrayLayer = srcRange.layer,
+      .layerCount = srcRange.numLayers,
   };
   const VkImageSubresourceRange destSubresourceRange = {
-      destImage.getImageAspectFlags(),
-      destRange.mipLevel,
-      destRange.numMipLevels,
-      destRange.layer,
-      destRange.numLayers,
+      .aspectMask = destImage.getImageAspectFlags(),
+      .baseMipLevel = destRange.mipLevel,
+      .levelCount = destRange.numMipLevels,
+      .baseArrayLayer = destRange.layer,
+      .layerCount = destRange.numLayers,
   };
   srcImage.transitionLayout(cmdBuffer_,
                             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -874,16 +915,18 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                              VK_PIPELINE_STAGE_TRANSFER_BIT,
                              destSubresourceRange);
 
-  const std::array<VkOffset3D, 2> srcOffsets = {
-      {{static_cast<int32_t>(srcRange.x), static_cast<int32_t>(srcRange.y), 0},
-       {static_cast<int32_t>(srcRange.width + srcRange.x),
-        static_cast<int32_t>(srcRange.height + srcRange.y),
-        1}}};
-  const std::array<VkOffset3D, 2> dstOffsets = {
-      {{static_cast<int32_t>(destRange.x), static_cast<int32_t>(destRange.y), 0},
-       {static_cast<int32_t>(destRange.width + destRange.x),
-        static_cast<int32_t>(destRange.height + destRange.y),
-        1}}};
+  const std::array<VkOffset3D, 2> srcOffsets = {{
+      {.x = static_cast<int32_t>(srcRange.x), .y = static_cast<int32_t>(srcRange.y), .z = 0},
+      {.x = static_cast<int32_t>(srcRange.width + srcRange.x),
+       .y = static_cast<int32_t>(srcRange.height + srcRange.y),
+       .z = 1},
+  }};
+  const std::array<VkOffset3D, 2> dstOffsets = {{
+      {.x = static_cast<int32_t>(destRange.x), .y = static_cast<int32_t>(destRange.y), .z = 0},
+      {.x = static_cast<int32_t>(destRange.width + destRange.x),
+       .y = static_cast<int32_t>(destRange.height + destRange.y),
+       .z = 1},
+  }};
   ivkCmdBlitImage(&ctx_.vf_,
                   cmdBuffer_,
                   srcImage.getVkImage(),
@@ -892,8 +935,18 @@ void RenderCommandEncoder::blitColorImage(const igl::vulkan::VulkanImage& srcIma
                   VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                   srcOffsets.data(),
                   dstOffsets.data(),
-                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, srcRange.mipLevel, 0, 1},
-                  VkImageSubresourceLayers{VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1},
+                  VkImageSubresourceLayers{
+                      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                      .mipLevel = srcRange.mipLevel,
+                      .baseArrayLayer = 0,
+                      .layerCount = 1,
+                  },
+                  VkImageSubresourceLayers{
+                      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                      .mipLevel = 0,
+                      .baseArrayLayer = 0,
+                      .layerCount = 1,
+                  },
                   VK_FILTER_LINEAR);
 
   const bool isSampled = (destImage.getVkImageUsageFlags() & VK_IMAGE_USAGE_SAMPLED_BIT) != 0;

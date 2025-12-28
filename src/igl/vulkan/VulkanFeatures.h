@@ -66,6 +66,7 @@ class VulkanFeatures final {
   VkPhysicalDevice8BitStorageFeaturesKHR features8BitStorage{};
   VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR featuresUniformBufferStandardLayout{};
   VkPhysicalDeviceMultiviewPerViewViewportsFeaturesQCOM featuresMultiviewPerViewViewports{};
+  VkPhysicalDeviceMeshShaderFeaturesEXT featuresMeshShader{};
 
   // We need to reassemble the feature chain because of the pNext pointers
   VulkanFeatures& operator=(const VulkanFeatures& other) noexcept;
@@ -96,15 +97,15 @@ class VulkanFeatures final {
   /// @param extensionType The type of the extensions
   /// @param validationEnabled Flag that informs the class whether the Validation Layer is
   /// enabled or not.
-  void enableCommonInstanceExtensions(const VulkanContextConfig& config);
-  void enableCommonDeviceExtensions(const VulkanContextConfig& config);
+  void enableCommonInstanceExtensions(const VulkanContextConfig& contextConfig);
+  void enableCommonDeviceExtensions(const VulkanContextConfig& contextConfig);
 
  public:
   friend class Device;
   friend class VulkanContext;
 
   // A copy of the config used by the VulkanContext
-  VulkanContextConfig config_{};
+  VulkanContextConfig config{};
 
   // NOLINTBEGIN(readability-identifier-naming)
   bool has_VK_EXT_descriptor_indexing = false; // promoted to Vulkan 1.2
@@ -121,6 +122,7 @@ class VulkanFeatures final {
   bool has_VK_KHR_uniform_buffer_standard_layout = false; // promoted to Vulkan 1.2
   bool has_VK_KHR_vulkan_memory_model = false; // promoted to Vulkan 1.2
   bool has_VK_QCOM_multiview_per_view_viewports = false;
+  bool has_VK_EXT_mesh_shader = false;
   // NOLINTEND(readability-identifier-naming)
 
  private:
@@ -137,7 +139,7 @@ class VulkanFeatures final {
 
   /// @brief Assembles the feature chain for the VkPhysicalDeviceFeatures2 structure by connecting
   /// the existing/required feature structures and their pNext chain.
-  void assembleFeatureChain(const VulkanContextConfig& config) noexcept;
+  void assembleFeatureChain(const VulkanContextConfig& contextConfig) noexcept;
   bool hasExtension(const char* ext) const;
 
   /// @brief Enables the extension with name `extensionName` of the type `extensionType` if the

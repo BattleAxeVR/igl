@@ -300,33 +300,40 @@ RenderPipelineState::RenderPipelineState(const igl::vulkan::Device& device,
 
   if (vstate) {
     std::array<bool, IGL_BUFFER_BINDINGS_MAX> bufferAlreadyBound{};
-    vkBindings_.reserve(vstate->desc_.numInputBindings);
+    vkBindings_.reserve(vstate->desc.numInputBindings);
 
-    for (size_t i = 0; i != vstate->desc_.numAttributes; i++) {
-      const VertexAttribute& attr = vstate->desc_.attributes[i];
+    for (size_t i = 0; i != vstate->desc.numAttributes; i++) {
+      const VertexAttribute& attr = vstate->desc.attributes[i];
       const VkFormat format = vertexAttributeFormatToVkFormat(attr.format);
       const size_t bufferIndex = attr.bufferIndex;
 
-      vkAttributes_[i] = ivkGetVertexInputAttributeDescription(
-          (uint32_t)attr.location, (uint32_t)bufferIndex, format, (uint32_t)attr.offset);
+      vkAttributes_[i] = VkVertexInputAttributeDescription{
+          .location = (uint32_t)attr.location,
+          .binding = (uint32_t)bufferIndex,
+          .format = format,
+          .offset = (uint32_t)attr.offset,
+      };
 
       if (!bufferAlreadyBound[bufferIndex]) {
         bufferAlreadyBound[bufferIndex] = true;
 
-        const VertexInputBinding& binding = vstate->desc_.inputBindings[bufferIndex];
+        const VertexInputBinding& binding = vstate->desc.inputBindings[bufferIndex];
         const VkVertexInputRate rate = (binding.sampleFunction == VertexSampleFunction::PerVertex)
                                            ? VK_VERTEX_INPUT_RATE_VERTEX
                                            : VK_VERTEX_INPUT_RATE_INSTANCE;
-        vkBindings_.emplace_back(ivkGetVertexInputBindingDescription(
-            (uint32_t)bufferIndex, (uint32_t)binding.stride, rate));
+        vkBindings_.emplace_back(VkVertexInputBindingDescription{
+            .binding = (uint32_t)bufferIndex,
+            .stride = (uint32_t)binding.stride,
+            .inputRate = rate,
+        });
       }
     }
 
     vertexInputStateCreateInfo_.vertexBindingDescriptionCount =
-        static_cast<uint32_t>(vstate->desc_.numInputBindings);
+        static_cast<uint32_t>(vstate->desc.numInputBindings);
     vertexInputStateCreateInfo_.pVertexBindingDescriptions = vkBindings_.data();
     vertexInputStateCreateInfo_.vertexAttributeDescriptionCount =
-        static_cast<uint32_t>(vstate->desc_.numAttributes);
+        static_cast<uint32_t>(vstate->desc.numAttributes);
     vertexInputStateCreateInfo_.pVertexAttributeDescriptions = vkAttributes_.data();
   }
 }
@@ -392,21 +399,19 @@ VkPipeline RenderPipelineState::getVkPipeline(
   IGL_PROFILER_FUNCTION_COLOR(IGL_PROFILER_COLOR_CREATE);
 
   if (!pipelineLayout) {
-    // NOLINTBEGIN(readability-identifier-naming)
     // NOLINTNEXTLINE(modernize-avoid-c-arrays)
-    const VkDescriptorSetLayout DSLs[] = {
+    const VkDescriptorSetLayout dsls[] = {
         dslCombinedImageSamplers->getVkDescriptorSetLayout(),
         dslBuffers->getVkDescriptorSetLayout(),
         dslStorageImages->getVkDescriptorSetLayout(),
         ctx.getBindlessVkDescriptorSetLayout(),
     };
-    // NOLINTEND(readability-identifier-naming)
 
     const VkPipelineLayoutCreateInfo ci = ivkGetPipelineLayoutCreateInfo(
         static_cast<uint32_t>(ctx.config_.enableDescriptorIndexing
-                                  ? IGL_ARRAY_NUM_ELEMENTS(DSLs)
-                                  : IGL_ARRAY_NUM_ELEMENTS(DSLs) - 1u),
-        DSLs,
+                                  ? IGL_ARRAY_NUM_ELEMENTS(dsls)
+                                  : IGL_ARRAY_NUM_ELEMENTS(dsls) - 1u),
+        dsls,
         info.hasPushConstants ? &pushConstantRange : nullptr);
 
     VkDevice device = ctx.getVkDevice();
@@ -461,8 +466,36 @@ VkPipeline RenderPipelineState::getVkPipeline(
         }
       });
 
-  const auto& vertexModule = desc_.shaderStages->getVertexModule();
+  std::vector<VkPipelineShaderStageCreateInfo> stages;
+
+  if (desc_.shaderStages->getType() == igl::ShaderStagesType::Render) {
+    const auto& vertexModule = desc_.shaderStages->getVertexModule();
+    stages.emplace_back(ivkGetPipelineShaderStageCreateInfo(
+        VK_SHADER_STAGE_VERTEX_BIT,
+        igl::vulkan::ShaderModule::getVkShaderModule(vertexModule),
+        vertexModule->info().entryPoint.c_str()));
+  } else {
+    const auto& taskModule = desc_.shaderStages->getTaskModule();
+    if (taskModule) {
+      stages.emplace_back(ivkGetPipelineShaderStageCreateInfo(
+          VK_SHADER_STAGE_TASK_BIT_EXT,
+          igl::vulkan::ShaderModule::getVkShaderModule(taskModule),
+          taskModule->info().entryPoint.c_str()));
+    }
+
+    const auto& meshModule = desc_.shaderStages->getMeshModule();
+    stages.emplace_back(ivkGetPipelineShaderStageCreateInfo(
+        VK_SHADER_STAGE_MESH_BIT_EXT,
+        igl::vulkan::ShaderModule::getVkShaderModule(meshModule),
+        meshModule->info().entryPoint.c_str()));
+  }
+
   const auto& fragmentModule = desc_.shaderStages->getFragmentModule();
+  stages.emplace_back(ivkGetPipelineShaderStageCreateInfo(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      igl::vulkan::ShaderModule::getVkShaderModule(fragmentModule),
+      fragmentModule->info().entryPoint.c_str()));
+
   VK_ASSERT_RETURN_NULL_HANDLE(
       igl::vulkan::VulkanPipelineBuilder()
           .dynamicStates({
@@ -491,16 +524,7 @@ VkPipeline RenderPipelineState::getVkPipeline(
                            dynamicState.getStencilStatePassOp(false),
                            dynamicState.getStencilStateDepthFailOp(false),
                            dynamicState.getStencilStateCompareOp(false))
-          .shaderStages({
-              ivkGetPipelineShaderStageCreateInfo(
-                  VK_SHADER_STAGE_VERTEX_BIT,
-                  igl::vulkan::ShaderModule::getVkShaderModule(vertexModule),
-                  vertexModule->info().entryPoint.c_str()),
-              ivkGetPipelineShaderStageCreateInfo(
-                  VK_SHADER_STAGE_FRAGMENT_BIT,
-                  igl::vulkan::ShaderModule::getVkShaderModule(fragmentModule),
-                  fragmentModule->info().entryPoint.c_str()),
-          })
+          .shaderStages(stages)
           .cullMode(cullModeToVkCullMode(desc_.cullMode))
           .frontFace(windingModeToVkFrontFace(desc_.frontFaceWinding))
           .vertexInputState(vertexInputStateCreateInfo_)

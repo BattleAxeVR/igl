@@ -475,35 +475,6 @@ VkResult ivkCreateFramebuffer(const struct VulkanFunctionTable* vt,
   return vt->vkCreateFramebuffer(device, &ci, NULL, outFramebuffer);
 }
 
-VkAttachmentDescription2 ivkGetAttachmentDescriptionColor(VkFormat format,
-                                                          VkAttachmentLoadOp loadOp,
-                                                          VkAttachmentStoreOp storeOp,
-                                                          VkImageLayout initialLayout,
-                                                          VkImageLayout finalLayout) {
-  const VkAttachmentDescription2 desc = {
-      .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-      .format = format,
-      .samples = VK_SAMPLE_COUNT_1_BIT,
-      .loadOp = loadOp,
-      .storeOp = storeOp,
-      .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-      .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-      .initialLayout = initialLayout,
-      .finalLayout = finalLayout,
-  };
-  return desc;
-}
-
-VkAttachmentReference2 ivkGetAttachmentReferenceColor(uint32_t idx) {
-  const VkAttachmentReference2 ref = {
-      .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-      .attachment = idx,
-      .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-  };
-  return ref;
-}
-
 VkDescriptorSetLayoutBinding ivkGetDescriptorSetLayoutBinding(uint32_t binding,
                                                               VkDescriptorType descriptorType,
                                                               uint32_t descriptorCount,
@@ -594,20 +565,6 @@ VkSubmitInfo ivkGetSubmitInfo(const VkCommandBuffer* buffer,
       .pSignalSemaphores = releaseSemaphore,
   };
   return si;
-}
-
-VkClearValue ivkGetClearColorValue(float r, float g, float b, float a) {
-  const VkClearValue value = {
-      .color = {.float32 = {r, g, b, a}},
-  };
-  return value;
-}
-
-VkClearValue ivkGetClearDepthStencilValue(float depth, uint32_t stencil) {
-  const VkClearValue value = {
-      .depthStencil = {.depth = depth, .stencil = stencil},
-  };
-  return value;
 }
 
 VkBufferCreateInfo ivkGetBufferCreateInfo(uint64_t size, VkBufferUsageFlags usage) {
@@ -829,17 +786,6 @@ VkPipelineColorBlendStateCreateInfo ivkGetPipelineColorBlendStateCreateInfo(
   return ci;
 }
 
-VkImageSubresourceRange ivkGetImageSubresourceRange(VkImageAspectFlags aspectMask) {
-  const VkImageSubresourceRange range = {
-      .aspectMask = aspectMask,
-      .baseMipLevel = 0,
-      .levelCount = 1,
-      .baseArrayLayer = 0,
-      .layerCount = 1,
-  };
-  return range;
-}
-
 VkWriteDescriptorSet ivkGetWriteDescriptorSetImageInfo(VkDescriptorSet dstSet,
                                                        uint32_t dstBinding,
                                                        VkDescriptorType descriptorType,
@@ -905,14 +851,6 @@ VkPipelineShaderStageCreateInfo ivkGetPipelineShaderStageCreateInfo(VkShaderStag
       .pSpecializationInfo = NULL,
   };
   return ci;
-}
-
-VkRect2D ivkGetRect2D(int32_t x, int32_t y, uint32_t width, uint32_t height) {
-  const VkRect2D rect = {
-      .offset = {.x = x, .y = y},
-      .extent = {.width = width, .height = height},
-  };
-  return rect;
 }
 
 VkResult ivkCreateGraphicsPipeline(const struct VulkanFunctionTable* vt,
@@ -1206,22 +1144,6 @@ VkBufferImageCopy ivkGetBufferImageCopy2D(uint32_t bufferOffset,
   return copy;
 }
 
-VkBufferImageCopy ivkGetBufferImageCopy3D(uint32_t bufferOffset,
-                                          uint32_t bufferRowLength,
-                                          const VkOffset3D offset,
-                                          const VkExtent3D extent,
-                                          VkImageSubresourceLayers imageSubresource) {
-  const VkBufferImageCopy copy = {
-      .bufferOffset = bufferOffset,
-      .bufferRowLength = bufferRowLength,
-      .bufferImageHeight = 0,
-      .imageSubresource = imageSubresource,
-      .imageOffset = offset,
-      .imageExtent = extent,
-  };
-  return copy;
-}
-
 VkResult ivkVmaCreateAllocator(const struct VulkanFunctionTable* vt,
                                VkPhysicalDevice physDev,
                                VkDevice device,
@@ -1280,7 +1202,9 @@ VkResult ivkVmaCreateAllocator(const struct VulkanFunctionTable* vt,
   return vmaCreateAllocator(&ci, outVma);
 }
 
-void ivkUpdateGlslangResource(glslang_resource_t* res, const VkPhysicalDeviceProperties* props) {
+void ivkUpdateGlslangResource(glslang_resource_t* res,
+                              const VkPhysicalDeviceProperties* props,
+                              const VkPhysicalDeviceMeshShaderPropertiesEXT* meshShaderProps) {
   const VkPhysicalDeviceLimits* limits = props ? &props->limits : NULL;
   if (!limits || !res) {
     return;
@@ -1310,4 +1234,16 @@ void ivkUpdateGlslangResource(glslang_resource_t* res, const VkPhysicalDevicePro
   res->max_viewports = (int)limits->maxViewports;
   res->max_cull_distances = (int)limits->maxCullDistances;
   res->max_combined_clip_and_cull_distances = (int)limits->maxCombinedClipAndCullDistances;
+
+  if (meshShaderProps) {
+    res->max_mesh_output_vertices_ext = meshShaderProps->maxMeshOutputVertices;
+    res->max_mesh_output_primitives_ext = meshShaderProps->maxMeshOutputPrimitives;
+    res->max_mesh_work_group_size_x_ext = meshShaderProps->maxMeshWorkGroupSize[0];
+    res->max_mesh_work_group_size_y_ext = meshShaderProps->maxMeshWorkGroupSize[1];
+    res->max_mesh_work_group_size_z_ext = meshShaderProps->maxMeshWorkGroupSize[2];
+    res->max_task_work_group_size_x_ext = meshShaderProps->maxTaskWorkGroupSize[0];
+    res->max_task_work_group_size_y_ext = meshShaderProps->maxTaskWorkGroupSize[1];
+    res->max_task_work_group_size_z_ext = meshShaderProps->maxTaskWorkGroupSize[2];
+    res->max_mesh_view_count_ext = meshShaderProps->maxMeshMultiviewViewCount;
+  }
 }

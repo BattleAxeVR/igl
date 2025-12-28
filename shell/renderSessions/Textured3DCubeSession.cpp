@@ -168,6 +168,25 @@ std::unique_ptr<IShaderStages> getShaderStagesForBackend(IDevice& device) {
                                                            "main",
                                                            "",
                                                            nullptr);
+  case igl::BackendType::D3D12: {
+    static const char* kVS = R"(
+      cbuffer VertexUniforms : register(b1) { float4x4 mvpMatrix; float scaleZ; };
+      struct VSIn { float3 position : POSITION; float3 uvw : TEXCOORD0; };
+      struct VSOut { float4 position : SV_POSITION; float3 uvw : TEXCOORD0; };
+      VSOut main(VSIn v) {
+        VSOut o; o.position = mul(mvpMatrix, float4(v.position,1.0));
+        o.uvw = float3(v.uvw.x, v.uvw.y, (v.uvw.z - 0.5f)*scaleZ + 0.5f);
+        return o; }
+    )";
+    static const char* kPS = R"(
+      Texture3D<float4> inputVolume : register(t0);
+      SamplerState linearSampler : register(s0);
+      struct PSIn { float4 position : SV_POSITION; float3 uvw : TEXCOORD0; };
+      float4 main(PSIn i) : SV_TARGET { return inputVolume.Sample(linearSampler, i.uvw); }
+    )";
+    return igl::ShaderStagesCreator::fromModuleStringInput(
+        device, kVS, "main", "", kPS, "main", "", nullptr);
+  }
   case igl::BackendType::Custom:
     IGL_DEBUG_ABORT("IGLSamples not set up for Custom");
     return nullptr;
@@ -199,13 +218,16 @@ bool isDeviceCompatible(IDevice& device) noexcept {
 
 void Textured3DCubeSession::createSamplerAndTextures(const igl::IDevice& device) {
   // Sampler & Texture
-  SamplerStateDesc samplerDesc;
-  samplerDesc.minFilter = samplerDesc.magFilter = SamplerMinMagFilter::Linear;
-  samplerDesc.addressModeU = SamplerAddressMode::MirrorRepeat;
-  samplerDesc.addressModeV = SamplerAddressMode::MirrorRepeat;
-  samplerDesc.addressModeW = SamplerAddressMode::MirrorRepeat;
-  samplerDesc.debugName = "Sampler: linear (MirrorRepeat)";
-  samp0_ = device.createSamplerState(samplerDesc, nullptr);
+  samp0_ = device.createSamplerState(
+      SamplerStateDesc{
+          .minFilter = SamplerMinMagFilter::Linear,
+          .magFilter = SamplerMinMagFilter::Linear,
+          .addressModeU = SamplerAddressMode::MirrorRepeat,
+          .addressModeV = SamplerAddressMode::MirrorRepeat,
+          .addressModeW = SamplerAddressMode::MirrorRepeat,
+          .debugName = "Sampler: linear (MirrorRepeat)",
+      },
+      nullptr);
 
   const uint32_t width = 256;
   const uint32_t height = 256;
@@ -276,12 +298,10 @@ void Textured3DCubeSession::initialize() noexcept {
     return;
   }
   // Vertex buffer, Index buffer and Vertex Input
-  const BufferDesc vb0Desc =
-      BufferDesc(BufferDesc::BufferTypeBits::Vertex, vertexData0, sizeof(vertexData0));
-  vb0_ = device.createBuffer(vb0Desc, nullptr);
-  const BufferDesc ibDesc =
-      BufferDesc(BufferDesc::BufferTypeBits::Index, indexData, sizeof(indexData));
-  ib0_ = device.createBuffer(ibDesc, nullptr);
+  vb0_ = device.createBuffer(
+      BufferDesc{BufferDesc::BufferTypeBits::Vertex, vertexData0, sizeof(vertexData0)}, nullptr);
+  ib0_ = device.createBuffer(
+      BufferDesc{BufferDesc::BufferTypeBits::Index, indexData, sizeof(indexData)}, nullptr);
 
   const VertexInputStateDesc inputDesc = {
       .numAttributes = 2,
@@ -356,11 +376,12 @@ void Textured3DCubeSession::update(SurfaceTextures surfaceTextures) noexcept {
 
   Result ret;
   if (framebuffer_ == nullptr) {
-    FramebufferDesc framebufferDesc;
-    framebufferDesc.colorAttachments[0].texture = surfaceTextures.color;
-    framebufferDesc.depthAttachment.texture = surfaceTextures.depth;
-
-    framebuffer_ = getPlatform().getDevice().createFramebuffer(framebufferDesc, &ret);
+    framebuffer_ = getPlatform().getDevice().createFramebuffer(
+        FramebufferDesc{
+            .colorAttachments = {{.texture = surfaceTextures.color}},
+            .depthAttachment = {.texture = surfaceTextures.depth},
+        },
+        &ret);
     IGL_DEBUG_ASSERT(ret.isOk());
     IGL_DEBUG_ASSERT(framebuffer_ != nullptr);
   } else {
@@ -371,17 +392,18 @@ void Textured3DCubeSession::update(SurfaceTextures surfaceTextures) noexcept {
   if (pipelineState_ == nullptr) {
     // Graphics pipeline: state batch that fully configures GPU for rendering
 
-    RenderPipelineDesc graphicsDesc;
-    graphicsDesc.vertexInputState = vertexInput0_;
-    graphicsDesc.shaderStages = shaderStages_;
-    graphicsDesc.targetDesc.colorAttachments.resize(1);
-    graphicsDesc.targetDesc.colorAttachments[0].textureFormat =
-        framebuffer_->getColorAttachment(0)->getProperties().format;
-    graphicsDesc.targetDesc.depthAttachmentFormat =
-        framebuffer_->getDepthAttachment()->getProperties().format;
-    graphicsDesc.fragmentUnitSamplerMap[textureUnit] = IGL_NAMEHANDLE("inputVolume");
-    graphicsDesc.cullMode = igl::CullMode::Back;
-    graphicsDesc.frontFaceWinding = igl::WindingMode::Clockwise;
+    RenderPipelineDesc graphicsDesc = {
+        .vertexInputState = vertexInput0_,
+        .shaderStages = shaderStages_,
+        .targetDesc = {.colorAttachments =
+                           {{.textureFormat =
+                                 framebuffer_->getColorAttachment(0)->getProperties().format}},
+                       .depthAttachmentFormat =
+                           framebuffer_->getDepthAttachment()->getProperties().format},
+        .cullMode = igl::CullMode::Back,
+        .frontFaceWinding = igl::WindingMode::Clockwise,
+        .fragmentUnitSamplerMap = {{textureUnit, IGL_NAMEHANDLE("inputVolume")}},
+    };
     pipelineState_ = getPlatform().getDevice().createRenderPipeline(graphicsDesc, nullptr);
   }
 
@@ -394,25 +416,29 @@ void Textured3DCubeSession::update(SurfaceTextures surfaceTextures) noexcept {
   commands->bindVertexBuffer(0, *vb0_);
 
   // Bind Vertex Uniform Data
-  iglu::ManagedUniformBufferInfo info;
-  info.index = 1;
-  info.length = sizeof(VertexFormat);
-  info.uniforms = std::vector<UniformDesc>{UniformDesc{
-                                               "mvpMatrix",
-                                               -1,
-                                               igl::UniformType::Mat4x4,
-                                               1,
-                                               offsetof(VertexFormat, mvpMatrix),
-                                               0,
-                                           },
-                                           UniformDesc{
-                                               "scaleZ",
-                                               -1,
-                                               igl::UniformType::Float,
-                                               1,
-                                               offsetof(VertexFormat, scaleZ),
-                                               0,
-                                           }};
+  const iglu::ManagedUniformBufferInfo info = {
+      .index = 1,
+      .length = sizeof(VertexFormat),
+      .uniforms =
+          {
+              {
+                  .name = "mvpMatrix",
+                  .location = -1,
+                  .type = igl::UniformType::Mat4x4,
+                  .numElements = 1,
+                  .offset = offsetof(VertexFormat, mvpMatrix),
+                  .elementStride = 0,
+              },
+              {
+                  .name = "scaleZ",
+                  .location = -1,
+                  .type = igl::UniformType::Float,
+                  .numElements = 1,
+                  .offset = offsetof(VertexFormat, scaleZ),
+                  .elementStride = 0,
+              },
+          },
+  };
 
   const std::shared_ptr<iglu::ManagedUniformBuffer> vertUniformBuffer =
       std::make_shared<iglu::ManagedUniformBuffer>(device, info);
