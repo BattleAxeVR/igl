@@ -12,29 +12,9 @@
 #include <igl/Common.h>
 #include <igl/ITrackedResource.h>
 #include <igl/TextureFormat.h>
+#include <igl/base/IAttachmentInterop.h>
 
 namespace igl {
-
-/**
- * @brief TextureType denotes the possible storage components of the underlying surface for the
- * texture. For example, TwoD corresponds to 2-dimensional textures.
- *
- *  Invalid          - Undefined,
- *  TwoD             - Single layer, two dimensional: (Width, Height)
- *  TwoDArray        - Multiple layers, two dimensional: (Width, Height)
- *  ThreeD           - 3 dimensional textures: (Width, Height, Depth)
- *  Cube             - Special case of 3 dimensional textures: (Width, Height, Depth), along with 6
- *                     cube faces
- *  ExternalImage    - Externally provided images, EXTERNAL_OES on OpenGLES
- */
-enum class TextureType : uint8_t {
-  Invalid,
-  TwoD,
-  TwoDArray,
-  ThreeD,
-  Cube,
-  ExternalImage,
-};
 
 /**
  * @brief TextureCubeFace denotes side of the face in a cubemap setting.
@@ -804,7 +784,7 @@ struct TextureDesc {
  * This should only be used for the purpose of getting information about the texture using the
  * gettor methods defined below.
  */
-class ITexture : public ITrackedResource<ITexture> {
+class ITexture : public ITrackedResource<ITexture>, public base::IAttachmentInterop {
  public:
   explicit ITexture(TextureFormat format) :
     properties_(TextureFormatProperties::fromTextureFormat(format)) {}
