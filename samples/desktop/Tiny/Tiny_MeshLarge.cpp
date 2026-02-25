@@ -106,6 +106,7 @@
 #else
 #error Unsupported OS
 #endif
+// NOLINTNEXTLINE(facebook-unused-include-check)
 #include <GLFW/glfw3native.h>
 
 // @fb-only
@@ -148,8 +149,8 @@ constexpr bool kPreferIntegratedGPU = false;
 std::string contentRootFolder;
 
 #if IGL_WITH_IGLU
-std::unique_ptr<iglu::imgui::Session> imguiSession_;
-igl::shell::InputDispatcher inputDispatcher_;
+std::unique_ptr<iglu::imgui::Session> imguiSession;
+igl::shell::InputDispatcher inputDispatcher;
 #endif // IGL_WITH_IGLU
 
 #if USE_TEXTURE_LOADER
@@ -668,8 +669,8 @@ std::shared_ptr<IVertexInputState> vertexInput0_;
 std::shared_ptr<IVertexInputState> vertexInputShadows_;
 std::shared_ptr<IDepthStencilState> depthStencilState_;
 std::shared_ptr<IDepthStencilState> depthStencilStateLEqual_;
-std::shared_ptr<ISamplerState> sampler_;
-std::shared_ptr<ISamplerState> samplerShadow_;
+std::shared_ptr<ISamplerState> sampler;
+std::shared_ptr<ISamplerState> samplerShadow;
 std::shared_ptr<ITexture> textureDummyWhite_;
 #if USE_OPENGL_BACKEND
 std::shared_ptr<ITexture> textureDummyBlack_;
@@ -679,7 +680,7 @@ std::shared_ptr<ITexture> skyboxTextureIrradiance_;
 
 // scene navigation
 CameraPositioner_FirstPerson positioner_(vec3(-100, 40, -47), vec3(0, 35, 0), vec3(0, 1, 0));
-Camera camera_(positioner_);
+Camera camera(positioner_);
 glm::vec2 mousePos_ = glm::vec2(0.0f);
 bool mousePressed_ = false;
 bool enableComputePass_ = false;
@@ -847,7 +848,7 @@ GLFWwindow* initIGL(bool isHeadless, bool enableVulkanValidationLayers) {
       glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
       mousePos_ = vec2(x / fbWidth, 1.0f - y / fbHeight);
 #if IGL_WITH_IGLU
-      inputDispatcher_.queueEvent(igl::shell::MouseMotionEvent(x, y, 0, 0));
+      inputDispatcher.queueEvent(igl::shell::MouseMotionEvent(x, y, 0, 0));
 #endif // IGL_WITH_IGLU
     });
 
@@ -870,7 +871,7 @@ GLFWwindow* initIGL(bool isHeadless, bool enableVulkanValidationLayers) {
           (button == GLFW_MOUSE_BUTTON_LEFT)
               ? MouseButton::Left
               : (button == GLFW_MOUSE_BUTTON_RIGHT ? MouseButton::Right : MouseButton::Middle);
-      inputDispatcher_.queueEvent(
+      inputDispatcher.queueEvent(
           igl::shell::MouseButtonEvent(iglButton, action == GLFW_PRESS, (float)xpos, (float)ypos));
 #endif // IGL_WITH_IGLU
     });
@@ -1346,7 +1347,7 @@ void initModel(int numSamplesMSAA) {
     desc.addressModeV = igl::SamplerAddressMode::Repeat;
     desc.mipFilter = igl::SamplerMipFilter::Linear;
     desc.debugName = "Sampler: linear";
-    sampler_ = device_->createSamplerState(desc, nullptr);
+    sampler = device_->createSamplerState(desc, nullptr);
 
     desc.addressModeU = igl::SamplerAddressMode::Clamp;
     desc.addressModeV = igl::SamplerAddressMode::Clamp;
@@ -1354,7 +1355,7 @@ void initModel(int numSamplesMSAA) {
     desc.debugName = "Sampler: shadow";
     desc.depthCompareEnabled = true;
     desc.depthCompareFunction = igl::CompareFunction::LessEqual;
-    samplerShadow_ = device_->createSamplerState(desc, nullptr);
+    samplerShadow = device_->createSamplerState(desc, nullptr);
   }
 
   commandQueue_ = device_->createCommandQueue({}, nullptr);
@@ -1891,7 +1892,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable,
 #endif
 
   perFrame_.proj = glm::perspective(fov, aspectRatio, 0.5f, 500.0f);
-  perFrame_.view = camera_.getViewMatrix();
+  perFrame_.view = camera.getViewMatrix();
   perFrame_.light = scaleBias * shadowProj * shadowView;
 
   ubPerFrame_[frameIndex]->upload(&perFrame_, igl::BufferRange(sizeof(perFrame_), 0));
@@ -1994,11 +1995,11 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable,
     commands->bindBuffer(sbIdx, sbMaterials_.get());
     commands->bindTexture(0, igl::BindTarget::kFragment, fbShadowMap_->getDepthAttachment().get());
     commands->bindTexture(4, igl::BindTarget::kFragment, skyboxTextureIrradiance_.get());
-    commands->bindSamplerState(0, igl::BindTarget::kFragment, samplerShadow_.get());
-    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler_.get());
-    commands->bindSamplerState(2, igl::BindTarget::kFragment, sampler_.get());
-    commands->bindSamplerState(3, igl::BindTarget::kFragment, sampler_.get());
-    commands->bindSamplerState(4, igl::BindTarget::kFragment, sampler_.get());
+    commands->bindSamplerState(0, igl::BindTarget::kFragment, samplerShadow.get());
+    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler.get());
+    commands->bindSamplerState(2, igl::BindTarget::kFragment, sampler.get());
+    commands->bindSamplerState(3, igl::BindTarget::kFragment, sampler.get());
+    commands->bindSamplerState(4, igl::BindTarget::kFragment, sampler.get());
 
 #if USE_OPENGL_BACKEND
     commands->bindVertexBuffer(0, *vb0_);
@@ -2037,8 +2038,8 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable,
 #else
     commands->bindTexture(0, igl::BindTarget::kFragment, fbShadowMap_->getDepthAttachment().get());
     commands->bindTexture(1, igl::BindTarget::kFragment, skyboxTextureIrradiance_.get());
-    commands->bindSamplerState(0, igl::BindTarget::kFragment, samplerShadow_.get());
-    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler_.get());
+    commands->bindSamplerState(0, igl::BindTarget::kFragment, samplerShadow.get());
+    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler.get());
     commands->bindIndexBuffer(*ib0_, IndexFormat::UInt32);
     commands->drawIndexed(indexData_.size());
     if (enableWireframe_) {
@@ -2051,7 +2052,7 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable,
     // Skybox
     commands->bindRenderPipelineState(renderPipelineState_Skybox_);
     commands->bindTexture(1, igl::BindTarget::kFragment, skyboxTextureReference_.get());
-    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler_.get());
+    commands->bindSamplerState(1, igl::BindTarget::kFragment, sampler.get());
     commands->pushDebugGroupLabel("Render Skybox", igl::Color(0, 1, 0));
     commands->bindDepthStencilState(depthStencilStateLEqual_);
     commands->draw(3u * 6u * 2u);
@@ -2102,12 +2103,12 @@ void render(const std::shared_ptr<ITexture>& nativeDrawable,
                           igl::BindTarget::kFragment,
                           numSamplesMSAA > 1 ? fbOffscreen_->getResolveColorAttachment(0).get()
                                              : fbOffscreen_->getColorAttachment(0).get());
-    commands->bindSamplerState(0, igl::BindTarget::kFragment, sampler_.get());
+    commands->bindSamplerState(0, igl::BindTarget::kFragment, sampler.get());
     commands->draw(3);
     commands->popDebugGroupLabel();
 
 #if IGL_WITH_IGLU
-    imguiSession_->endFrame(*device_, *commands);
+    imguiSession->endFrame(*device_, *commands);
 #endif // IGL_WITH_IGLU
 
     commands->endEncoding();
@@ -2649,7 +2650,7 @@ int main(int argc, char* argv[]) {
   createComputePipeline();
 
 #if IGL_WITH_IGLU
-  imguiSession_ = std::make_unique<iglu::imgui::Session>(*device_, inputDispatcher_);
+  imguiSession = std::make_unique<iglu::imgui::Session>(*device_, inputDispatcher);
 #endif // IGL_WITH_IGLU
 
   // In headless mode, wait for all textures to be loaded before rendering
@@ -2673,7 +2674,7 @@ int main(int argc, char* argv[]) {
       framebufferDesc.colorAttachments[0].texture = getNativeDrawable();
       framebufferDesc.depthAttachment.texture = getNativeDepthDrawable();
 #if IGL_WITH_IGLU
-      imguiSession_->beginFrame(framebufferDesc, 1.0f);
+      imguiSession->beginFrame(framebufferDesc, 1.0f);
       ImGui::SetNextWindowCollapsed(true, ImGuiCond_FirstUseEver);
       ImGui::ShowDemoWindow();
 
@@ -2701,7 +2702,7 @@ int main(int argc, char* argv[]) {
         ImGui::End();
       }
 
-      imguiSession_->drawFPS(fps_.getAverageFPS());
+      imguiSession->drawFPS(fps_.getAverageFPS());
 #endif // IGL_WITH_IGLU
     }
 
@@ -2712,7 +2713,7 @@ int main(int argc, char* argv[]) {
     positioner_.update(delta, mousePos_, mousePressed_);
     prevTime = newTime;
 #if IGL_WITH_IGLU
-    inputDispatcher_.processEvents();
+    inputDispatcher.processEvents();
 #endif // IGL_WITH_IGLU
     render(getNativeDrawable(), frameIndex, kNumSamplesMSAA);
     frameIndex = (frameIndex + 1) % kNumBufferedFrames;
@@ -2752,7 +2753,7 @@ int main(int argc, char* argv[]) {
   loaderShouldExit_.store(true, std::memory_order_release);
 
 #if IGL_WITH_IGLU
-  imguiSession_ = nullptr;
+  imguiSession = nullptr;
 #endif // IGL_WITH_IGLU
   // destroy all the Vulkan stuff before closing the window
   vb0_ = nullptr;
@@ -2775,8 +2776,8 @@ int main(int argc, char* argv[]) {
   skyboxTextureIrradiance_ = nullptr;
   textures_.clear();
   texturesCache_.clear();
-  sampler_ = nullptr;
-  samplerShadow_ = nullptr;
+  sampler = nullptr;
+  samplerShadow = nullptr;
   fbMain_ = nullptr;
   fbShadowMap_ = nullptr;
   fbOffscreen_ = nullptr;

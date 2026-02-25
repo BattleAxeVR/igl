@@ -7,41 +7,7 @@
 
 #include <igl/RenderPipelineState.h>
 
-#include <string>
-#include <unordered_map>
-
 using namespace igl;
-
-///
-/// RenderPipelineDesc::FramebufferDesc::ColorAttachment
-///
-bool RenderPipelineDesc::TargetDesc::ColorAttachment::operator!=(
-    const ColorAttachment& other) const {
-  return !(*this == other);
-}
-
-bool RenderPipelineDesc::TargetDesc::ColorAttachment::operator==(
-    const ColorAttachment& other) const {
-  return (textureFormat == other.textureFormat && colorWriteMask == other.colorWriteMask &&
-          blendEnabled == other.blendEnabled && rgbBlendOp == other.rgbBlendOp &&
-          alphaBlendOp == other.alphaBlendOp && srcRGBBlendFactor == other.srcRGBBlendFactor &&
-          srcAlphaBlendFactor == other.srcAlphaBlendFactor &&
-          dstRGBBlendFactor == other.dstRGBBlendFactor &&
-          dstAlphaBlendFactor == other.dstAlphaBlendFactor);
-}
-
-///
-/// RenderPipelineDesc::FramebufferDesc
-///
-bool RenderPipelineDesc::TargetDesc::operator!=(const TargetDesc& other) const {
-  return !(*this == other);
-}
-
-bool RenderPipelineDesc::TargetDesc::operator==(const TargetDesc& other) const {
-  return (colorAttachments == other.colorAttachments &&
-          depthAttachmentFormat == other.depthAttachmentFormat &&
-          stencilAttachmentFormat == other.stencilAttachmentFormat);
-}
 
 ///
 /// RenderPipelineDesc
